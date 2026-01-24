@@ -13,7 +13,7 @@ class CampusMateApp extends StatelessWidget {
     return MaterialApp(
       title: 'CampusMate',
       theme: ThemeData(useMaterial3: true),
-      home: const RootShell(),
+      home: RootShell(),
     );
   }
 }
