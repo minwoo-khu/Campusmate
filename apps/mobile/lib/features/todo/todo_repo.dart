@@ -11,7 +11,9 @@ class TodoRepo {
 
   void toggle(String id) {
     final idx = _items.indexWhere((e) => e.id == id);
-    if (idx >= 0) _items[idx].completed = !_items[idx].completed;
+    if (idx >= 0) {
+      _items[idx].completed = !_items[idx].completed;
+    }
   }
 
   void remove(String id) {
@@ -19,4 +21,4 @@ class TodoRepo {
   }
 }
 
-final todoRepo = TodoRepo(); // 임시 전역(나중에 DI로 바꾸기)
+final todoRepo = TodoRepo(); // MVP용 전역
