@@ -1,24 +1,28 @@
+import 'package:hive/hive.dart';
 import 'todo_model.dart';
 
 class TodoRepo {
-  final List<TodoItem> _items = [];
+  Box<TodoItem> get _box => Hive.box<TodoItem>('todos');
 
-  List<TodoItem> list() => List.unmodifiable(_items);
-
-  void add(TodoItem item) {
-    _items.insert(0, item);
+  List<TodoItem> list() {
+    final items = _box.values.toList();
+    // 최근 추가가 위로 오게 하려면 역순/정렬
+    items.sort((a, b) => b.key.compareTo(a.key)); // key(int) 기준
+    return items;
   }
 
-  void toggle(String id) {
-    final idx = _items.indexWhere((e) => e.id == id);
-    if (idx >= 0) {
-      _items[idx].completed = !_items[idx].completed;
-    }
+  Future<void> add(TodoItem item) async {
+    await _box.add(item);
   }
 
-  void remove(String id) {
-    _items.removeWhere((e) => e.id == id);
+  Future<void> toggle(TodoItem item) async {
+    item.completed = !item.completed;
+    await item.save();
+  }
+
+  Future<void> remove(TodoItem item) async {
+    await item.delete();
   }
 }
 
-final todoRepo = TodoRepo(); // MVP용 전역
+final todoRepo = TodoRepo();

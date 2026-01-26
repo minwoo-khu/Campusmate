@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
-import 'app/root_shell.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-void main() {
+import 'app/root_shell.dart';
+import 'features/todo/todo_model.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Hive.initFlutter();
+  Hive.registerAdapter(TodoItemAdapter());
+  await Hive.openBox<TodoItem>('todos');
+
   runApp(const CampusMateApp());
 }
 

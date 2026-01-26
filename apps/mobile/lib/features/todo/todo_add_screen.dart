@@ -33,11 +33,11 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
     }
   }
 
-  void _save() {
+  Future<void> _save() async {
     final title = _controller.text.trim();
     if (title.isEmpty) return;
 
-    todoRepo.add(
+    await todoRepo.add(
       TodoItem(
         id: const Uuid().v4(),
         title: title,
@@ -45,7 +45,8 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
       ),
     );
 
-    Navigator.of(context).pop(true); // 변경됨 알림
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
   }
 
   @override
