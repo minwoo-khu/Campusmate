@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../todo/todo_repo.dart';
 import '../../app/ics_settings_screen.dart';
+import '../todo/todo_repo.dart';
 import 'ics_parser.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -16,8 +16,8 @@ class CalendarScreen extends StatefulWidget {
 class _CalendarScreenState extends State<CalendarScreen> {
   static const _prefKeyIcsUrl = 'ics_feed_url';
 
-  bool _loadingIcs = false;
-  String? _icsError;
+  bool _loading = false;
+  String? _message; // 상태/에러 메시지
   List<IcsEvent> _icsEvents = [];
 
   @override
@@ -28,38 +28,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _loadIcs() async {
     final prefs = await SharedPreferences.getInstance();
-    final url = prefs.getString(_prefKeyIcsUrl);
+    final url = (prefs.getString(_prefKeyIcsUrl) ?? '').trim();
 
     setState(() {
-      _loadingIcs = true;
-      _icsError = null;
+      _loading = true;
+      _message = null;
+      _icsEvents = [];
     });
 
-    if (url == null || url.trim().isEmpty) {
+    if (url.isEmpty) {
       setState(() {
-        _loadingIcs = false;
-        _icsEvents = [];
+        _loading = false;
+        _message = 'No school calendar connected yet.';
       });
       return;
     }
 
     try {
-      final resp = await http.get(Uri.parse(url.trim()));
+      final resp = await http.get(Uri.parse(url));
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         throw Exception('HTTP ${resp.statusCode}');
       }
-      final events = parseIcs(resp.body);
-      events.sort((a, b) => a.start.compareTo(b.start));
+
+      final events = parseIcs(resp.body)..sort((a, b) => a.start.compareTo(b.start));
 
       setState(() {
         _icsEvents = events;
-        _loadingIcs = false;
+        _loading = false;
+        if (events.isEmpty) {
+          _message = 'School calendar connected, but no events found.';
+        }
       });
     } catch (e) {
       setState(() {
-        _icsEvents = [];
-        _loadingIcs = false;
-        _icsError = 'ICS load failed: $e';
+        _loading = false;
+        _message = 'Failed to load school calendar: $e';
       });
     }
   }
@@ -75,33 +78,38 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Todo due-date
     final todosWithDue = todoRepo
         .list()
         .where((t) => t.dueAt != null)
         .toList()
       ..sort((a, b) => a.dueAt!.compareTo(b.dueAt!));
 
-    // 통합 리스트(간단하게: todo due + ics start 기준으로 합쳐서 보여주기)
+    // 통합 이벤트
     final items = <_CalItem>[];
 
     for (final t in todosWithDue) {
-      items.add(_CalItem(
-        title: t.title,
-        when: t.dueAt!,
-        source: _Source.todo,
-        subtitle: 'Due',
-        done: t.completed,
-      ));
+      items.add(
+        _CalItem(
+          title: t.title,
+          when: t.dueAt!,
+          source: _Source.todo,
+          subtitle: 'Due',
+          done: t.completed,
+        ),
+      );
     }
 
     for (final e in _icsEvents) {
-      items.add(_CalItem(
-        title: e.summary,
-        when: e.start,
-        source: _Source.ics,
-        subtitle: e.allDay ? 'All day' : 'ICS',
-        done: false,
-      ));
+      items.add(
+        _CalItem(
+          title: e.summary,
+          when: e.start,
+          source: _Source.ics,
+          subtitle: e.allDay ? 'All day' : 'School',
+          done: false,
+        ),
+      );
     }
 
     items.sort((a, b) => a.when.compareTo(b.when));
@@ -122,7 +130,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 IconButton(
                   onPressed: _openIcsSettings,
                   icon: const Icon(Icons.link),
-                  tooltip: 'ICS settings',
+                  tooltip: 'School calendar (ICS)',
                 ),
                 IconButton(
                   onPressed: _loadIcs,
@@ -133,12 +141,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             const SizedBox(height: 8),
 
-            if (_loadingIcs)
-              const LinearProgressIndicator(),
+            if (_loading) const LinearProgressIndicator(),
 
-            if (_icsError != null) ...[
+            if (_message != null) ...[
               const SizedBox(height: 8),
-              Text(_icsError!, style: const TextStyle(color: Colors.red)),
+              Text(
+                _message!,
+                style: TextStyle(
+                  color: _message!.startsWith('Failed') ? Colors.red : null,
+                ),
+              ),
             ],
 
             const SizedBox(height: 8),
@@ -150,14 +162,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (_, i) {
                         final it = items[i];
-                        final dateStr =
-                            it.when.toLocal().toString().split(' ')[0];
+                        final dateStr = it.when.toLocal().toString().split(' ')[0];
 
                         final leading = it.source == _Source.todo
                             ? const Icon(Icons.check_circle_outline)
                             : const Icon(Icons.event_note);
 
-                        final tag = it.source == _Source.todo ? 'TODO' : 'ICS';
+                        final tag = it.source == _Source.todo ? 'TODO' : 'SCHOOL';
 
                         return ListTile(
                           leading: leading,
