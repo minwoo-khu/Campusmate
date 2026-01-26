@@ -41,8 +41,13 @@ class TodoScreen extends StatelessWidget {
                 onDismissed: (_) async {
                   await todoRepo.remove(t);
                 },
-                child: CheckboxListTile(
-                  value: t.completed,
+                child: ListTile(
+                  leading: Checkbox(
+                    value: t.completed,
+                    onChanged: (_) async {
+                      await todoRepo.toggle(t);
+                    },
+                  ),
                   title: Text(
                     t.title,
                     style: TextStyle(
@@ -50,9 +55,32 @@ class TodoScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: dueStr == null ? null : Text('Due: $dueStr'),
-                  onChanged: (_) async {
-                    await todoRepo.toggle(t);
-                  },
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Delete todo?'),
+                          content: Text('"${t.title}"'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (ok == true) {
+                        await todoRepo.remove(t);
+                      }
+                    },
+                  ),
                 ),
               );
             },
