@@ -45,9 +45,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
   Future<void> _pickAndSaveImage() async {
     if (kIsWeb) {
-      // 웹은 로컬 파일 경로 저장 방식이 다름(IndexedDB/bytes 등)
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('웹에서는 시간표 이미지 저장 기능을 잠시 비활성화했어. Windows/Android로 실행해줘.')),
+        const SnackBar(content: Text('웹에서는 지원 안 함. Android에서 실행해줘.')),
       );
       return;
     }
@@ -57,20 +56,18 @@ class _TimetableScreenState extends State<TimetableScreen> {
       allowMultiple: false,
       withData: false,
     );
-
     if (result == null || result.files.isEmpty) return;
 
     final pickedPath = result.files.single.path;
     if (pickedPath == null) return;
 
-    // 앱 전용 폴더로 복사해서 “항상 접근 가능한 경로”로 보관
     final appDir = await getApplicationDocumentsDirectory();
+
     final ext = p.extension(pickedPath).toLowerCase();
     final safeExt = (ext == '.png' || ext == '.jpg' || ext == '.jpeg') ? ext : '.png';
-    final targetPath = p.join(appDir.path, 'timetable$safeExt');
 
-    final src = File(pickedPath);
-    await src.copy(targetPath);
+    final targetPath = p.join(appDir.path, 'timetable$safeExt');
+    await File(pickedPath).copy(targetPath);
 
     await _savePath(targetPath);
     setState(() => _imagePath = targetPath);
@@ -82,8 +79,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
   }
 
   Future<void> _removeImage() async {
-    if (_imagePath != null && !kIsWeb) {
-      final f = File(_imagePath!);
+    final path = _imagePath;
+    if (path != null && !kIsWeb) {
+      final f = File(path);
       if (await f.exists()) {
         await f.delete();
       }
@@ -105,7 +103,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
       );
     }
 
-    final hasImage = _imagePath != null && (!kIsWeb);
+    final hasImage = _imagePath != null && !kIsWeb;
 
     return Scaffold(
       body: Padding(
@@ -118,13 +116,14 @@ class _TimetableScreenState extends State<TimetableScreen> {
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            Card(
-              child: SizedBox(
-                height: 320,
-                width: double.infinity,
+
+            Expanded(
+              child: Card(
+                clipBehavior: Clip.antiAlias,
                 child: hasImage
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                    ? InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 4.0,
                         child: Image.file(
                           File(_imagePath!),
                           fit: BoxFit.contain,
@@ -135,10 +134,10 @@ class _TimetableScreenState extends State<TimetableScreen> {
                           },
                         ),
                       )
-                    : Center(
+                    : const Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
-                          children: const [
+                          children: [
                             Icon(Icons.image_outlined, size: 44),
                             SizedBox(height: 8),
                             Text('No timetable image yet'),
@@ -149,6 +148,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                       ),
               ),
             ),
+
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
@@ -167,11 +167,6 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 label: const Text('Remove image'),
               ),
             ),
-            const SizedBox(height: 8),
-            if (kIsWeb)
-              const Text(
-                '※ 웹(Chrome)에서는 저장 방식이 달라서 이 기능을 잠시 꺼뒀어. Windows/Android로 실행해줘.',
-              ),
           ],
         ),
       ),
