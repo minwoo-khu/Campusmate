@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'todo_add_screen.dart';
 import 'todo_model.dart';
 import 'todo_repo.dart';
+import 'todo_edit_screen.dart';
 
 class TodoScreen extends StatelessWidget {
   const TodoScreen({super.key});
@@ -55,31 +56,46 @@ class TodoScreen extends StatelessWidget {
                     ),
                   ),
                   subtitle: dueStr == null ? null : Text('Due: $dueStr'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () async {
-                      final ok = await showDialog<bool>(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                          title: const Text('Delete todo?'),
-                          content: Text('"${t.title}"'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: const Text('Cancel'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        tooltip: 'Edit',
+                        onPressed: () async {
+                          await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(builder: (_) => TodoEditScreen(item: t)),
+                          );
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Delete',
+                        onPressed: () async {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Delete todo?'),
+                              content: Text('"${t.title}"'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
                             ),
-                            FilledButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ),
-                      );
+                          );
 
-                      if (ok == true) {
-                        await todoRepo.remove(t);
-                      }
-                    },
+                          if (ok == true) {
+                            await todoRepo.remove(t);
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ),
               );

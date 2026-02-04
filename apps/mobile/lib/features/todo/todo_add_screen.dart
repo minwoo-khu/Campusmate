@@ -4,15 +4,23 @@ import 'todo_repo.dart';
 import 'package:uuid/uuid.dart';
 
 class TodoAddScreen extends StatefulWidget {
-  const TodoAddScreen({super.key});
+  final DateTime? initialDueAt;
+  const TodoAddScreen({super.key, this.initialDueAt});
 
   @override
   State<TodoAddScreen> createState() => _TodoAddScreenState();
 }
 
+
 class _TodoAddScreenState extends State<TodoAddScreen> {
   final _controller = TextEditingController();
   DateTime? _dueAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _dueAt = widget.initialDueAt;
+  }
 
   @override
   void dispose() {
