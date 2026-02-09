@@ -1,103 +1,202 @@
 import 'package:flutter/material.dart';
+
 import 'todo_model.dart';
 import 'todo_repo.dart';
-import 'package:uuid/uuid.dart';
 
 class TodoAddScreen extends StatefulWidget {
   final DateTime? initialDueAt;
-  const TodoAddScreen({super.key, this.initialDueAt});
+
+  const TodoAddScreen({
+    super.key,
+    this.initialDueAt,
+  });
 
   @override
   State<TodoAddScreen> createState() => _TodoAddScreenState();
 }
 
-
 class _TodoAddScreenState extends State<TodoAddScreen> {
-  final _controller = TextEditingController();
+  final _titleController = TextEditingController();
+
   DateTime? _dueAt;
+  DateTime? _remindAt;
 
   @override
   void initState() {
     super.initState();
-    _dueAt = widget.initialDueAt;
+    if (widget.initialDueAt != null) {
+      final d = widget.initialDueAt!;
+      _dueAt = DateTime(d.year, d.month, d.day, 23, 59);
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _titleController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickDate() async {
+  String _fmtDateTime(DateTime dt) {
+    String two(int x) => x.toString().padLeft(2, '0');
+    return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
+  }
+
+  Future<void> _pickDueDate() async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    final base = _dueAt ?? now;
+
+    final pickedDate = await showDatePicker(
+      context: context,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 5),
+      initialDate: DateTime(base.year, base.month, base.day),
+    );
+    if (pickedDate == null) return;
+
+    setState(() {
+      _dueAt = DateTime(pickedDate.year, pickedDate.month, pickedDate.day, 23, 59);
+      if (_remindAt != null && _remindAt!.isAfter(_dueAt!)) {
+        _remindAt = _dueAt;
+      }
+    });
+  }
+
+  void _clearDueDate() {
+    setState(() {
+      _dueAt = null;
+    });
+  }
+
+  Future<void> _pickReminder() async {
+    final now = DateTime.now();
+    final base = _remindAt ?? _dueAt ?? now;
+
+    final pickedDate = await showDatePicker(
       context: context,
       firstDate: now.subtract(const Duration(days: 1)),
       lastDate: DateTime(now.year + 5),
-      initialDate: now,
+      initialDate: DateTime(base.year, base.month, base.day),
     );
-    if (picked != null) {
-      setState(() => _dueAt = picked);
+    if (pickedDate == null) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(base),
+    );
+    if (pickedTime == null) return;
+
+    final candidate = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    if (_dueAt != null && candidate.isAfter(_dueAt!)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('리마인더는 마감시간 이후로 설정할 수 없어.')),
+        );
+      }
+      return;
     }
+
+    setState(() => _remindAt = candidate);
+  }
+
+  void _clearReminder() {
+    setState(() => _remindAt = null);
   }
 
   Future<void> _save() async {
-    final title = _controller.text.trim();
+    final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
-    await todoRepo.add(
-      TodoItem(
-        id: const Uuid().v4(),
-        title: title,
-        dueAt: _dueAt,
-      ),
+    final item = TodoItem(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      title: title,
+      dueAt: _dueAt,
+      remindAt: _remindAt,
+      completed: false,
     );
 
-    if (!mounted) return;
-    Navigator.of(context).pop(true);
+    await todoRepo.add(item);
+
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
+    final dueText = _dueAt == null ? '없음' : _fmtDateTime(_dueAt!);
+    final remindText = _remindAt == null ? '없음' : _fmtDateTime(_remindAt!);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Todo')),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('Todo 추가'),
+      ),
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _controller,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
+        children: [
+          const Text('할 일', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              hintText: '예) 과제 제출',
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _dueAt == null
-                        ? 'No due date'
-                        : 'Due: ${_dueAt!.toLocal().toString().split(' ')[0]}',
-                  ),
-                ),
-                TextButton(
-                  onPressed: _pickDate,
-                  child: const Text('Pick date'),
-                ),
-              ],
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: _save,
-                child: const Text('Save'),
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _save(),
+          ),
+          const SizedBox(height: 16),
+
+          const Text('마감(선택)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: Text('마감: $dueText')),
+              TextButton(
+                onPressed: _pickDueDate,
+                child: const Text('날짜 선택'),
               ),
-            )
-          ],
-        ),
+              TextButton(
+                onPressed: _dueAt == null ? null : _clearDueDate,
+                child: const Text('지우기'),
+              ),
+            ],
+          ),
+
+          const Divider(height: 24),
+
+          const Text('리마인더(선택)', style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(child: Text('알림: $remindText')),
+              TextButton(
+                onPressed: _pickReminder,
+                child: const Text('시간 선택'),
+              ),
+              TextButton(
+                onPressed: _remindAt == null ? null : _clearReminder,
+                child: const Text('지우기'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '※ 알림은 설정한 시간이 과거면 예약되지 않을 수 있어.',
+            style: TextStyle(fontSize: 12, color: Colors.black54),
+          ),
+
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: _save,
+            icon: const Icon(Icons.save),
+            label: const Text('저장'),
+          ),
+        ],
       ),
     );
   }

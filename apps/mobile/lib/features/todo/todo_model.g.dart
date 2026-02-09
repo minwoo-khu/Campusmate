@@ -20,13 +20,16 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
       id: fields[0] as String,
       title: fields[1] as String,
       completed: fields[3] as bool,
-    )..dueAtMillis = fields[2] as int?;
+      notificationId: fields[5] as int?,
+    )
+      ..dueAtMillis = fields[2] as int?
+      ..remindAtMillis = fields[4] as int?;
   }
 
   @override
   void write(BinaryWriter writer, TodoItem obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -34,7 +37,11 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
       ..writeByte(2)
       ..write(obj.dueAtMillis)
       ..writeByte(3)
-      ..write(obj.completed);
+      ..write(obj.completed)
+      ..writeByte(4)
+      ..write(obj.remindAtMillis)
+      ..writeByte(5)
+      ..write(obj.notificationId);
   }
 
   @override

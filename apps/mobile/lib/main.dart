@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'app/root_shell.dart';
+import 'app/notification_service.dart';
 import 'features/todo/todo_model.dart';
 import 'features/courses/course_material.dart';
 import 'features/courses/course.dart';
@@ -22,6 +23,8 @@ Future<void> main() async {
   await Hive.openBox<String>('material_notes');      
   await Hive.openBox<String>('material_page_memos'); 
 
+  await Hive.openBox<int>('notif');
+  await NotificationService.I.init();
 
   runApp(const CampusMateApp());
 }
