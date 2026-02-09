@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import 'course_material.dart';
+import 'pdf_viewer_screen.dart';
 
 class CourseDetailScreen extends StatelessWidget {
   final String courseId;
@@ -146,10 +147,18 @@ class CourseDetailScreen extends StatelessWidget {
                   onPressed: () => _deleteMaterial(context, m),
                 ),
                 onTap: () {
-                  // MVP: 뷰어는 나중에 (pdfx 같은 패키지)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('PDF 뷰어는 2차에서 추가!')),
-                  );
+                  final k = m.key;
+                  if (k is int) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PdfViewerScreen(
+                          materialKey: k,
+                          filePath: m.localPath,
+                          fileName: m.fileName,
+                        ),
+                      ),
+                    );
+                  }
                 },
               );
             },

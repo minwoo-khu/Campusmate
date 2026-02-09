@@ -19,6 +19,9 @@ Future<void> main() async {
   await Hive.openBox<TodoItem>('todos');
   await Hive.openBox<Course>('courses');
   await Hive.openBox<CourseMaterial>('course_materials');
+  await Hive.openBox<String>('material_notes');      
+  await Hive.openBox<String>('material_page_memos'); 
+
 
   runApp(const CampusMateApp());
 }

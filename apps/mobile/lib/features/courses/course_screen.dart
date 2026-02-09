@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'course.dart';
 import 'course_add_screen.dart';
 import 'course_detail_screen.dart';
+import 'course_edit_screen.dart';
 
 class CourseScreen extends StatelessWidget {
   const CourseScreen({super.key});
@@ -88,6 +89,14 @@ class CourseScreen extends StatelessWidget {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined),
+                              onPressed: () async {
+                                await Navigator.of(context).push<bool>(
+                                  MaterialPageRoute(builder: (_) => CourseEditScreen(course: c)),
+                                );
+                              },
+                            ),
                             IconButton(
                               icon: const Icon(Icons.delete_outline),
                               onPressed: () => _deleteCourse(context, c),
