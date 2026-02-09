@@ -6,6 +6,7 @@ import '../features/calendar/calendar_screen.dart';
 import '../features/timetable/timetable_screen.dart';
 import '../features/courses/course_screen.dart';
 import 'settings_screen.dart';
+import 'app_link.dart';
 
 class RootShell extends StatefulWidget {
   RootShell({super.key});
@@ -20,20 +21,29 @@ class _RootShellState extends State<RootShell> {
   int _currentIndex = 0;
   bool _loaded = false;
 
-  late final List<Widget> _tabs;
+  final ValueNotifier<String?> _todoLink = AppLink.todoToOpen;
 
   @override
   void initState() {
     super.initState();
-
-    _tabs = const [
-      TodoScreen(),
-      CalendarScreen(),
-      TimetableScreen(),
-      CourseScreen(),
-    ];
-
+    _todoLink.addListener(_onTodoDeepLink);
     _loadStartTab();
+  }
+
+  @override
+  void dispose() {
+    _todoLink.removeListener(_onTodoDeepLink);
+    super.dispose();
+  }
+
+  void _onTodoDeepLink() {
+    final id = _todoLink.value;
+    if (id == null) return;
+
+    // Todo 탭으로 이동
+    if (mounted) {
+      setState(() => _currentIndex = 0);
+    }
   }
 
   Future<void> _loadStartTab() async {
@@ -41,7 +51,7 @@ class _RootShellState extends State<RootShell> {
     final saved = prefs.getInt(_prefKeyStartTab) ?? 0;
 
     setState(() {
-      _currentIndex = saved.clamp(0, _tabs.length - 1);
+      _currentIndex = saved.clamp(0, 3);
       _loaded = true;
     });
   }
@@ -58,6 +68,13 @@ class _RootShellState extends State<RootShell> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
+    final tabs = [
+      TodoScreen(highlightTodoIdListenable: _todoLink),
+      const CalendarScreen(),
+      const TimetableScreen(),
+      const CourseScreen(),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -82,7 +99,7 @@ class _RootShellState extends State<RootShell> {
           )
         ],
       ),
-      body: _tabs[_currentIndex],
+      body: tabs[_currentIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (idx) {

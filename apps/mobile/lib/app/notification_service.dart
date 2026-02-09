@@ -6,6 +6,8 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import 'app_link.dart';
+
 class NotificationService {
   NotificationService._();
   static final NotificationService I = NotificationService._();
@@ -21,10 +23,9 @@ class NotificationService {
   Future<void> init() async {
     if (_inited) return;
 
-    // timezone init
     tzdata.initializeTimeZones();
     try {
-      final tzInfo = await FlutterTimezone.getLocalTimezone(); // TimezoneInfo
+      final tzInfo = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
     } catch (_) {
       tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
@@ -45,15 +46,29 @@ class NotificationService {
         if (kDebugMode) {
           debugPrint('notification tapped payload=${r.payload}');
         }
+
+        final raw = r.payload;
+        if (raw == null || raw.isEmpty) return;
+
+        try {
+          final m = jsonDecode(raw) as Map<String, dynamic>;
+          final type = m['type'];
+          if (type == 'todo') {
+            final todoId = m['todoId'];
+            if (todoId is String && todoId.isNotEmpty) {
+              AppLink.openTodo(todoId);
+            }
+          }
+        } catch (_) {
+          // ignore
+        }
       },
     );
 
-    // Android 13+ permission
     final androidImpl =
         _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.requestNotificationsPermission();
 
-    // iOS permission (안드로이드만 써도 넣어두면 안전)
     final iosImpl =
         _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
     await iosImpl?.requestPermissions(alert: true, badge: true, sound: true);
@@ -62,7 +77,6 @@ class NotificationService {
   }
 
   Future<void> cancel(int notificationId) async {
-    // 네 버전은 named 'id' 형태로 보임
     await _plugin.cancel(id: notificationId);
   }
 

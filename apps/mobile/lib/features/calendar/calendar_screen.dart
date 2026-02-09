@@ -5,10 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../app/ics_settings_screen.dart';
+import '../todo/todo_add_screen.dart';
+import '../todo/todo_edit_screen.dart';
 import '../todo/todo_model.dart';
 import 'ics_parser.dart';
-import '../todo/todo_add_screen.dart';
-
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -89,6 +89,164 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   bool _sameYmd(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  DateTime _ymd(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  String _fmtHm(DateTime dt) {
+    String two(int x) => x.toString().padLeft(2, '0');
+    return '${two(dt.hour)}:${two(dt.minute)}';
+  }
+
+  Widget _buildTodayPanel(Box<TodoItem> box) {
+    final now = DateTime.now();
+    final today = _ymd(now);
+    final tomorrow = today.add(const Duration(days: 1));
+
+    // --- ICS events today ---
+    final icsToday = _icsEvents
+        .where((e) => _sameYmd(e.start, today))
+        .toList()
+      ..sort((a, b) => a.start.compareTo(b.start));
+
+    // --- Todos due today/tomorrow (incomplete first) ---
+    final dueSoon = <TodoItem>[];
+    for (final t in box.values) {
+      final due = t.dueAt;
+      if (due == null) continue;
+      if (_sameYmd(due, today) || _sameYmd(due, tomorrow)) {
+        dueSoon.add(t);
+      }
+    }
+    dueSoon.sort((a, b) {
+      final ca = a.completed ? 1 : 0;
+      final cb = b.completed ? 1 : 0;
+      if (ca != cb) return ca - cb;
+      return a.dueAt!.compareTo(b.dueAt!);
+    });
+
+    final icsTop = icsToday.take(3).toList();
+    final todoTop = dueSoon.take(3).toList();
+    final todayStr = today.toLocal().toString().split(' ')[0];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  'Today',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                Text(todayStr, style: const TextStyle(color: Colors.black54)),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _selectedDay = today;
+                      _focusedDay = today;
+                    });
+                  },
+                  child: const Text('View'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+
+            // --- Todo section ---
+            Row(
+              children: [
+                const Icon(Icons.checklist, size: 18),
+                const SizedBox(width: 6),
+                const Text('Todo', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Text('${dueSoon.length}',
+                    style: const TextStyle(color: Colors.black54)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (todoTop.isEmpty)
+              const Text('No due soon', style: TextStyle(color: Colors.black54))
+            else
+              ...todoTop.map((t) {
+                final due = t.dueAt!;
+                final isTmr = _sameYmd(due, tomorrow);
+                final when = isTmr ? 'Tomorrow' : 'Today';
+                final time = _fmtHm(due);
+
+                return ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    t.completed ? Icons.check_circle : Icons.radio_button_unchecked,
+                    size: 20,
+                    color: t.completed ? Colors.green : null,
+                  ),
+                  title: Text(
+                    t.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text('$when • $time'),
+                  onTap: () async {
+                    setState(() {
+                      _selectedDay = _ymd(due);
+                      _focusedDay = _ymd(due);
+                    });
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => TodoEditScreen(item: t)),
+                    );
+                  },
+                );
+              }),
+
+            const SizedBox(height: 8),
+
+            // --- School section ---
+            Row(
+              children: [
+                const Icon(Icons.event, size: 18),
+                const SizedBox(width: 6),
+                const Text('School', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Text('${icsToday.length}',
+                    style: const TextStyle(color: Colors.black54)),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (icsTop.isEmpty)
+              const Text('No school events today',
+                  style: TextStyle(color: Colors.black54))
+            else
+              ...icsTop.map((e) {
+                final when = e.allDay ? 'All day' : _fmtHm(e.start);
+                return ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.event_note, size: 20),
+                  title: Text(
+                    e.summary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(when),
+                  onTap: () {
+                    setState(() {
+                      _selectedDay = today;
+                      _focusedDay = today;
+                    });
+                  },
+                );
+              }),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -191,12 +349,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
                   return Column(
                     children: [
+                      _buildTodayPanel(box),
+
                       TableCalendar<_CalItem>(
                         firstDay: DateTime.utc(2000, 1, 1),
                         lastDay: DateTime.utc(2100, 12, 31),
                         focusedDay: _focusedDay,
                         calendarFormat: _format,
-                        selectedDayPredicate: (day) => isSameDay(day, _selectedDay),
+                        selectedDayPredicate: (day) =>
+                            isSameDay(day, _selectedDay),
                         onDaySelected: (selectedDay, focusedDay) {
                           setState(() {
                             _selectedDay = selectedDay;
@@ -228,7 +389,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ? const Center(child: Text('No events on this day'))
                             : ListView.separated(
                                 itemCount: selectedItems.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1),
                                 itemBuilder: (_, i) {
                                   final it = selectedItems[i];
                                   final tag =
@@ -241,7 +403,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                     title: Text(it.title),
                                     subtitle: Text('$tag • ${it.subtitle}'),
                                     trailing: it.source == _Source.todo && it.done
-                                        ? const Icon(Icons.check, color: Colors.green)
+                                        ? const Icon(Icons.check,
+                                            color: Colors.green)
                                         : null,
                                   );
                                 },
