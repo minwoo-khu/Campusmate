@@ -80,27 +80,31 @@ class _RootShellState extends State<RootShell> {
       appBar: AppBar(
         title: const Text('CampusMate'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () async {
-              final selected = await Navigator.of(context).push<int>(
-                MaterialPageRoute(
-                  builder: (_) => SettingsScreen(
-                    currentStartTab: _currentIndex,
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton.filledTonal(
+              icon: const Icon(Icons.tune),
+              onPressed: () async {
+                final selected = await Navigator.of(context).push<int>(
+                  MaterialPageRoute(
+                    builder: (_) => SettingsScreen(
+                      currentStartTab: _currentIndex,
+                    ),
                   ),
-                ),
-              );
+                );
 
-              if (selected != null) {
-                await _setStartTab(selected);
-                setState(() => _currentIndex = selected);
-              }
-            },
+                if (selected != null) {
+                  await _setStartTab(selected);
+                  setState(() => _currentIndex = selected);
+                }
+              },
+            ),
           )
         ],
       ),
       body: tabs[_currentIndex],
       bottomNavigationBar: NavigationBar(
+        elevation: 0,
         selectedIndex: _currentIndex,
         onDestinationSelected: (idx) {
           setState(() => _currentIndex = idx);
