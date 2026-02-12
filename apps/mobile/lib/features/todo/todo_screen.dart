@@ -209,28 +209,30 @@ class _TodoScreenState extends State<TodoScreen> {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                    ChoiceChip(
-                      label: Text('전체 ${allItems.length}'),
-                      selected: _filter == _TodoViewFilter.all,
-                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.all),
-                    ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: Text(
-                        '진행 ${allItems.where((t) => !t.completed).length}',
+                      ChoiceChip(
+                        label: Text('전체 ${allItems.length}'),
+                        selected: _filter == _TodoViewFilter.all,
+                        onSelected: (_) =>
+                            setState(() => _filter = _TodoViewFilter.all),
                       ),
-                      selected: _filter == _TodoViewFilter.active,
-                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.active),
-                    ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: Text(
-                        '완료 ${allItems.where((t) => t.completed).length}',
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text(
+                          '진행 ${allItems.where((t) => !t.completed).length}',
+                        ),
+                        selected: _filter == _TodoViewFilter.active,
+                        onSelected: (_) =>
+                            setState(() => _filter = _TodoViewFilter.active),
                       ),
-                      selected: _filter == _TodoViewFilter.completed,
-                      onSelected: (_) =>
-                          setState(() => _filter = _TodoViewFilter.completed),
-                    ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text(
+                          '완료 ${allItems.where((t) => t.completed).length}',
+                        ),
+                        selected: _filter == _TodoViewFilter.completed,
+                        onSelected: (_) =>
+                            setState(() => _filter = _TodoViewFilter.completed),
+                      ),
                     ],
                   ),
                 ),

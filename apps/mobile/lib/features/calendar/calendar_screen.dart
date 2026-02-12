@@ -398,27 +398,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: TableCalendar<_CalItem>(
-                          firstDay: DateTime.utc(2000, 1, 1),
-                          lastDay: DateTime.utc(2100, 12, 31),
-                          focusedDay: _focusedDay,
-                          calendarFormat: _format,
-                          selectedDayPredicate: (day) =>
-                              isSameDay(day, _selectedDay),
-                          onDaySelected: (selectedDay, focusedDay) {
-                            setState(() {
-                              _selectedDay = selectedDay;
-                              _focusedDay = focusedDay;
-                            });
-                          },
-                          onFormatChanged: (format) {
-                            setState(() => _format = format);
-                          },
-                          eventLoader: itemsForDay, // dots/markers
-                          headerStyle: const HeaderStyle(
-                            titleCentered: true,
-                            formatButtonVisible: true,
-                          ),
-                        ),
+                              firstDay: DateTime.utc(2000, 1, 1),
+                              lastDay: DateTime.utc(2100, 12, 31),
+                              focusedDay: _focusedDay,
+                              calendarFormat: _format,
+                              selectedDayPredicate: (day) =>
+                                  isSameDay(day, _selectedDay),
+                              onDaySelected: (selectedDay, focusedDay) {
+                                setState(() {
+                                  _selectedDay = selectedDay;
+                                  _focusedDay = focusedDay;
+                                });
+                              },
+                              onFormatChanged: (format) {
+                                setState(() => _format = format);
+                              },
+                              eventLoader: itemsForDay, // dots/markers
+                              headerStyle: const HeaderStyle(
+                                titleCentered: true,
+                                formatButtonVisible: true,
+                              ),
+                            ),
                           ),
                         ),
 
