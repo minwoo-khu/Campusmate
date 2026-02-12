@@ -15,7 +15,8 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  static const String _channelId = 'todo_reminders';
+  // New channel id to avoid inheriting stale channel settings on updated installs.
+  static const String _channelId = 'todo_reminders_v2';
   static const String _channelName = 'Todo Reminders';
   static const String _channelDesc = 'Todo reminder notifications';
 
@@ -26,8 +27,11 @@ class NotificationService {
 
     tzdata.initializeTimeZones();
     try {
-      final tzInfo = await FlutterTimezone.getLocalTimezone();
-      tz.setLocalLocation(tz.getLocation(tzInfo.identifier));
+      final dynamic tzInfo = await FlutterTimezone.getLocalTimezone();
+      final tzName = tzInfo is String
+          ? tzInfo
+          : (tzInfo.identifier as String? ?? 'Asia/Seoul');
+      tz.setLocalLocation(tz.getLocation(tzName));
     } catch (_) {
       tz.setLocalLocation(tz.getLocation('Asia/Seoul'));
     }
@@ -61,7 +65,7 @@ class NotificationService {
             }
           }
         } catch (_) {
-          // ignore
+          // ignore malformed payload
         }
       },
     );
@@ -83,6 +87,11 @@ class NotificationService {
       if (enabled != true) {
         final requested = await androidImpl.requestNotificationsPermission();
         granted = (requested ?? false) && granted;
+      }
+
+      if (kDebugMode) {
+        final canExact = await androidImpl.canScheduleExactNotifications();
+        debugPrint('canScheduleExactNotifications(initial)=$canExact');
       }
     }
 
@@ -138,15 +147,60 @@ class NotificationService {
 
     final payload = jsonEncode({'type': 'todo', 'todoId': todoId});
 
-    await _plugin.zonedSchedule(
-      id: notificationId,
-      title: 'Todo 리마인더',
-      body: title,
-      scheduledDate: scheduled,
-      notificationDetails: details,
-      payload: payload,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-      matchDateTimeComponents: null,
-    );
+    var mode = AndroidScheduleMode.inexactAllowWhileIdle;
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidImpl != null) {
+      var canExact = await androidImpl.canScheduleExactNotifications();
+      if (canExact != true) {
+        // Android 14+ may require explicit exact alarm grant from settings.
+        final requested = await androidImpl.requestExactAlarmsPermission();
+        canExact = await androidImpl.canScheduleExactNotifications();
+        if (kDebugMode) {
+          debugPrint(
+            'requestExactAlarmsPermission=$requested, canExactAfter=$canExact',
+          );
+        }
+      }
+      if (canExact == true) {
+        mode = AndroidScheduleMode.exactAllowWhileIdle;
+      }
+    }
+
+    Future<void> scheduleWith(AndroidScheduleMode scheduleMode) {
+      return _plugin.zonedSchedule(
+        id: notificationId,
+        title: 'Todo reminder',
+        body: title,
+        scheduledDate: scheduled,
+        notificationDetails: details,
+        payload: payload,
+        androidScheduleMode: scheduleMode,
+        matchDateTimeComponents: null,
+      );
+    }
+
+    try {
+      await scheduleWith(mode);
+      if (kDebugMode) {
+        final pending = await _plugin.pendingNotificationRequests();
+        debugPrint(
+          'scheduled todo notif id=$notificationId mode=$mode at=${scheduled.toLocal()} pending=${pending.length}',
+        );
+      }
+    } catch (_) {
+      if (mode == AndroidScheduleMode.exactAllowWhileIdle) {
+        await scheduleWith(AndroidScheduleMode.inexactAllowWhileIdle);
+        if (kDebugMode) {
+          debugPrint(
+            'exact schedule failed for id=$notificationId, fell back to inexactAllowWhileIdle',
+          );
+        }
+      } else {
+        rethrow;
+      }
+    }
   }
 }

@@ -299,51 +299,125 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     await showModalBottomSheet<void>(
       context: context,
-      showDragHandle: true,
+      backgroundColor: cm.cardBg,
+      showDragHandle: false,
+      clipBehavior: Clip.antiAlias,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
       builder: (sheetContext) {
         final isTodo = item.source == _Source.todo;
         final todo = item.todo;
+        final sourceColor = isTodo ? cm.navActive : const Color(0xFF8B5CF6);
 
         return SafeArea(
+          top: false,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: cm.chipBorder,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
                 Text(
                   item.title,
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                     color: cm.textPrimary,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Chip(
-                      label: Text(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isTodo ? cm.todoEventBg : cm.icsEventBg,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isTodo
+                              ? cm.todoEventBorder
+                              : cm.icsEventBorder,
+                        ),
+                      ),
+                      child: Text(
                         isTodo
                             ? _t('내 할 일', 'My Todo')
                             : _t('학교 ICS', 'School ICS'),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: sourceColor,
+                        ),
                       ),
                     ),
                     if (isTodo && todo != null) ...[
                       const SizedBox(width: 8),
-                      Chip(
-                        label: Text(
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: todo.completed
+                              ? cm.tileCompletedBg
+                              : cm.inputBg,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: cm.cardBorder),
+                        ),
+                        child: Text(
                           todo.completed
                               ? _t('완료', 'Completed')
                               : _t('진행 중', 'Active'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: todo.completed ? cm.textHint : cm.navActive,
+                          ),
                         ),
                       ),
                     ],
                   ],
                 ),
-                Text(
-                  '${_fmtYmd(item.when)} ${_fmtHm(item.when)}',
-                  style: TextStyle(color: cm.textTertiary),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cm.inputBg,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: cm.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.schedule, size: 14, color: cm.textTertiary),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${_fmtYmd(item.when)} ${_fmtHm(item.when)}',
+                        style: TextStyle(
+                          color: cm.textTertiary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 16),
                 if (isTodo && todo != null) ...[
@@ -355,6 +429,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             Navigator.of(sheetContext).pop();
                             AppLink.openTodo(todo.id);
                           },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: cm.textPrimary,
+                            side: BorderSide(color: cm.chipBorder),
+                            backgroundColor: cm.inputBg,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
                           icon: const Icon(Icons.open_in_new),
                           label: Text(_t('할 일에서 열기', 'Open in Todo')),
                         ),
@@ -371,6 +454,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               ),
                             );
                           },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: cm.navActive,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
                           icon: const Icon(Icons.edit),
                           label: Text(_t('수정', 'Edit')),
                         ),
@@ -385,6 +476,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         Navigator.of(sheetContext).pop();
                         await todoRepo.toggle(todo);
                       },
+                      style: TextButton.styleFrom(
+                        foregroundColor: cm.navActive,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
                       icon: Icon(todo.completed ? Icons.undo : Icons.check),
                       label: Text(
                         todo.completed
@@ -404,6 +502,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         });
                         Navigator.of(sheetContext).pop();
                       },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: cm.navActive,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                       child: Text(_t('이 날짜로 이동', 'Go to this date')),
                     ),
                   ),

@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -42,8 +44,10 @@ Future<void> main() async {
 
 abstract class CampusMateAppController {
   ThemeMode get themeMode;
+  String get themePresetKey;
   String get localeCode;
   Future<void> setThemeMode(ThemeMode mode);
+  Future<void> setThemePresetKey(String key);
   Future<void> setLocaleCode(String code);
 }
 
@@ -60,9 +64,11 @@ class CampusMateApp extends StatefulWidget {
 class _CampusMateAppState extends State<CampusMateApp>
     implements CampusMateAppController {
   static const _prefKeyThemeMode = 'theme_mode';
+  static const _prefKeyThemePreset = 'theme_preset_key';
   static const _prefKeyLocaleCode = 'locale_code';
 
   ThemeMode _themeMode = ThemeMode.system;
+  String _themePresetKey = CampusMateTheme.defaultPaletteKey;
   Locale _locale = const Locale('ko');
   StreamSubscription<Uri?>? _widgetLaunchSub;
   String? _lastHandledWidgetUri;
@@ -71,6 +77,7 @@ class _CampusMateAppState extends State<CampusMateApp>
   void initState() {
     super.initState();
     _loadThemeMode();
+    _loadThemePresetKey();
     _loadLocaleCode();
     _bindWidgetLaunchEvents();
   }
@@ -87,6 +94,17 @@ class _CampusMateAppState extends State<CampusMateApp>
     setState(() => _themeMode = _parseThemeMode(value));
   }
 
+  Future<void> _loadThemePresetKey() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value =
+        prefs.getString(_prefKeyThemePreset) ??
+        CampusMateTheme.defaultPaletteKey;
+    final normalized = CampusMateTheme.isValidPaletteKey(value)
+        ? value
+        : CampusMateTheme.defaultPaletteKey;
+    setState(() => _themePresetKey = normalized);
+  }
+
   Future<void> _loadLocaleCode() async {
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString(_prefKeyLocaleCode) ?? 'ko';
@@ -94,11 +112,24 @@ class _CampusMateAppState extends State<CampusMateApp>
   }
 
   Future<void> _bindWidgetLaunchEvents() async {
-    final initial = await HomeWidget.initiallyLaunchedFromHomeWidget();
-    await _handleWidgetLaunch(initial);
-    _widgetLaunchSub = HomeWidget.widgetClicked.listen((uri) {
-      _handleWidgetLaunch(uri);
-    });
+    try {
+      final initial = await HomeWidget.initiallyLaunchedFromHomeWidget();
+      await _handleWidgetLaunch(initial);
+      _widgetLaunchSub = HomeWidget.widgetClicked.listen((uri) {
+        _handleWidgetLaunch(uri);
+      });
+    } on MissingPluginException {
+      // Widget host channel can be unavailable on some builds/dev sessions.
+      if (kDebugMode) {
+        debugPrint(
+          'home_widget plugin not available; widget launch bind skipped',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('home_widget bind failed: $e');
+      }
+    }
   }
 
   Future<void> _handleWidgetLaunch(Uri? uri) async {
@@ -135,6 +166,16 @@ class _CampusMateAppState extends State<CampusMateApp>
   }
 
   @override
+  Future<void> setThemePresetKey(String key) async {
+    final normalized = CampusMateTheme.isValidPaletteKey(key)
+        ? key
+        : CampusMateTheme.defaultPaletteKey;
+    setState(() => _themePresetKey = normalized);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyThemePreset, normalized);
+  }
+
+  @override
   Future<void> setLocaleCode(String code) async {
     final locale = _parseLocale(code);
     setState(() => _locale = locale);
@@ -144,6 +185,8 @@ class _CampusMateAppState extends State<CampusMateApp>
 
   @override
   ThemeMode get themeMode => _themeMode;
+  @override
+  String get themePresetKey => _themePresetKey;
   @override
   String get localeCode => _locale.languageCode;
 
@@ -178,8 +221,8 @@ class _CampusMateAppState extends State<CampusMateApp>
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CampusMate',
-      theme: CampusMateTheme.light(),
-      darkTheme: CampusMateTheme.dark(),
+      theme: CampusMateTheme.light(paletteKey: _themePresetKey),
+      darkTheme: CampusMateTheme.dark(paletteKey: _themePresetKey),
       themeMode: _themeMode,
       locale: _locale,
       supportedLocales: const [Locale('ko'), Locale('en')],

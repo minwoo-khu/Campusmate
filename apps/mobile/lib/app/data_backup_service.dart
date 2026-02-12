@@ -15,6 +15,7 @@ import '../features/todo/todo_repo.dart';
 import 'change_history_service.dart';
 import 'home_widget_service.dart';
 import 'notification_service.dart';
+import 'theme.dart';
 
 class BackupSummary {
   final int todos;
@@ -44,6 +45,7 @@ class BackupImportResult {
   final BackupSummary summary;
   final int startTab;
   final String themeMode;
+  final String themePresetKey;
   final String localeCode;
   final bool encrypted;
 
@@ -51,6 +53,7 @@ class BackupImportResult {
     required this.summary,
     required this.startTab,
     required this.themeMode,
+    required this.themePresetKey,
     required this.localeCode,
     required this.encrypted,
   });
@@ -64,6 +67,7 @@ class DataBackupService {
 
   static const _prefStartTab = 'start_tab_index';
   static const _prefThemeMode = 'theme_mode';
+  static const _prefThemePreset = 'theme_preset_key';
   static const _prefLocaleCode = 'locale_code';
   static const _prefIcsUrl = 'ics_feed_url';
   static const _prefIcsCacheEvents = 'ics_cache_events_v1';
@@ -319,10 +323,17 @@ class DataBackupService {
 
     final startTab = (_toInt(settingsRaw[_prefStartTab]) ?? 0).clamp(0, 4);
     final themeMode = settingsRaw[_prefThemeMode]?.toString() ?? 'system';
+    final rawThemePreset =
+        settingsRaw[_prefThemePreset]?.toString() ??
+        CampusMateTheme.defaultPaletteKey;
+    final themePresetKey = CampusMateTheme.isValidPaletteKey(rawThemePreset)
+        ? rawThemePreset
+        : CampusMateTheme.defaultPaletteKey;
     final localeCode = settingsRaw[_prefLocaleCode]?.toString() ?? 'ko';
 
     await prefs.setInt(_prefStartTab, startTab);
     await prefs.setString(_prefThemeMode, themeMode);
+    await prefs.setString(_prefThemePreset, themePresetKey);
     await prefs.setString(_prefLocaleCode, localeCode);
     await _putOrRemoveString(prefs, _prefIcsUrl, settingsRaw[_prefIcsUrl]);
     await _putOrRemoveString(
@@ -385,6 +396,7 @@ class DataBackupService {
       summary: summary,
       startTab: startTab,
       themeMode: themeMode,
+      themePresetKey: themePresetKey,
       localeCode: localeCode,
       encrypted: encrypted,
     );
@@ -544,6 +556,9 @@ class DataBackupService {
       'settings': {
         _prefStartTab: prefs.getInt(_prefStartTab) ?? 0,
         _prefThemeMode: prefs.getString(_prefThemeMode) ?? 'system',
+        _prefThemePreset:
+            prefs.getString(_prefThemePreset) ??
+            CampusMateTheme.defaultPaletteKey,
         _prefLocaleCode: prefs.getString(_prefLocaleCode) ?? 'ko',
         _prefIcsUrl: prefs.getString(_prefIcsUrl),
         _prefIcsCacheEvents: prefs.getString(_prefIcsCacheEvents),

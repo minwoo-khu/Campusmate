@@ -85,6 +85,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  static const List<String> _paletteKeys = CampusMateTheme.paletteKeys;
+
+  String _paletteLabel(String key) {
+    switch (key) {
+      case 'powder_mint':
+        return _t('파우더 민트', 'Powder Mint');
+      case 'periwinkle_lavender':
+        return _t('페리윙클 라벤더', 'Periwinkle Lavender');
+      case 'slate_blue_gray':
+        return _t('슬레이트 블루', 'Slate Blue Gray');
+      case 'sky_peach':
+      default:
+        return _t('스카이 피치', 'Sky Blue + Peach');
+    }
+  }
+
   String _startTabLabel(int index) {
     switch (index) {
       case 0:
@@ -420,6 +436,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       final appState = CampusMateApp.of(context);
       await appState?.setThemeMode(_parseThemeMode(result.themeMode));
+      await appState?.setThemePresetKey(result.themePresetKey);
       await appState?.setLocaleCode(result.localeCode);
 
       if (!mounted) return;
@@ -466,6 +483,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final appState = CampusMateApp.of(context);
     final currentMode = appState?.themeMode ?? ThemeMode.system;
+    final currentPaletteKey =
+        appState?.themePresetKey ?? CampusMateTheme.defaultPaletteKey;
     final currentLocaleCode = appState?.localeCode ?? 'ko';
     final cm = context.cmColors;
 
@@ -505,6 +524,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   selected: currentMode == mode,
                   onSelected: (_) async {
                     await appState?.setThemeMode(mode);
+                    if (mounted) setState(() {});
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(
+              title: _t('색 조합', 'Color palette'),
+              subtitle: _t('앱 색감 프리셋을 선택하세요', 'Choose a color preset'),
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _paletteKeys.map((key) {
+                return ChoiceChip(
+                  label: Text(_paletteLabel(key)),
+                  selected: currentPaletteKey == key,
+                  onSelected: (_) async {
+                    await appState?.setThemePresetKey(key);
                     if (mounted) setState(() {});
                   },
                 );

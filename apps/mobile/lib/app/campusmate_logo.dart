@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'theme.dart';
+
 class CampusMateLogo extends StatelessWidget {
   final double size;
 
@@ -7,19 +9,20 @@ class CampusMateLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgBlue = const Color(0xFF2D7CFF);
-    final capBlack = const Color(0xFF101216);
-    final tassel = const Color(0xFFFFB532);
+    final cm = context.cmColors;
+    final bgColor = cm.navActive;
+    final capColor = Color.lerp(cm.textPrimary, Colors.black, 0.55)!;
+    final tasselColor = cm.priorityMedium;
 
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(size * 0.28),
-        color: bgBlue,
+        color: bgColor,
         boxShadow: [
           BoxShadow(
-            color: bgBlue.withAlpha(80),
+            color: bgColor.withAlpha(80),
             blurRadius: size * 0.3,
             offset: Offset(0, size * 0.1),
           ),
@@ -28,7 +31,7 @@ class CampusMateLogo extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Icon(Icons.school_rounded, size: size * 0.62, color: capBlack),
+          Icon(Icons.school_rounded, size: size * 0.62, color: capColor),
           Positioned(
             left: size * 0.68,
             top: size * 0.42,
@@ -36,7 +39,7 @@ class CampusMateLogo extends StatelessWidget {
               width: size * 0.08,
               height: size * 0.24,
               decoration: BoxDecoration(
-                color: tassel,
+                color: tasselColor,
                 borderRadius: BorderRadius.circular(size * 0.04),
               ),
             ),
@@ -47,7 +50,10 @@ class CampusMateLogo extends StatelessWidget {
             child: Container(
               width: size * 0.13,
               height: size * 0.13,
-              decoration: BoxDecoration(color: tassel, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: tasselColor,
+                shape: BoxShape.circle,
+              ),
             ),
           ),
         ],
