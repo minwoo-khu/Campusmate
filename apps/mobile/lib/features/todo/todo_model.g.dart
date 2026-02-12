@@ -22,6 +22,7 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
         completed: fields[3] as bool,
         notificationId: fields[5] as int?,
         repeatRule: TodoRepeatX.fromStorage(fields[6] as String?),
+        priorityLevel: TodoPriorityX.fromStorage(fields[7] as String?),
       )
       ..dueAtMillis = fields[2] as int?
       ..remindAtMillis = fields[4] as int?;
@@ -30,7 +31,7 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
   @override
   void write(BinaryWriter writer, TodoItem obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
       ..writeByte(5)
       ..write(obj.notificationId)
       ..writeByte(6)
-      ..write(obj.repeat);
+      ..write(obj.repeat)
+      ..writeByte(7)
+      ..write(obj.priority);
   }
 
   @override

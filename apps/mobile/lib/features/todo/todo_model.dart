@@ -39,6 +39,49 @@ extension TodoRepeatX on TodoRepeat {
   }
 }
 
+enum TodoPriority { none, low, medium, high }
+
+extension TodoPriorityX on TodoPriority {
+  String get storageValue {
+    switch (this) {
+      case TodoPriority.none:
+        return 'none';
+      case TodoPriority.low:
+        return 'low';
+      case TodoPriority.medium:
+        return 'medium';
+      case TodoPriority.high:
+        return 'high';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case TodoPriority.none:
+        return 'None';
+      case TodoPriority.low:
+        return 'Low';
+      case TodoPriority.medium:
+        return 'Medium';
+      case TodoPriority.high:
+        return 'High';
+    }
+  }
+
+  static TodoPriority fromStorage(String? value) {
+    switch (value) {
+      case 'low':
+        return TodoPriority.low;
+      case 'medium':
+        return TodoPriority.medium;
+      case 'high':
+        return TodoPriority.high;
+      default:
+        return TodoPriority.none;
+    }
+  }
+}
+
 @HiveType(typeId: 1)
 class TodoItem extends HiveObject {
   @HiveField(0)
@@ -62,6 +105,9 @@ class TodoItem extends HiveObject {
   @HiveField(6)
   String repeat;
 
+  @HiveField(7)
+  String priority;
+
   TodoItem({
     required this.id,
     required this.title,
@@ -70,9 +116,11 @@ class TodoItem extends HiveObject {
     DateTime? remindAt,
     this.notificationId,
     TodoRepeat repeatRule = TodoRepeat.none,
+    TodoPriority priorityLevel = TodoPriority.none,
   }) : dueAtMillis = dueAt?.millisecondsSinceEpoch,
        remindAtMillis = remindAt?.millisecondsSinceEpoch,
-       repeat = repeatRule.storageValue;
+       repeat = repeatRule.storageValue,
+       priority = priorityLevel.storageValue;
 
   DateTime? get dueAt => dueAtMillis == null
       ? null
@@ -90,4 +138,8 @@ class TodoItem extends HiveObject {
   TodoRepeat get repeatRule => TodoRepeatX.fromStorage(repeat);
 
   set repeatRule(TodoRepeat value) => repeat = value.storageValue;
+
+  TodoPriority get priorityLevel => TodoPriorityX.fromStorage(priority);
+
+  set priorityLevel(TodoPriority value) => priority = value.storageValue;
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'change_history_service.dart';
+import 'theme.dart';
 
 Future<void> showChangeHistorySheet(BuildContext context) {
   final entries = ChangeHistoryService.recent(limit: 30);
@@ -9,7 +10,9 @@ Future<void> showChangeHistorySheet(BuildContext context) {
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
-    builder: (_) {
+    builder: (sheetContext) {
+      final cm = sheetContext.cmColors;
+
       if (entries.isEmpty) {
         return const Padding(
           padding: EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -34,7 +37,7 @@ Future<void> showChangeHistorySheet(BuildContext context) {
               subtitle: e.detail.isEmpty ? null : Text(e.detail),
               trailing: Text(
                 fmt(e.at),
-                style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                style: TextStyle(fontSize: 12, color: cm.textTertiary),
               ),
             );
           },
@@ -45,3 +48,4 @@ Future<void> showChangeHistorySheet(BuildContext context) {
     },
   );
 }
+

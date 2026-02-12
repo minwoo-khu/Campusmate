@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/change_history_service.dart';
 import 'app/home_widget_service.dart';
 import 'app/root_shell.dart';
 import 'app/notification_service.dart';
+import 'app/theme.dart';
 import 'features/todo/todo_model.dart';
 import 'features/courses/course_material.dart';
 import 'features/courses/course.dart';
@@ -32,65 +34,71 @@ Future<void> main() async {
   runApp(const CampusMateApp());
 }
 
-class CampusMateApp extends StatelessWidget {
+class CampusMateApp extends StatefulWidget {
   const CampusMateApp({super.key});
+
+  static _CampusMateAppState? of(BuildContext context) =>
+      context.findAncestorStateOfType<_CampusMateAppState>();
+
+  @override
+  State<CampusMateApp> createState() => _CampusMateAppState();
+}
+
+class _CampusMateAppState extends State<CampusMateApp> {
+  static const _prefKeyThemeMode = 'theme_mode';
+
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThemeMode();
+  }
+
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_prefKeyThemeMode) ?? 'system';
+    setState(() => _themeMode = _parseThemeMode(value));
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    setState(() => _themeMode = mode);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyThemeMode, _themeModeToString(mode));
+  }
+
+  ThemeMode get themeMode => _themeMode;
+
+  static ThemeMode _parseThemeMode(String value) {
+    switch (value) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  static String _themeModeToString(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      case ThemeMode.system:
+        return 'system';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    const appleBg = Color(0xFFF5F5F7);
-    final base = ThemeData(
-      useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF2563EB),
-        brightness: Brightness.light,
-      ),
-    );
-
     return MaterialApp(
       title: 'CampusMate',
-      theme: base.copyWith(
-        scaffoldBackgroundColor: appleBg,
-        appBarTheme: const AppBarTheme(
-          backgroundColor: appleBg,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w700,
-            fontSize: 28,
-            letterSpacing: -0.4,
-          ),
-        ),
-        cardTheme: const CardThemeData(
-          color: Colors.white,
-          margin: EdgeInsets.zero,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-          ),
-        ),
-        chipTheme: base.chipTheme.copyWith(
-          side: const BorderSide(color: Color(0xFFE5E7EB)),
-          color: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return Colors.black;
-            }
-            return Colors.white;
-          }),
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF111827),
-          ),
-          secondaryLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-          checkmarkColor: Colors.white,
-        ),
-        dividerTheme: const DividerThemeData(color: Color(0xFFE5E7EB)),
-      ),
-      home: RootShell(),
+      theme: CampusMateTheme.light(),
+      darkTheme: CampusMateTheme.dark(),
+      themeMode: _themeMode,
+      home: const RootShell(),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../app/app_link.dart';
 import '../../app/change_history_service.dart';
 import '../../app/change_history_sheet.dart';
+import '../../app/theme.dart';
 import 'todo_edit_screen.dart';
 import 'todo_model.dart';
 import 'todo_quick_capture_parser.dart';
@@ -31,6 +32,7 @@ class _TodoScreenState extends State<TodoScreen> {
   DateTime? _quickDueAt;
   DateTime? _quickRemindAt;
   TodoRepeat _quickRepeat = TodoRepeat.none;
+  TodoPriority _quickPriority = TodoPriority.none;
 
   @override
   void initState() {
@@ -124,6 +126,19 @@ class _TodoScreenState extends State<TodoScreen> {
     }
   }
 
+  int _priorityOrder(TodoPriority p) {
+    switch (p) {
+      case TodoPriority.high:
+        return 0;
+      case TodoPriority.medium:
+        return 1;
+      case TodoPriority.low:
+        return 2;
+      case TodoPriority.none:
+        return 3;
+    }
+  }
+
   List<_TodoSection> _buildSections(List<TodoItem> items) {
     if (items.isEmpty) return const [];
 
@@ -163,6 +178,27 @@ class _TodoScreenState extends State<TodoScreen> {
         upcoming.add(t);
       }
     }
+
+    // Sort each group by priority then due
+    void sortByPriority(List<TodoItem> list) {
+      list.sort((a, b) {
+        final pc = _priorityOrder(a.priorityLevel).compareTo(
+          _priorityOrder(b.priorityLevel),
+        );
+        if (pc != 0) return pc;
+        final da = a.dueAt;
+        final db = b.dueAt;
+        if (da != null && db != null) return da.compareTo(db);
+        if (da != null) return -1;
+        if (db != null) return 1;
+        return 0;
+      });
+    }
+
+    sortByPriority(overdue);
+    sortByPriority(todayItems);
+    sortByPriority(upcoming);
+    sortByPriority(noDueDate);
 
     final sections = <_TodoSection>[];
     if (overdue.isNotEmpty) {
@@ -204,6 +240,7 @@ class _TodoScreenState extends State<TodoScreen> {
       remindAt: source.remindAt,
       repeatRule: source.repeatRule,
       completed: source.completed,
+      priorityLevel: source.priorityLevel,
     );
   }
 
@@ -271,6 +308,7 @@ class _TodoScreenState extends State<TodoScreen> {
       remindAt: remind,
       repeatRule: _quickRepeat,
       completed: false,
+      priorityLevel: _quickPriority,
     );
 
     await todoRepo.add(item);
@@ -282,6 +320,7 @@ class _TodoScreenState extends State<TodoScreen> {
       _quickDueAt = _defaultQuickDue();
       _quickRemindAt = null;
       _quickRepeat = TodoRepeat.none;
+      _quickPriority = TodoPriority.none;
       _quickExpanded = false;
     });
   }
@@ -357,7 +396,21 @@ class _TodoScreenState extends State<TodoScreen> {
     ).push<bool>(MaterialPageRoute(builder: (_) => TodoEditScreen(item: item)));
   }
 
+  Color _priorityColor(TodoPriority p, CampusMateColors cm) {
+    switch (p) {
+      case TodoPriority.high:
+        return cm.priorityHigh;
+      case TodoPriority.medium:
+        return cm.priorityMedium;
+      case TodoPriority.low:
+        return cm.priorityLow;
+      case TodoPriority.none:
+        return cm.textHint;
+    }
+  }
+
   Widget _buildQuickCapture() {
+    final cm = context.cmColors;
     final dueLabel = _quickDueAt == null ? 'None' : _fmtYmd(_quickDueAt!);
     final reminderLabel = _quickRemindAt == null
         ? 'None'
@@ -366,7 +419,7 @@ class _TodoScreenState extends State<TodoScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEAECEF),
+        color: cm.inputBg,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -376,14 +429,13 @@ class _TodoScreenState extends State<TodoScreen> {
               Expanded(
                 child: TextField(
                   controller: _quickTitleController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     isDense: true,
                     border: InputBorder.none,
                     hintText:
                         'Quick capture (e.g. tomorrow 9:30 OS review / 내일 9시 복습)',
+                    hintStyle: TextStyle(color: cm.textHint),
                   ),
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _quickAdd(),
                 ),
               ),
               IconButton(
@@ -392,7 +444,7 @@ class _TodoScreenState extends State<TodoScreen> {
                 },
                 icon: Icon(
                   _quickExpanded ? Icons.expand_less : Icons.tune,
-                  color: const Color(0xFF64748B),
+                  color: cm.textTertiary,
                 ),
               ),
               SizedBox(
@@ -401,7 +453,7 @@ class _TodoScreenState extends State<TodoScreen> {
                 child: FilledButton(
                   onPressed: _quickAdd,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
+                    backgroundColor: cm.navActive,
                     padding: EdgeInsets.zero,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -419,10 +471,7 @@ class _TodoScreenState extends State<TodoScreen> {
                 Expanded(
                   child: Text(
                     'Due: $dueLabel',
-                    style: const TextStyle(
-                      color: Color(0xFF475569),
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: cm.textTertiary, fontSize: 12),
                   ),
                 ),
                 TextButton(
@@ -442,10 +491,7 @@ class _TodoScreenState extends State<TodoScreen> {
                 Expanded(
                   child: Text(
                     'Reminder: $reminderLabel',
-                    style: const TextStyle(
-                      color: Color(0xFF475569),
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: cm.textTertiary, fontSize: 12),
                   ),
                 ),
                 TextButton(
@@ -479,6 +525,36 @@ class _TodoScreenState extends State<TodoScreen> {
                 if (value == null) return;
                 setState(() => _quickRepeat = value);
               },
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(
+                  'Priority: ',
+                  style: TextStyle(color: cm.textTertiary, fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                ...TodoPriority.values.map((p) {
+                  final selected = _quickPriority == p;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(p.label),
+                      selected: selected,
+                      onSelected: (_) =>
+                          setState(() => _quickPriority = p),
+                      avatar: p == TodoPriority.none
+                          ? null
+                          : Icon(
+                              Icons.flag,
+                              size: 14,
+                              color: _priorityColor(p, cm),
+                            ),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  );
+                }),
+              ],
             ),
           ],
         ],
@@ -515,23 +591,24 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 
   Widget _buildSectionHeader(_TodoListRow row) {
+    final cm = context.cmColors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 16, 2, 10),
       child: Row(
         children: [
           Text(
             row.title!,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 16,
-              color: Color(0xFF334155),
+              color: cm.sectionHeader,
             ),
           ),
           const SizedBox(width: 8),
           Text(
             '${row.count}',
-            style: const TextStyle(
-              color: Color(0xFF94A3B8),
+            style: TextStyle(
+              color: cm.textHint,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -541,8 +618,10 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 
   Widget _buildMetaLine(TodoItem item) {
+    final cm = context.cmColors;
     final due = item.dueAt;
     final reminder = item.remindAt;
+    final priority = item.priorityLevel;
 
     final dueText = due == null
         ? null
@@ -552,13 +631,27 @@ class _TodoScreenState extends State<TodoScreen> {
 
     final parts = <Widget>[];
 
+    // Priority indicator
+    if (priority != TodoPriority.none) {
+      final pColor = _priorityColor(priority, cm);
+      parts.add(Icon(Icons.flag, size: 12, color: pColor));
+      parts.add(const SizedBox(width: 3));
+      parts.add(
+        Text(
+          priority.label,
+          style: TextStyle(fontSize: 12, color: pColor, fontWeight: FontWeight.w600),
+        ),
+      );
+    }
+
     if (dueText != null) {
-      parts.add(const Icon(Icons.schedule, size: 12, color: Color(0xFF94A3B8)));
+      if (parts.isNotEmpty) parts.add(const SizedBox(width: 8));
+      parts.add(Icon(Icons.schedule, size: 12, color: cm.textHint));
       parts.add(const SizedBox(width: 3));
       parts.add(
         Text(
           dueText,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+          style: TextStyle(fontSize: 12, color: cm.textHint),
         ),
       );
     }
@@ -568,17 +661,13 @@ class _TodoScreenState extends State<TodoScreen> {
         parts.add(const SizedBox(width: 8));
       }
       parts.add(
-        const Icon(
-          Icons.notifications_none,
-          size: 12,
-          color: Color(0xFF3B82F6),
-        ),
+        Icon(Icons.notifications_none, size: 12, color: cm.navActive),
       );
       parts.add(const SizedBox(width: 3));
       parts.add(
         Text(
           _fmtReminderLabel(reminder),
-          style: const TextStyle(fontSize: 12, color: Color(0xFF3B82F6)),
+          style: TextStyle(fontSize: 12, color: cm.navActive),
         ),
       );
     }
@@ -587,12 +676,12 @@ class _TodoScreenState extends State<TodoScreen> {
       if (parts.isNotEmpty) {
         parts.add(const SizedBox(width: 8));
       }
-      parts.add(const Icon(Icons.repeat, size: 12, color: Color(0xFF94A3B8)));
+      parts.add(Icon(Icons.repeat, size: 12, color: cm.textHint));
       parts.add(const SizedBox(width: 3));
       parts.add(
         Text(
           item.repeatRule.label,
-          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+          style: TextStyle(fontSize: 12, color: cm.textHint),
         ),
       );
     }
@@ -603,6 +692,7 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 
   Widget _buildTodoTile(TodoItem item) {
+    final cm = context.cmColors;
     final isHighlight =
         _highlightId != null &&
         item.id == _highlightId &&
@@ -620,7 +710,7 @@ class _TodoScreenState extends State<TodoScreen> {
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.symmetric(horizontal: 18),
           decoration: BoxDecoration(
-            color: const Color(0xFFEF4444),
+            color: cm.deleteBg,
             borderRadius: BorderRadius.circular(18),
           ),
           child: const Icon(Icons.delete_outline, color: Colors.white),
@@ -629,12 +719,10 @@ class _TodoScreenState extends State<TodoScreen> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
-            color: completed ? const Color(0xFFF1F5F9) : Colors.white,
+            color: completed ? cm.tileCompletedBg : cm.tileBg,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isHighlight
-                  ? const Color(0xFFBFDBFE)
-                  : const Color(0xFFE2E8F0),
+              color: isHighlight ? cm.tileHighlightBorder : cm.tileBorder,
             ),
           ),
           child: ListTile(
@@ -650,9 +738,7 @@ class _TodoScreenState extends State<TodoScreen> {
               },
               icon: Icon(
                 completed ? Icons.check_circle : Icons.circle_outlined,
-                color: completed
-                    ? const Color(0xFF60A5FA)
-                    : const Color(0xFFCBD5E1),
+                color: completed ? cm.checkActive : cm.checkInactive,
               ),
             ),
             title: Text(
@@ -662,9 +748,7 @@ class _TodoScreenState extends State<TodoScreen> {
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: completed
-                    ? const Color(0xFF94A3B8)
-                    : const Color(0xFF0F172A),
+                color: completed ? cm.textHint : cm.textPrimary,
                 decoration: completed ? TextDecoration.lineThrough : null,
               ),
             ),
@@ -673,7 +757,7 @@ class _TodoScreenState extends State<TodoScreen> {
               child: _buildMetaLine(item),
             ),
             trailing: PopupMenuButton<_TodoMenu>(
-              icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
+              icon: Icon(Icons.more_horiz, color: cm.textHint),
               onSelected: (menu) async {
                 if (menu == _TodoMenu.edit) {
                   await _openEdit(context, item);
@@ -711,10 +795,11 @@ class _TodoScreenState extends State<TodoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cm = context.cmColors;
     final box = Hive.box<TodoItem>('todos');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: cm.scaffoldBg,
       body: SafeArea(
         child: ValueListenableBuilder(
           valueListenable: box.listenable(),
@@ -757,12 +842,12 @@ class _TodoScreenState extends State<TodoScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         'Todo',
                         style: TextStyle(
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
+                          color: cm.textPrimary,
                           letterSpacing: -0.8,
                         ),
                       ),
@@ -772,7 +857,7 @@ class _TodoScreenState extends State<TodoScreen> {
                         onPressed: () => showChangeHistorySheet(context),
                         icon: const Icon(Icons.history),
                         style: IconButton.styleFrom(
-                          backgroundColor: const Color(0xFFE8EEF9),
+                          backgroundColor: cm.iconButtonBg,
                         ),
                       ),
                     ],
@@ -792,7 +877,12 @@ class _TodoScreenState extends State<TodoScreen> {
                 ),
                 Expanded(
                   child: rows.isEmpty
-                      ? const Center(child: Text('No todos for this filter.'))
+                      ? Center(
+                          child: Text(
+                            'No todos for this filter.',
+                            style: TextStyle(color: cm.textTertiary),
+                          ),
+                        )
                       : ListView.builder(
                           controller: _scroll,
                           padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),

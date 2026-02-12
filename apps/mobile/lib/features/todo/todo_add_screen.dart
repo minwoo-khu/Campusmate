@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/theme.dart';
 import 'todo_model.dart';
 import 'todo_repo.dart';
 
@@ -18,6 +19,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
   DateTime? _dueAt;
   DateTime? _remindAt;
   TodoRepeat _repeat = TodoRepeat.none;
+  TodoPriority _priority = TodoPriority.none;
 
   @override
   void initState() {
@@ -111,6 +113,19 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
     setState(() => _remindAt = null);
   }
 
+  Color _priorityColor(TodoPriority p, CampusMateColors cm) {
+    switch (p) {
+      case TodoPriority.high:
+        return cm.priorityHigh;
+      case TodoPriority.medium:
+        return cm.priorityMedium;
+      case TodoPriority.low:
+        return cm.priorityLow;
+      case TodoPriority.none:
+        return cm.textHint;
+    }
+  }
+
   Future<void> _save() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
@@ -122,6 +137,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
       remindAt: _remindAt,
       repeatRule: _repeat,
       completed: false,
+      priorityLevel: _priority,
     );
 
     await todoRepo.add(item);
@@ -131,6 +147,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cm = context.cmColors;
     final dueText = _dueAt == null ? 'None' : _fmtDateTime(_dueAt!);
     final remindText = _remindAt == null ? 'None' : _fmtDateTime(_remindAt!);
 
@@ -139,7 +156,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Title', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('Title', style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary)),
           const SizedBox(height: 8),
           TextField(
             controller: _titleController,
@@ -152,9 +169,9 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
             onSubmitted: (_) => _save(),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Due (optional)',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary),
           ),
           const SizedBox(height: 8),
           Row(
@@ -171,9 +188,9 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
             ],
           ),
           const Divider(height: 24),
-          const Text(
+          Text(
             'Reminder (optional)',
-            style: TextStyle(fontWeight: FontWeight.bold),
+            style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary),
           ),
           const SizedBox(height: 8),
           Row(
@@ -190,7 +207,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
             ],
           ),
           const Divider(height: 24),
-          const Text('Repeat', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('Repeat', style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary)),
           const SizedBox(height: 8),
           DropdownButtonFormField<TodoRepeat>(
             initialValue: _repeat,
@@ -207,6 +224,23 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
               if (value == null) return;
               setState(() => _repeat = value);
             },
+          ),
+          const Divider(height: 24),
+          Text('Priority', style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: TodoPriority.values.map((p) {
+              final selected = _priority == p;
+              return ChoiceChip(
+                label: Text(p.label),
+                selected: selected,
+                onSelected: (_) => setState(() => _priority = p),
+                avatar: p == TodoPriority.none
+                    ? null
+                    : Icon(Icons.flag, size: 16, color: _priorityColor(p, cm)),
+              );
+            }).toList(),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(

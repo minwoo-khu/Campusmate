@@ -7,6 +7,7 @@ import '../features/timetable/timetable_screen.dart';
 import '../features/todo/todo_screen.dart';
 import 'app_link.dart';
 import 'settings_screen.dart';
+import 'theme.dart';
 
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
@@ -79,6 +80,8 @@ class _RootShellState extends State<RootShell> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final cm = context.cmColors;
+
     final tabs = [
       TodoScreen(highlightTodoIdListenable: _todoLink),
       const CalendarScreen(),
@@ -94,13 +97,13 @@ class _RootShellState extends State<RootShell> {
           margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cm.navBarBg,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x140F172A),
+                color: cm.navBarShadow,
                 blurRadius: 20,
-                offset: Offset(0, 6),
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -173,7 +176,8 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? const Color(0xFF2563EB) : const Color(0xFF98A2B3);
+    final cm = context.cmColors;
+    final color = selected ? cm.navActive : cm.navInactive;
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),

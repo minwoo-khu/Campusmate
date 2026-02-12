@@ -7,6 +7,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/theme.dart';
+
 class TimetableScreen extends StatefulWidget {
   const TimetableScreen({super.key});
 
@@ -100,6 +102,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
   }
 
   Widget _buildPlaceholder() {
+    final cm = context.cmColors;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -115,7 +119,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 return Container(
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: const Color(0xFFE5E7EB),
+                      color: cm.gridBorder,
                       width: 0.6,
                     ),
                   ),
@@ -130,31 +134,31 @@ class _TimetableScreenState extends State<TimetableScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.image_outlined,
                   size: 56,
-                  color: Color(0xFFCBD5E1),
+                  color: cm.checkInactive,
                 ),
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   '시간표 이미지가 없습니다',
                   style: TextStyle(
                     fontSize: 28 / 1.5,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF475569),
+                    color: cm.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   '갤러리에서 이번 학기 시간표 이미지를 업로드하고\n확대/축소하여 확인하세요.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Color(0xFF94A3B8), height: 1.4),
+                  style: TextStyle(color: cm.textHint, height: 1.4),
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _pickAndSaveImage,
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
+                    backgroundColor: cm.navActive,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 26,
                       vertical: 12,
@@ -179,10 +183,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final cm = context.cmColors;
     final hasImage = _imagePath != null && !kIsWeb;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: cm.scaffoldBg,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
@@ -190,12 +195,12 @@ class _TimetableScreenState extends State<TimetableScreen> {
             children: [
               Row(
                 children: [
-                  const Text(
+                  Text(
                     '시간표',
                     style: TextStyle(
                       fontSize: 42 / 1.25,
                       fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+                      color: cm.textPrimary,
                     ),
                   ),
                   const Spacer(),
@@ -203,7 +208,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                     onPressed: _pickAndSaveImage,
                     icon: const Icon(Icons.image_outlined),
                     style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFE8EEF9),
+                      backgroundColor: cm.iconButtonBg,
                     ),
                   ),
                 ],
@@ -213,9 +218,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: cm.cardBg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    border: Border.all(color: cm.cardBorder),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: hasImage

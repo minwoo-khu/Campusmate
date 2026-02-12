@@ -7,6 +7,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../app/app_link.dart';
 import '../../app/home_widget_service.dart';
 import '../../app/ics_settings_screen.dart';
+import '../../app/theme.dart';
 import '../todo/todo_edit_screen.dart';
 import '../todo/todo_model.dart';
 import '../todo/todo_repo.dart';
@@ -147,6 +148,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _showEventBottomSheet(_CalItem item) async {
+    final cm = context.cmColors;
+
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -163,10 +166,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               children: [
                 Text(
                   item.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
+                    color: cm.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -174,24 +177,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   children: [
                     Chip(
                       label: Text(isTodo ? 'My Todo' : 'School ICS'),
-                      backgroundColor: isTodo
-                          ? const Color(0xFFDBEAFE)
-                          : const Color(0xFFEDE9FE),
                     ),
                     if (isTodo && todo != null) ...[
                       const SizedBox(width: 8),
                       Chip(
                         label: Text(todo.completed ? 'Completed' : 'Active'),
-                        backgroundColor: todo.completed
-                            ? const Color(0xFFE2E8F0)
-                            : const Color(0xFFDCFCE7),
                       ),
                     ],
                   ],
                 ),
                 Text(
                   '${_fmtYmd(item.when)} ${_fmtHm(item.when)}',
-                  style: const TextStyle(color: Color(0xFF64748B)),
+                  style: TextStyle(color: cm.textTertiary),
                 ),
                 const SizedBox(height: 16),
                 if (isTodo && todo != null) ...[
@@ -263,18 +260,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Widget _buildEventCard(_CalItem item) {
+    final cm = context.cmColors;
     final isTodo = item.source == _Source.todo;
-    final leftColor = isTodo
-        ? const Color(0xFF3B82F6)
-        : const Color(0xFF8B5CF6);
+    final leftColor = isTodo ? cm.navActive : const Color(0xFF8B5CF6);
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isTodo ? Colors.white : const Color(0xFFF5F3FF),
+        color: isTodo ? cm.todoEventBg : cm.icsEventBg,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isTodo ? const Color(0xFFE2E8F0) : const Color(0xFFDDD6FE),
+          color: isTodo ? cm.todoEventBorder : cm.icsEventBorder,
         ),
       ),
       child: Row(
@@ -304,18 +300,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(height: 2),
                 Text(
                   item.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF0F172A),
+                    color: cm.textPrimary,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   item.subtitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF64748B),
+                    color: cm.textTertiary,
                   ),
                 ),
               ],
@@ -328,10 +324,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cm = context.cmColors;
     final todoBox = Hive.box<TodoItem>('todos');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F6),
+      backgroundColor: cm.scaffoldBg,
       body: SafeArea(
         child: ValueListenableBuilder(
           valueListenable: todoBox.listenable(),
@@ -348,11 +346,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         children: [
                           Text(
                             _monthLabel(_focusedDay),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 30,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.4,
-                              color: Color(0xFF0F172A),
+                              color: cm.textPrimary,
                             ),
                           ),
                           const Spacer(),
@@ -360,7 +358,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             onPressed: () => _moveMonth(-1),
                             icon: const Icon(Icons.chevron_left),
                             style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFFE5E7EB),
+                              backgroundColor: cm.iconButtonBg,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -368,7 +366,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             onPressed: () => _moveMonth(1),
                             icon: const Icon(Icons.chevron_right),
                             style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFFE5E7EB),
+                              backgroundColor: cm.iconButtonBg,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -376,7 +374,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             onPressed: _openIcsSettings,
                             icon: const Icon(Icons.link),
                             style: IconButton.styleFrom(
-                              backgroundColor: const Color(0xFFE5E7EB),
+                              backgroundColor: cm.iconButtonBg,
                             ),
                           ),
                         ],
@@ -385,9 +383,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       Container(
                         padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: cm.cardBg,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          border: Border.all(color: cm.cardBorder),
                         ),
                         child: TableCalendar<_CalItem>(
                           firstDay: DateTime.utc(2000, 1, 1),
@@ -404,30 +402,42 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           },
                           eventLoader: (day) => _itemsForDay(box, day),
                           calendarStyle: CalendarStyle(
-                            outsideTextStyle: const TextStyle(
-                              color: Color(0xFFCBD5E1),
+                            defaultTextStyle: TextStyle(color: cm.textPrimary),
+                            weekendTextStyle: TextStyle(color: cm.textPrimary),
+                            outsideTextStyle: TextStyle(
+                              color: cm.textHint,
                             ),
                             markerDecoration: const BoxDecoration(
                               color: Color(0xFF8B5CF6),
                               shape: BoxShape.circle,
                             ),
                             todayDecoration: BoxDecoration(
-                              color: const Color(0xFFE0E7FF),
+                              color: isDark
+                                  ? const Color(0xFF1E3A5F)
+                                  : const Color(0xFFE0E7FF),
                               borderRadius: BorderRadius.circular(10),
                             ),
                             selectedDecoration: BoxDecoration(
-                              color: const Color(0xFFDBEAFE),
+                              color: isDark
+                                  ? const Color(0xFF1E40AF)
+                                  : const Color(0xFFDBEAFE),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: const Color(0xFF93C5FD),
+                                color: isDark
+                                    ? const Color(0xFF3B82F6)
+                                    : const Color(0xFF93C5FD),
                               ),
                             ),
-                            selectedTextStyle: const TextStyle(
-                              color: Color(0xFF1D4ED8),
+                            selectedTextStyle: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF93C5FD)
+                                  : const Color(0xFF1D4ED8),
                               fontWeight: FontWeight.w700,
                             ),
-                            todayTextStyle: const TextStyle(
-                              color: Color(0xFF1E3A8A),
+                            todayTextStyle: TextStyle(
+                              color: isDark
+                                  ? const Color(0xFF93C5FD)
+                                  : const Color(0xFF1E3A8A),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -443,10 +453,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     children: [
                       Text(
                         '${_selectedDay.month}/${_selectedDay.day} Schedule',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
+                          color: cm.textPrimary,
                         ),
                       ),
                       const Spacer(),
@@ -461,9 +471,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           _lastIcsSyncAt == null
                               ? 'Not synced'
                               : '${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF94A3B8),
+                            color: cm.textHint,
                           ),
                         ),
                       const SizedBox(width: 6),
@@ -485,8 +495,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         _message!,
                         style: TextStyle(
                           color: _message!.startsWith('Failed')
-                              ? Colors.red
-                              : const Color(0xFF64748B),
+                              ? cm.deleteBg
+                              : cm.textTertiary,
                           fontSize: 12,
                         ),
                       ),
@@ -497,10 +507,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     onRefresh: _loadIcs,
                     child: selectedItems.isEmpty
                         ? ListView(
-                            children: const [
-                              SizedBox(height: 120),
+                            children: [
+                              const SizedBox(height: 120),
                               Center(
-                                child: Text('No events for selected date.'),
+                                child: Text(
+                                  'No events for selected date.',
+                                  style: TextStyle(color: cm.textTertiary),
+                                ),
                               ),
                             ],
                           )

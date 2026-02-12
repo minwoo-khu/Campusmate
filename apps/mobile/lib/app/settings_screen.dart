@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../main.dart';
+
 class SettingsScreen extends StatefulWidget {
   final int currentStartTab;
 
@@ -20,6 +22,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appState = CampusMateApp.of(context);
+    final currentMode = appState?.themeMode ?? ThemeMode.system;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -51,6 +56,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
             groupValue: _startTab,
             title: const Text('Courses'),
             onChanged: (v) => setState(() => _startTab = v!),
+          ),
+          const Divider(height: 32),
+          const ListTile(
+            title: Text('Appearance'),
+            subtitle: Text('Choose theme mode'),
+          ),
+          RadioListTile<ThemeMode>(
+            value: ThemeMode.system,
+            groupValue: currentMode,
+            title: const Text('System'),
+            subtitle: const Text('Follow device setting'),
+            onChanged: (v) {
+              appState?.setThemeMode(v!);
+              setState(() {});
+            },
+          ),
+          RadioListTile<ThemeMode>(
+            value: ThemeMode.light,
+            groupValue: currentMode,
+            title: const Text('Light'),
+            onChanged: (v) {
+              appState?.setThemeMode(v!);
+              setState(() {});
+            },
+          ),
+          RadioListTile<ThemeMode>(
+            value: ThemeMode.dark,
+            groupValue: currentMode,
+            title: const Text('Dark'),
+            onChanged: (v) {
+              appState?.setThemeMode(v!);
+              setState(() {});
+            },
           ),
           const SizedBox(height: 12),
           Padding(
