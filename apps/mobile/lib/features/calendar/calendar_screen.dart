@@ -6,7 +6,6 @@ import 'package:table_calendar/table_calendar.dart';
 
 import '../../app/app_link.dart';
 import '../../app/ics_settings_screen.dart';
-import '../todo/todo_add_screen.dart';
 import '../todo/todo_edit_screen.dart';
 import '../todo/todo_model.dart';
 import '../todo/todo_repo.dart';
@@ -24,7 +23,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
-  CalendarFormat _format = CalendarFormat.month;
 
   bool _loading = false;
   String? _message;
@@ -48,16 +46,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   String _fmtHm(DateTime dt) => '${_two(dt.hour)}:${_two(dt.minute)}';
 
-  String _fmtSyncLabel(DateTime dt) {
-    final local = dt.toLocal();
-    return '${_fmtYmd(local)} ${_fmtHm(local)}';
-  }
+  String _monthLabel(DateTime day) => '${day.year}년 ${day.month}월';
 
-  String _eventTimeLabel(_CalItem item) {
-    if (item.source == _Source.ics && item.ics?.allDay == true) {
-      return '${_fmtYmd(item.when)} (All day)';
-    }
-    return '${_fmtYmd(item.when)} ${_fmtHm(item.when)}';
+  String _syncLabel(DateTime dt) {
+    final local = dt.toLocal();
+    return '${_fmtYmd(local)} ${_fmtHm(local)} 동기화';
   }
 
   Future<void> _openIcsSettings() async {
@@ -82,7 +75,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (url.isEmpty) {
       setState(() {
         _loading = false;
-        _message = 'No school calendar connected yet.';
+        _message = '학교 캘린더가 연결되지 않았습니다.';
       });
       return;
     }
@@ -101,15 +94,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _loading = false;
         _lastIcsSyncAt = DateTime.now();
         if (events.isEmpty) {
-          _message = 'School calendar connected, but no events found.';
+          _message = '연결된 캘린더에 일정이 없습니다.';
         }
       });
     } catch (e) {
       setState(() {
         _loading = false;
-        _message = 'Failed to load school calendar: $e';
+        _message = '학교 캘린더를 불러오지 못했습니다: $e';
       });
     }
+  }
+
+  void _moveMonth(int offset) {
+    final moved = DateTime(_focusedDay.year, _focusedDay.month + offset, 1);
+    setState(() {
+      _focusedDay = moved;
+      _selectedDay = moved;
+    });
+  }
+
+  List<_CalItem> _itemsForDay(Box<TodoItem> box, DateTime day) {
+    final items = <_CalItem>[];
+
+    for (final todo in box.values) {
+      final due = todo.dueAt;
+      if (due != null && _sameYmd(due, day)) {
+        items.add(_CalItem.todo(todoItem: todo, when: due, subtitle: '오늘 마감'));
+      }
+    }
+
+    for (final event in _icsEvents) {
+      if (_sameYmd(event.start, day)) {
+        items.add(
+          _CalItem.ics(
+            event: event,
+            when: event.start,
+            subtitle: event.allDay ? '종일' : '${_fmtHm(event.start)} 시작',
+          ),
+        );
+      }
+    }
+
+    items.sort((a, b) => a.when.compareTo(b.when));
+    return items;
   }
 
   Future<void> _showEventBottomSheet(_CalItem item) async {
@@ -132,25 +159,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Chip(label: Text(isTodo ? 'TODO' : 'SCHOOL')),
-                    const SizedBox(width: 8),
-                    if (isTodo && todo != null)
+                    Chip(
+                      label: Text(isTodo ? '나의 할 일' : '학교 캘린더'),
+                      backgroundColor: isTodo
+                          ? const Color(0xFFDBEAFE)
+                          : const Color(0xFFEDE9FE),
+                    ),
+                    if (isTodo && todo != null) ...[
+                      const SizedBox(width: 8),
                       Chip(
-                        label: Text(todo.completed ? 'Completed' : 'Active'),
+                        label: Text(todo.completed ? '완료' : '진행'),
+                        backgroundColor: todo.completed
+                            ? const Color(0xFFE2E8F0)
+                            : const Color(0xFFDCFCE7),
                       ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text('When: ${_eventTimeLabel(item)}'),
-                if (isTodo && todo != null) ...[
-                  const SizedBox(height: 6),
-                  Text('Repeat: ${todo.repeatRule.label}'),
-                ],
+                Text(
+                  '${_fmtYmd(item.when)} ${_fmtHm(item.when)}',
+                  style: const TextStyle(color: Color(0xFF64748B)),
+                ),
                 const SizedBox(height: 16),
                 if (isTodo && todo != null) ...[
                   Row(
@@ -162,7 +197,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             AppLink.openTodo(todo.id);
                           },
                           icon: const Icon(Icons.open_in_new),
-                          label: const Text('Open in Todo'),
+                          label: const Text('Todo에서 보기'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -178,7 +213,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             );
                           },
                           icon: const Icon(Icons.edit),
-                          label: const Text('Edit'),
+                          label: const Text('수정'),
                         ),
                       ),
                     ],
@@ -192,9 +227,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         await todoRepo.toggle(todo);
                       },
                       icon: Icon(todo.completed ? Icons.undo : Icons.check),
-                      label: Text(
-                        todo.completed ? 'Mark as active' : 'Mark complete',
-                      ),
+                      label: Text(todo.completed ? '다시 진행으로' : '완료 처리'),
                     ),
                   ),
                 ] else ...[
@@ -203,13 +236,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     child: FilledButton(
                       onPressed: () {
                         setState(() {
-                          final day = _ymd(item.when);
-                          _selectedDay = day;
-                          _focusedDay = day;
+                          _selectedDay = _ymd(item.when);
+                          _focusedDay = _ymd(item.when);
                         });
                         Navigator.of(sheetContext).pop();
                       },
-                      child: const Text('Go to date'),
+                      child: const Text('해당 날짜로 이동'),
                     ),
                   ),
                 ],
@@ -221,160 +253,66 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildTodayPanel(Box<TodoItem> box) {
-    final now = DateTime.now();
-    final today = _ymd(now);
-    final tomorrow = today.add(const Duration(days: 1));
+  Widget _buildEventCard(_CalItem item) {
+    final isTodo = item.source == _Source.todo;
+    final leftColor = isTodo
+        ? const Color(0xFF3B82F6)
+        : const Color(0xFF8B5CF6);
 
-    final icsToday = _icsEvents.where((e) => _sameYmd(e.start, today)).toList()
-      ..sort((a, b) => a.start.compareTo(b.start));
-
-    final dueSoon = <TodoItem>[];
-    for (final t in box.values) {
-      final due = t.dueAt;
-      if (due == null) continue;
-      if (_sameYmd(due, today) || _sameYmd(due, tomorrow)) {
-        dueSoon.add(t);
-      }
-    }
-
-    dueSoon.sort((a, b) {
-      final ca = a.completed ? 1 : 0;
-      final cb = b.completed ? 1 : 0;
-      if (ca != cb) return ca - cb;
-      return a.dueAt!.compareTo(b.dueAt!);
-    });
-
-    final icsTop = icsToday.take(3).toList();
-    final todoTop = dueSoon.take(3).toList();
-
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text(
-                  'Today',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _fmtYmd(today),
-                  style: const TextStyle(color: Colors.black54),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _selectedDay = today;
-                      _focusedDay = today;
-                    });
-                  },
-                  child: const Text('View'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.checklist, size: 18),
-                const SizedBox(width: 6),
-                const Text(
-                  'Todo',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                Text(
-                  '${dueSoon.length}',
-                  style: const TextStyle(color: Colors.black54),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            if (todoTop.isEmpty)
-              const Text('No due soon', style: TextStyle(color: Colors.black54))
-            else
-              ...todoTop.map((t) {
-                final due = t.dueAt!;
-                final isTomorrow = _sameYmd(due, tomorrow);
-                final when =
-                    '${isTomorrow ? 'Tomorrow' : 'Today'} ${_fmtHm(due)}';
-
-                final item = _CalItem.todo(
-                  todoItem: t,
-                  when: due,
-                  subtitle: when,
-                );
-
-                return ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    t.completed
-                        ? Icons.check_circle
-                        : Icons.radio_button_unchecked,
-                    size: 20,
-                    color: t.completed ? Colors.green : null,
-                  ),
-                  title: Text(
-                    t.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(when),
-                  onTap: () => _showEventBottomSheet(item),
-                );
-              }),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.event, size: 18),
-                const SizedBox(width: 6),
-                const Text(
-                  'School',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                Text(
-                  '${icsToday.length}',
-                  style: const TextStyle(color: Colors.black54),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            if (icsTop.isEmpty)
-              const Text(
-                'No school events today',
-                style: TextStyle(color: Colors.black54),
-              )
-            else
-              ...icsTop.map((e) {
-                final when = e.allDay ? 'All day' : _fmtHm(e.start);
-                final item = _CalItem.ics(
-                  event: e,
-                  when: e.start,
-                  subtitle: when,
-                );
-
-                return ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.event_note, size: 20),
-                  title: Text(
-                    e.summary,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(when),
-                  onTap: () => _showEventBottomSheet(item),
-                );
-              }),
-          ],
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isTodo ? Colors.white : const Color(0xFFF5F3FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isTodo ? const Color(0xFFE2E8F0) : const Color(0xFFDDD6FE),
         ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 3,
+            height: 44,
+            decoration: BoxDecoration(
+              color: leftColor,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isTodo ? '나의 할 일' : '학교 캘린더 (ICS)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: leftColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontSize: 21 / 1.5,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  item.subtitle,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -384,217 +322,196 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final todoBox = Hive.box<TodoItem>('todos');
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-              builder: (_) => TodoAddScreen(initialDueAt: _selectedDay),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadIcs,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Text(
-                    'Calendar',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  IconButton.filledTonal(
-                    onPressed: _openIcsSettings,
-                    icon: const Icon(Icons.link),
-                    tooltip: 'School calendar (ICS)',
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton.filledTonal(
-                    onPressed: _loadIcs,
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Refresh',
-                  ),
-                ],
-              ),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  child: Row(
+      backgroundColor: const Color(0xFFF3F4F6),
+      body: SafeArea(
+        child: ValueListenableBuilder(
+          valueListenable: todoBox.listenable(),
+          builder: (context, Box<TodoItem> box, _) {
+            final selectedItems = _itemsForDay(box, _selectedDay);
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: Column(
                     children: [
-                      const Icon(Icons.sync, size: 16, color: Colors.black54),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _lastIcsSyncAt == null
-                              ? 'School calendar not synced yet'
-                              : 'Last sync: ${_fmtSyncLabel(_lastIcsSyncAt!)}',
-                          style: const TextStyle(color: Colors.black54),
+                      Row(
+                        children: [
+                          Text(
+                            _monthLabel(_focusedDay),
+                            style: const TextStyle(
+                              fontSize: 38 / 1.25,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.4,
+                              color: Color(0xFF0F172A),
+                            ),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            onPressed: () => _moveMonth(-1),
+                            icon: const Icon(Icons.chevron_left),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFFE5E7EB),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () => _moveMonth(1),
+                            icon: const Icon(Icons.chevron_right),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFFE5E7EB),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: _openIcsSettings,
+                            icon: const Icon(Icons.link),
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color(0xFFE5E7EB),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: TableCalendar<_CalItem>(
+                          firstDay: DateTime.utc(2000, 1, 1),
+                          lastDay: DateTime.utc(2100, 12, 31),
+                          focusedDay: _focusedDay,
+                          headerVisible: false,
+                          selectedDayPredicate: (day) =>
+                              isSameDay(day, _selectedDay),
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              _selectedDay = selectedDay;
+                              _focusedDay = focusedDay;
+                            });
+                          },
+                          eventLoader: (day) => _itemsForDay(box, day),
+                          calendarStyle: CalendarStyle(
+                            outsideTextStyle: const TextStyle(
+                              color: Color(0xFFCBD5E1),
+                            ),
+                            markerDecoration: const BoxDecoration(
+                              color: Color(0xFF8B5CF6),
+                              shape: BoxShape.circle,
+                            ),
+                            todayDecoration: BoxDecoration(
+                              color: const Color(0xFFE0E7FF),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            selectedDecoration: BoxDecoration(
+                              color: const Color(0xFFDBEAFE),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFF93C5FD),
+                              ),
+                            ),
+                            selectedTextStyle: const TextStyle(
+                              color: Color(0xFF1D4ED8),
+                              fontWeight: FontWeight.w700,
+                            ),
+                            todayTextStyle: const TextStyle(
+                              color: Color(0xFF1E3A8A),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              if (_loading) const LinearProgressIndicator(),
-              if (_message != null) ...[
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
+                const Divider(height: 1, thickness: 1),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${_selectedDay.month}월 ${_selectedDay.day}일 일정',
+                        style: const TextStyle(
+                          fontSize: 25 / 1.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_loading)
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else
+                        Text(
+                          _lastIcsSyncAt == null
+                              ? '동기화 전'
+                              : _syncLabel(_lastIcsSyncAt!),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF94A3B8),
+                          ),
+                        ),
+                      const SizedBox(width: 6),
+                      IconButton(
+                        onPressed: _loadIcs,
+                        icon: const Icon(Icons.refresh, size: 18),
+                        visualDensity: VisualDensity.compact,
+                        tooltip: '동기화',
+                      ),
+                    ],
+                  ),
+                ),
+                if (_message != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
                       child: Text(
                         _message!,
                         style: TextStyle(
-                          color: _message!.startsWith('Failed')
+                          color: _message!.contains('못했습니다')
                               ? Colors.red
-                              : null,
+                              : const Color(0xFF64748B),
+                          fontSize: 12,
                         ),
                       ),
                     ),
-                    if (_message!.startsWith('Failed'))
-                      TextButton(
-                        onPressed: _loadIcs,
-                        child: const Text('Retry'),
-                      ),
-                  ],
+                  ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _loadIcs,
+                    child: selectedItems.isEmpty
+                        ? ListView(
+                            children: const [
+                              SizedBox(height: 120),
+                              Center(child: Text('선택한 날짜에 일정이 없습니다.')),
+                            ],
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                            itemBuilder: (_, i) {
+                              final item = selectedItems[i];
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () => _showEventBottomSheet(item),
+                                child: _buildEventCard(item),
+                              );
+                            },
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemCount: selectedItems.length,
+                          ),
+                  ),
                 ),
               ],
-              const SizedBox(height: 8),
-              Expanded(
-                child: ValueListenableBuilder(
-                  valueListenable: todoBox.listenable(),
-                  builder: (context, Box<TodoItem> box, _) {
-                    List<_CalItem> itemsForDay(DateTime day) {
-                      final items = <_CalItem>[];
-
-                      for (final t in box.values) {
-                        final due = t.dueAt;
-                        if (due != null && _sameYmd(due, day)) {
-                          items.add(
-                            _CalItem.todo(
-                              todoItem: t,
-                              when: due,
-                              subtitle: 'Due',
-                            ),
-                          );
-                        }
-                      }
-
-                      for (final e in _icsEvents) {
-                        if (_sameYmd(e.start, day)) {
-                          items.add(
-                            _CalItem.ics(
-                              event: e,
-                              when: e.start,
-                              subtitle: e.allDay ? 'All day' : 'School',
-                            ),
-                          );
-                        }
-                      }
-
-                      items.sort((a, b) => a.when.compareTo(b.when));
-                      return items;
-                    }
-
-                    final selectedItems = itemsForDay(_selectedDay);
-
-                    return Column(
-                      children: [
-                        _buildTodayPanel(box),
-                        const SizedBox(height: 10),
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: TableCalendar<_CalItem>(
-                              firstDay: DateTime.utc(2000, 1, 1),
-                              lastDay: DateTime.utc(2100, 12, 31),
-                              focusedDay: _focusedDay,
-                              calendarFormat: _format,
-                              selectedDayPredicate: (day) =>
-                                  isSameDay(day, _selectedDay),
-                              onDaySelected: (selectedDay, focusedDay) {
-                                setState(() {
-                                  _selectedDay = selectedDay;
-                                  _focusedDay = focusedDay;
-                                });
-                              },
-                              onFormatChanged: (format) {
-                                setState(() => _format = format);
-                              },
-                              eventLoader: itemsForDay,
-                              headerStyle: const HeaderStyle(
-                                titleCentered: true,
-                                formatButtonVisible: true,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Selected: ${_fmtYmd(_selectedDay)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Expanded(
-                          child: selectedItems.isEmpty
-                              ? const Center(
-                                  child: Text('No events on this day'),
-                                )
-                              : ListView.builder(
-                                  padding: const EdgeInsets.only(bottom: 120),
-                                  itemCount: selectedItems.length,
-                                  itemBuilder: (_, i) {
-                                    final item = selectedItems[i];
-                                    final tag = item.source == _Source.todo
-                                        ? 'TODO'
-                                        : 'SCHOOL';
-
-                                    return Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: Card(
-                                        child: ListTile(
-                                          leading: item.source == _Source.todo
-                                              ? const Icon(
-                                                  Icons.check_circle_outline,
-                                                )
-                                              : const Icon(Icons.event_note),
-                                          title: Text(item.title),
-                                          subtitle: Text(
-                                            '$tag | ${item.subtitle}',
-                                          ),
-                                          trailing:
-                                              item.source == _Source.todo &&
-                                                  item.done
-                                              ? const Icon(
-                                                  Icons.check,
-                                                  color: Colors.green,
-                                                )
-                                              : null,
-                                          onTap: () =>
-                                              _showEventBottomSheet(item),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

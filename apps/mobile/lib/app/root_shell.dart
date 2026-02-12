@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../features/todo/todo_screen.dart';
 import '../features/calendar/calendar_screen.dart';
-import '../features/timetable/timetable_screen.dart';
 import '../features/courses/course_screen.dart';
-import 'settings_screen.dart';
+import '../features/timetable/timetable_screen.dart';
+import '../features/todo/todo_screen.dart';
 import 'app_link.dart';
+import 'settings_screen.dart';
 
 class RootShell extends StatefulWidget {
-  RootShell({super.key});
+  const RootShell({super.key});
 
   @override
   State<RootShell> createState() => _RootShellState();
@@ -40,7 +40,6 @@ class _RootShellState extends State<RootShell> {
     final id = _todoLink.value;
     if (id == null) return;
 
-    // Todo 탭으로 이동
     if (mounted) {
       setState(() => _currentIndex = 0);
     }
@@ -61,12 +60,23 @@ class _RootShellState extends State<RootShell> {
     await prefs.setInt(_prefKeyStartTab, index);
   }
 
+  Future<void> _openSettings() async {
+    final selected = await Navigator.of(context).push<int>(
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(currentStartTab: _currentIndex),
+      ),
+    );
+
+    if (selected != null) {
+      await _setStartTab(selected);
+      setState(() => _currentIndex = selected);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_loaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final tabs = [
@@ -77,44 +87,115 @@ class _RootShellState extends State<RootShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('CampusMate'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: IconButton.filledTonal(
-              icon: const Icon(Icons.tune),
-              onPressed: () async {
-                final selected = await Navigator.of(context).push<int>(
-                  MaterialPageRoute(
-                    builder: (_) => SettingsScreen(
-                      currentStartTab: _currentIndex,
-                    ),
-                  ),
-                );
-
-                if (selected != null) {
-                  await _setStartTab(selected);
-                  setState(() => _currentIndex = selected);
-                }
-              },
-            ),
-          )
-        ],
+      body: IndexedStack(index: _currentIndex, children: tabs),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x140F172A),
+                blurRadius: 20,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.check_circle_outline,
+                  activeIcon: Icons.check_circle,
+                  label: 'Todo',
+                  selected: _currentIndex == 0,
+                  onTap: () => setState(() => _currentIndex = 0),
+                  onLongPress: _openSettings,
+                ),
+              ),
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.calendar_month_outlined,
+                  activeIcon: Icons.calendar_month,
+                  label: 'Calendar',
+                  selected: _currentIndex == 1,
+                  onTap: () => setState(() => _currentIndex = 1),
+                  onLongPress: _openSettings,
+                ),
+              ),
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.image_outlined,
+                  activeIcon: Icons.image,
+                  label: 'Timetable',
+                  selected: _currentIndex == 2,
+                  onTap: () => setState(() => _currentIndex = 2),
+                  onLongPress: _openSettings,
+                ),
+              ),
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.menu_book_outlined,
+                  activeIcon: Icons.menu_book,
+                  label: 'Courses',
+                  selected: _currentIndex == 3,
+                  onTap: () => setState(() => _currentIndex = 3),
+                  onLongPress: _openSettings,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      body: tabs[_currentIndex],
-      bottomNavigationBar: NavigationBar(
-        elevation: 0,
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (idx) {
-          setState(() => _currentIndex = idx);
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.check_circle), label: 'Todo'),
-          NavigationDestination(icon: Icon(Icons.calendar_month), label: 'Calendar'),
-          NavigationDestination(icon: Icon(Icons.table_chart), label: 'Timetable'),
-          NavigationDestination(icon: Icon(Icons.school), label: 'Courses'),
-        ],
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? const Color(0xFF2563EB) : const Color(0xFF98A2B3);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      onLongPress: onLongPress,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(selected ? activeIcon : icon, color: color, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

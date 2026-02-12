@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../app/app_link.dart';
-import 'todo_add_screen.dart';
 import 'todo_edit_screen.dart';
 import 'todo_model.dart';
 import 'todo_repo.dart';
@@ -79,8 +78,8 @@ class _TodoScreenState extends State<TodoScreen> {
     final tomorrow = today.add(const Duration(days: 1));
     final day = _ymd(dt);
 
-    if (_sameYmd(day, today)) return 'Today ${_fmtHm(dt)}';
-    if (_sameYmd(day, tomorrow)) return 'Tomorrow ${_fmtHm(dt)}';
+    if (_sameYmd(day, today)) return '오늘 ${_fmtHm(dt)}';
+    if (_sameYmd(day, tomorrow)) return '내일 ${_fmtHm(dt)}';
     return '${_fmtYmd(dt)} ${_fmtHm(dt)}';
   }
 
@@ -126,7 +125,7 @@ class _TodoScreenState extends State<TodoScreen> {
     if (items.isEmpty) return const [];
 
     if (_filter == _TodoViewFilter.completed) {
-      return [_TodoSection(title: 'Completed', items: items)];
+      return [_TodoSection(title: '완료됨', items: List<TodoItem>.from(items))];
     }
 
     final now = DateTime.now();
@@ -162,20 +161,20 @@ class _TodoScreenState extends State<TodoScreen> {
 
     final sections = <_TodoSection>[];
     if (overdue.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Overdue', items: overdue));
+      sections.add(_TodoSection(title: '지연됨', items: overdue));
     }
     if (todayItems.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Today', items: todayItems));
+      sections.add(_TodoSection(title: '오늘 / 진행 중', items: todayItems));
     }
     if (upcoming.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Upcoming', items: upcoming));
+      sections.add(_TodoSection(title: '예정됨', items: upcoming));
     }
     if (noDueDate.isNotEmpty) {
-      sections.add(_TodoSection(title: 'No due date', items: noDueDate));
+      sections.add(_TodoSection(title: '마감 없음', items: noDueDate));
     }
 
     if (_filter == _TodoViewFilter.all && completed.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Completed', items: completed));
+      sections.add(_TodoSection(title: '완료됨', items: completed));
     }
 
     return sections;
@@ -201,7 +200,7 @@ class _TodoScreenState extends State<TodoScreen> {
     if (due != null && remind != null && remind.isAfter(due)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reminder must be before due time.')),
+          const SnackBar(content: Text('리마인더는 마감 시간보다 늦을 수 없습니다.')),
         );
       }
       return;
@@ -219,7 +218,6 @@ class _TodoScreenState extends State<TodoScreen> {
     await todoRepo.add(item);
 
     if (!mounted) return;
-    FocusScope.of(context).unfocus();
 
     setState(() {
       _quickTitleController.clear();
@@ -258,7 +256,7 @@ class _TodoScreenState extends State<TodoScreen> {
     if (_quickDueAt != null && picked.isAfter(_quickDueAt!)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reminder must be before due time.')),
+          const SnackBar(content: Text('리마인더는 마감 시간보다 늦을 수 없습니다.')),
         );
       }
       return;
@@ -276,7 +274,7 @@ class _TodoScreenState extends State<TodoScreen> {
     if (due != null && picked.isAfter(due)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reminder must be before due time.')),
+          const SnackBar(content: Text('리마인더는 마감 시간보다 늦을 수 없습니다.')),
         );
       }
       return;
@@ -291,28 +289,8 @@ class _TodoScreenState extends State<TodoScreen> {
     await todoRepo.update(item);
   }
 
-  Future<void> _confirmDelete(BuildContext context, TodoItem item) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete todo?'),
-        content: Text('"${item.title}"'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (ok == true) {
-      await todoRepo.remove(item);
-    }
+  Future<void> _deleteTodo(TodoItem item) async {
+    await todoRepo.remove(item);
   }
 
   Future<void> _openEdit(BuildContext context, TodoItem item) async {
@@ -322,213 +300,328 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 
   Widget _buildQuickCapture() {
-    final dueLabel = _quickDueAt == null ? 'None' : _fmtYmd(_quickDueAt!);
+    final dueLabel = _quickDueAt == null ? '없음' : _fmtYmd(_quickDueAt!);
     final reminderLabel = _quickRemindAt == null
-        ? 'None'
+        ? '없음'
         : _fmtReminderLabel(_quickRemindAt!);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          children: [
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAECEF),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _quickTitleController,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    hintText: '새로운 할 일을 입력하세요 (Quick Capture)',
+                  ),
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _quickAdd(),
+                ),
+              ),
+              IconButton(
+                onPressed: () {
+                  setState(() => _quickExpanded = !_quickExpanded);
+                },
+                icon: Icon(
+                  _quickExpanded ? Icons.expand_less : Icons.tune,
+                  color: const Color(0xFF64748B),
+                ),
+              ),
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: FilledButton(
+                  onPressed: _quickAdd,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Icon(Icons.add, size: 22),
+                ),
+              ),
+            ],
+          ),
+          if (_quickExpanded) ...[
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _quickTitleController,
-                    decoration: const InputDecoration(
-                      hintText: 'Quick capture...',
-                      border: OutlineInputBorder(),
-                      isDense: true,
+                  child: Text(
+                    '마감: $dueLabel',
+                    style: const TextStyle(
+                      color: Color(0xFF475569),
+                      fontSize: 12,
                     ),
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _quickAdd(),
                   ),
                 ),
-                IconButton(
-                  tooltip: _quickExpanded ? 'Hide options' : 'Show options',
-                  onPressed: () {
-                    setState(() => _quickExpanded = !_quickExpanded);
-                  },
-                  icon: Icon(_quickExpanded ? Icons.expand_less : Icons.tune),
+                TextButton(
+                  onPressed: _pickQuickDueDate,
+                  child: const Text('선택'),
                 ),
-                FilledButton(onPressed: _quickAdd, child: const Text('Add')),
+                TextButton(
+                  onPressed: _quickDueAt == null
+                      ? null
+                      : () => setState(() => _quickDueAt = null),
+                  child: const Text('지우기'),
+                ),
               ],
             ),
-            if (_quickExpanded) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: Text('Due: $dueLabel')),
-                  TextButton(
-                    onPressed: _pickQuickDueDate,
-                    child: const Text('Pick'),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '알림: $reminderLabel',
+                    style: const TextStyle(
+                      color: Color(0xFF475569),
+                      fontSize: 12,
+                    ),
                   ),
-                  TextButton(
-                    onPressed: _quickDueAt == null
-                        ? null
-                        : () {
-                            setState(() {
-                              _quickDueAt = null;
-                            });
-                          },
-                    child: const Text('Clear'),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(child: Text('Reminder: $reminderLabel')),
-                  TextButton(
-                    onPressed: _pickQuickReminder,
-                    child: const Text('Pick'),
-                  ),
-                  TextButton(
-                    onPressed: _quickRemindAt == null
-                        ? null
-                        : () {
-                            setState(() {
-                              _quickRemindAt = null;
-                            });
-                          },
-                    child: const Text('Clear'),
-                  ),
-                ],
-              ),
-              DropdownButtonFormField<TodoRepeat>(
-                initialValue: _quickRepeat,
-                decoration: const InputDecoration(
-                  labelText: 'Repeat',
-                  border: OutlineInputBorder(),
-                  isDense: true,
                 ),
-                items: TodoRepeat.values
-                    .map(
-                      (rule) => DropdownMenuItem<TodoRepeat>(
-                        value: rule,
-                        child: Text(rule.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _quickRepeat = value);
-                },
+                TextButton(
+                  onPressed: _pickQuickReminder,
+                  child: const Text('선택'),
+                ),
+                TextButton(
+                  onPressed: _quickRemindAt == null
+                      ? null
+                      : () => setState(() => _quickRemindAt = null),
+                  child: const Text('지우기'),
+                ),
+              ],
+            ),
+            DropdownButtonFormField<TodoRepeat>(
+              initialValue: _quickRepeat,
+              decoration: const InputDecoration(
+                isDense: true,
+                labelText: '반복',
+                border: OutlineInputBorder(),
               ),
-            ],
+              items: TodoRepeat.values
+                  .map(
+                    (rule) => DropdownMenuItem<TodoRepeat>(
+                      value: rule,
+                      child: Text(rule.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() => _quickRepeat = value);
+              },
+            ),
           ],
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterRow(int totalCount, int activeCount, int completedCount) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ChoiceChip(
+            label: Text('전체 $totalCount'),
+            selected: _filter == _TodoViewFilter.all,
+            onSelected: (_) => setState(() => _filter = _TodoViewFilter.all),
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: Text('진행 $activeCount'),
+            selected: _filter == _TodoViewFilter.active,
+            onSelected: (_) => setState(() => _filter = _TodoViewFilter.active),
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: Text('완료 $completedCount'),
+            selected: _filter == _TodoViewFilter.completed,
+            onSelected: (_) =>
+                setState(() => _filter = _TodoViewFilter.completed),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildSectionHeader(_TodoListRow row) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+      padding: const EdgeInsets.fromLTRB(2, 16, 2, 10),
       child: Row(
         children: [
           Text(
             row.title!,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: Color(0xFF334155),
+            ),
           ),
           const SizedBox(width: 8),
-          Text('${row.count}', style: const TextStyle(color: Colors.black54)),
+          Text(
+            '${row.count}',
+            style: const TextStyle(
+              color: Color(0xFF94A3B8),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTodoTile(TodoItem item) {
+  Widget _buildMetaLine(TodoItem item) {
     final due = item.dueAt;
-    final remind = item.remindAt;
+    final reminder = item.remindAt;
 
-    final dueStr = due == null ? null : _fmtYmd(due.toLocal());
-    final remindStr = (remind == null || item.completed)
+    final dueText = due == null
         ? null
-        : _fmtReminderLabel(remind.toLocal());
-    final repeatStr = item.repeatRule == TodoRepeat.none
-        ? null
-        : 'Repeat: ${item.repeatRule.label}';
+        : _sameYmd(_ymd(due), _ymd(DateTime.now()))
+        ? '오늘 마감'
+        : '${_fmtYmd(due)} 마감';
+    final reminderText = (reminder == null || item.completed) ? null : '알림 켜짐';
 
-    final subtitleParts = <String>[
-      if (dueStr != null) 'Due: $dueStr',
-      if (remindStr != null) 'Remind: $remindStr',
-      if (repeatStr != null) repeatStr,
-    ];
+    final parts = <Widget>[];
 
+    if (dueText != null) {
+      parts.add(const Icon(Icons.schedule, size: 12, color: Color(0xFF94A3B8)));
+      parts.add(const SizedBox(width: 3));
+      parts.add(
+        Text(
+          dueText,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+        ),
+      );
+    }
+
+    if (reminderText != null) {
+      if (parts.isNotEmpty) {
+        parts.add(const SizedBox(width: 8));
+      }
+      parts.add(
+        const Icon(
+          Icons.notifications_none,
+          size: 12,
+          color: Color(0xFF3B82F6),
+        ),
+      );
+      parts.add(const SizedBox(width: 3));
+      parts.add(
+        const Text(
+          '알림 켜짐',
+          style: TextStyle(fontSize: 12, color: Color(0xFF3B82F6)),
+        ),
+      );
+    }
+
+    final repeat = item.repeatRule;
+    if (repeat != TodoRepeat.none) {
+      if (parts.isNotEmpty) {
+        parts.add(const SizedBox(width: 8));
+      }
+      parts.add(const Icon(Icons.repeat, size: 12, color: Color(0xFF94A3B8)));
+      parts.add(const SizedBox(width: 3));
+      parts.add(
+        Text(
+          repeat.label,
+          style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+        ),
+      );
+    }
+
+    if (parts.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: parts);
+  }
+
+  Widget _buildTodoTile(TodoItem item) {
     final isHighlight =
-        (_highlightId != null &&
+        _highlightId != null &&
         item.id == _highlightId &&
         _highlightUntil != null &&
-        DateTime.now().isBefore(_highlightUntil!));
+        DateTime.now().isBefore(_highlightUntil!);
+
+    final completed = item.completed;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Dismissible(
         key: ValueKey('${item.key}_${item.id}'),
+        direction: DismissDirection.endToStart,
         background: Container(
-          decoration: BoxDecoration(
-            color: Colors.red,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: const Icon(Icons.delete, color: Colors.white),
-        ),
-        secondaryBackground: Container(
-          decoration: BoxDecoration(
-            color: Colors.red,
-            borderRadius: BorderRadius.circular(20),
-          ),
           alignment: Alignment.centerRight,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: const Icon(Icons.delete, color: Colors.white),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEF4444),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Icon(Icons.delete_outline, color: Colors.white),
         ),
-        onDismissed: (_) async {
-          await todoRepo.remove(item);
-        },
-        child: Card(
-          color: isHighlight
-              ? Theme.of(context).colorScheme.primaryContainer
-              : Colors.white,
+        onDismissed: (_) async => _deleteTodo(item),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          decoration: BoxDecoration(
+            color: completed ? const Color(0xFFF1F5F9) : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isHighlight
+                  ? const Color(0xFFBFDBFE)
+                  : const Color(0xFFE2E8F0),
+            ),
+          ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 4,
+              horizontal: 10,
+              vertical: 6,
             ),
             onTap: () => _openEdit(context, item),
-            leading: Checkbox(
-              value: item.completed,
-              onChanged: (_) async {
+            leading: IconButton(
+              onPressed: () async {
                 await todoRepo.toggle(item);
                 setState(() {});
               },
+              icon: Icon(
+                completed ? Icons.check_circle : Icons.circle_outlined,
+                color: completed
+                    ? const Color(0xFF60A5FA)
+                    : const Color(0xFFCBD5E1),
+              ),
             ),
             title: Text(
               item.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
+                fontSize: 30 / 2,
                 fontWeight: FontWeight.w600,
-                decoration: item.completed ? TextDecoration.lineThrough : null,
+                color: completed
+                    ? const Color(0xFF94A3B8)
+                    : const Color(0xFF0F172A),
+                decoration: completed ? TextDecoration.lineThrough : null,
               ),
             ),
-            subtitle: subtitleParts.isEmpty
-                ? null
-                : Text(
-                    subtitleParts.join('  |  '),
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: _buildMetaLine(item),
+            ),
             trailing: PopupMenuButton<_TodoMenu>(
-              tooltip: 'Menu',
+              icon: const Icon(Icons.more_horiz, color: Color(0xFF94A3B8)),
               onSelected: (menu) async {
                 if (menu == _TodoMenu.edit) {
                   await _openEdit(context, item);
                 } else if (menu == _TodoMenu.delete) {
-                  await _confirmDelete(context, item);
+                  await _deleteTodo(item);
                 } else if (menu == _TodoMenu.setReminder) {
                   await _setReminder(context, item);
                 } else if (menu == _TodoMenu.clearReminder) {
@@ -536,20 +629,17 @@ class _TodoScreenState extends State<TodoScreen> {
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: _TodoMenu.edit, child: Text('Edit')),
-                const PopupMenuItem(
-                  value: _TodoMenu.delete,
-                  child: Text('Delete'),
-                ),
+                const PopupMenuItem(value: _TodoMenu.edit, child: Text('수정')),
+                const PopupMenuItem(value: _TodoMenu.delete, child: Text('삭제')),
                 const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: _TodoMenu.setReminder,
-                  child: Text('Set reminder'),
+                  child: Text('리마인더 설정'),
                 ),
                 PopupMenuItem(
                   value: _TodoMenu.clearReminder,
                   enabled: item.remindAt != null,
-                  child: const Text('Clear reminder'),
+                  child: const Text('리마인더 해제'),
                 ),
               ],
             ),
@@ -564,124 +654,89 @@ class _TodoScreenState extends State<TodoScreen> {
     final box = Hive.box<TodoItem>('todos');
 
     return Scaffold(
-      body: ValueListenableBuilder(
-        valueListenable: box.listenable(),
-        builder: (context, Box<TodoItem> b, _) {
-          final allItems = todoRepo.list();
-          final filteredItems = _applyFilter(allItems);
-          final sections = _buildSections(filteredItems);
-          final rows = _rowsFromSections(sections);
+      backgroundColor: const Color(0xFFF3F4F6),
+      body: SafeArea(
+        child: ValueListenableBuilder(
+          valueListenable: box.listenable(),
+          builder: (context, Box<TodoItem> b, _) {
+            final allItems = todoRepo.list();
+            final filteredItems = _applyFilter(allItems);
+            final sections = _buildSections(filteredItems);
+            final rows = _rowsFromSections(sections);
 
-          final id = _highlightId;
-          if (id != null) {
-            final idx = rows.indexWhere((row) => row.todo?.id == id);
-            if (idx >= 0) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (_scroll.hasClients) {
-                  const estimatedRowHeight = 82.0;
-                  final target = (idx * estimatedRowHeight).clamp(
-                    0.0,
-                    _scroll.position.maxScrollExtent,
-                  );
-                  _scroll.animateTo(
-                    target,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                  );
-                }
-              });
+            final id = _highlightId;
+            if (id != null) {
+              final idx = rows.indexWhere((row) => row.todo?.id == id);
+              if (idx >= 0) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_scroll.hasClients) {
+                    const estimatedRowHeight = 86.0;
+                    final target = (idx * estimatedRowHeight).clamp(
+                      0.0,
+                      _scroll.position.maxScrollExtent,
+                    );
+                    _scroll.animateTo(
+                      target,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                    );
+                  }
+                });
+              }
+              AppLink.clearTodo();
             }
-            AppLink.clearTodo();
-          }
 
-          final totalCount = allItems.length;
-          final activeCount = allItems.where((t) => !t.completed).length;
-          final completedCount = allItems.where((t) => t.completed).length;
+            final totalCount = allItems.length;
+            final activeCount = allItems.where((t) => !t.completed).length;
+            final completedCount = allItems.where((t) => t.completed).length;
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                child: _buildQuickCapture(),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ChoiceChip(
-                        label: Text(
-                          'All $totalCount',
-                          style: TextStyle(
-                            color: _filter == _TodoViewFilter.all
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        ),
-                        selected: _filter == _TodoViewFilter.all,
-                        onSelected: (_) =>
-                            setState(() => _filter = _TodoViewFilter.all),
-                      ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        label: Text(
-                          'Active $activeCount',
-                          style: TextStyle(
-                            color: _filter == _TodoViewFilter.active
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        ),
-                        selected: _filter == _TodoViewFilter.active,
-                        onSelected: (_) =>
-                            setState(() => _filter = _TodoViewFilter.active),
-                      ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        label: Text(
-                          'Completed $completedCount',
-                          style: TextStyle(
-                            color: _filter == _TodoViewFilter.completed
-                                ? Colors.white
-                                : Colors.black,
-                          ),
-                        ),
-                        selected: _filter == _TodoViewFilter.completed,
-                        onSelected: (_) =>
-                            setState(() => _filter = _TodoViewFilter.completed),
-                      ),
-                    ],
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: Text(
+                    '할 일',
+                    style: TextStyle(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                      letterSpacing: -0.8,
+                    ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: rows.isEmpty
-                    ? const Center(child: Text('No todos in this view.'))
-                    : ListView.builder(
-                        controller: _scroll,
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
-                        itemCount: rows.length,
-                        itemBuilder: (_, i) {
-                          final row = rows[i];
-                          if (row.isHeader) {
-                            return _buildSectionHeader(row);
-                          }
-                          return _buildTodoTile(row.todo!);
-                        },
-                      ),
-              ),
-            ],
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.of(context).push<bool>(
-            MaterialPageRoute(builder: (_) => const TodoAddScreen()),
-          );
-        },
-        child: const Icon(Icons.add),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: _buildQuickCapture(),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: _buildFilterRow(
+                    totalCount,
+                    activeCount,
+                    completedCount,
+                  ),
+                ),
+                Expanded(
+                  child: rows.isEmpty
+                      ? const Center(child: Text('조건에 맞는 할 일이 없습니다.'))
+                      : ListView.builder(
+                          controller: _scroll,
+                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+                          itemCount: rows.length,
+                          itemBuilder: (_, i) {
+                            final row = rows[i];
+                            if (row.isHeader) {
+                              return _buildSectionHeader(row);
+                            }
+                            return _buildTodoTile(row.todo!);
+                          },
+                        ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

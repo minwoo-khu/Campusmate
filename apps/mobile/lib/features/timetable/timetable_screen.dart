@@ -18,7 +18,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
   static const _prefKeyTimetablePath = 'timetable_image_path';
 
   bool _loaded = false;
-  String? _imagePath; // 로컬 파일 경로
+  String? _imagePath;
 
   @override
   void initState() {
@@ -45,8 +45,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
   Future<void> _pickAndSaveImage() async {
     if (kIsWeb) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('웹에서는 지원 안 함. Android에서 실행해줘.')),
+        const SnackBar(content: Text('웹에서는 파일 저장 경로가 제한됩니다. 모바일에서 사용해 주세요.')),
       );
       return;
     }
@@ -64,7 +65,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
     final appDir = await getApplicationDocumentsDirectory();
 
     final ext = p.extension(pickedPath).toLowerCase();
-    final safeExt = (ext == '.png' || ext == '.jpg' || ext == '.jpeg') ? ext : '.png';
+    final safeExt = (ext == '.png' || ext == '.jpg' || ext == '.jpeg')
+        ? ext
+        : '.png';
 
     final targetPath = p.join(appDir.path, 'timetable$safeExt');
     await File(pickedPath).copy(targetPath);
@@ -73,9 +76,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
     setState(() => _imagePath = targetPath);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('시간표 이미지 저장 완료')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('시간표 이미지 저장 완료')));
   }
 
   Future<void> _removeImage() async {
@@ -86,88 +89,163 @@ class _TimetableScreenState extends State<TimetableScreen> {
         await f.delete();
       }
     }
+
     await _savePath(null);
     setState(() => _imagePath = null);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('시간표 이미지 삭제 완료')),
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('시간표 이미지가 제거되었습니다.')));
+  }
+
+  Widget _buildPlaceholder() {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child: GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: 60,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 6,
+                childAspectRatio: 1,
+              ),
+              itemBuilder: (_, __) {
+                return Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: const Color(0xFFE5E7EB),
+                      width: 0.6,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.image_outlined,
+                  size: 56,
+                  color: Color(0xFFCBD5E1),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  '시간표 이미지가 없습니다',
+                  style: TextStyle(
+                    fontSize: 28 / 1.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '갤러리에서 이번 학기 시간표 이미지를 업로드하고\n확대/축소하여 확인하세요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF94A3B8), height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: _pickAndSaveImage,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF3B82F6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 26,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('이미지 업로드 (로컬 저장)'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_loaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final hasImage = _imagePath != null && !kIsWeb;
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Timetable',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-
-            Expanded(
-              child: Card(
-                clipBehavior: Clip.antiAlias,
-                child: hasImage
-                    ? InteractiveViewer(
-                        minScale: 0.5,
-                        maxScale: 4.0,
-                        child: Image.file(
-                          File(_imagePath!),
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) {
-                            return const Center(
-                              child: Text('이미지를 불러올 수 없어. 다시 업로드해줘.'),
-                            );
-                          },
-                        ),
-                      )
-                    : const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.image_outlined, size: 44),
-                            SizedBox(height: 8),
-                            Text('No timetable image yet'),
-                            SizedBox(height: 4),
-                            Text('Upload an image to display here'),
-                          ],
-                        ),
-                      ),
+      backgroundColor: const Color(0xFFF3F4F6),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    '시간표',
+                    style: TextStyle(
+                      fontSize: 42 / 1.25,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: _pickAndSaveImage,
+                    icon: const Icon(Icons.image_outlined),
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xFFE8EEF9),
+                    ),
+                  ),
+                ],
               ),
-            ),
-
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _pickAndSaveImage,
-                icon: const Icon(Icons.upload),
-                label: const Text('Upload timetable image'),
+              const SizedBox(height: 10),
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: hasImage
+                      ? InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 4,
+                          child: Image.file(
+                            File(_imagePath!),
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) {
+                              return _buildPlaceholder();
+                            },
+                          ),
+                        )
+                      : _buildPlaceholder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: (_imagePath == null) ? null : _removeImage,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('Remove image'),
-              ),
-            ),
-          ],
+              if (hasImage) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _removeImage,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('이미지 삭제'),
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
