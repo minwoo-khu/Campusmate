@@ -6,6 +6,8 @@ class HomeWidgetService {
   HomeWidgetService._();
 
   static const _androidWidgetName = 'TodayWidgetProvider';
+  static const widgetCompleteHost = 'todo';
+  static const widgetCompletePath = '/complete';
 
   static DateTime _ymd(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -35,6 +37,7 @@ class HomeWidgetService {
           });
 
       final lines = activeToday.take(3).map((t) => '- ${t.title}').join('\n');
+      final primary = activeToday.isEmpty ? null : activeToday.first;
 
       await HomeWidget.saveWidgetData<String>(
         'widget_date',
@@ -45,6 +48,14 @@ class HomeWidgetService {
         activeToday.length,
       );
       await HomeWidget.saveWidgetData<String>('widget_todo_lines', lines);
+      await HomeWidget.saveWidgetData<String>(
+        'widget_todo_primary_id',
+        primary?.id ?? '',
+      );
+      await HomeWidget.saveWidgetData<String>(
+        'widget_todo_primary_title',
+        primary?.title ?? '',
+      );
       await _refreshWidget();
     } catch (_) {
       // Ignore when widget host is unavailable.
@@ -60,5 +71,15 @@ class HomeWidgetService {
     } catch (_) {
       // Ignore when widget host is unavailable.
     }
+  }
+
+  static String? extractCompleteTodoId(Uri? uri) {
+    if (uri == null) return null;
+    if (uri.host != widgetCompleteHost) return null;
+    if (uri.path != widgetCompletePath) return null;
+
+    final id = uri.queryParameters['id']?.trim();
+    if (id == null || id.isEmpty) return null;
+    return id;
   }
 }

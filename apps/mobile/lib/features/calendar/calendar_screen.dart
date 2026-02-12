@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -22,6 +24,10 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   static const _prefKeyIcsUrl = 'ics_feed_url';
+  static const _prefKeyIcsCacheEvents = 'ics_cache_events_v1';
+  static const _prefKeyIcsLastSuccessAt = 'ics_last_success_at_v1';
+  static const _prefKeyIcsLastFailureAt = 'ics_last_failure_at_v1';
+  static const _prefKeyIcsLastFailureReason = 'ics_last_failure_reason_v1';
 
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
@@ -29,12 +35,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _loading = false;
   String? _message;
   DateTime? _lastIcsSyncAt;
+  DateTime? _lastIcsFailureAt;
+  String? _lastIcsFailureReason;
   List<IcsEvent> _icsEvents = [];
 
   @override
   void initState() {
     super.initState();
-    _loadIcs();
+    _bootstrapIcs();
   }
 
   String _two(int x) => x.toString().padLeft(2, '0');
@@ -60,6 +68,112 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _bootstrapIcs() async {
+    await _restoreCachedIcs();
+    await _loadIcs();
+  }
+
+  DateTime? _parseIsoLocal(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    return DateTime.tryParse(raw)?.toLocal();
+  }
+
+  String _encodeCacheEvents(List<IcsEvent> events) {
+    final payload = events
+        .map(
+          (e) => {
+            'uid': e.uid,
+            'summary': e.summary,
+            'start': e.start.toIso8601String(),
+            'end': e.end?.toIso8601String(),
+            'allDay': e.allDay,
+          },
+        )
+        .toList();
+    return jsonEncode(payload);
+  }
+
+  List<IcsEvent> _decodeCacheEvents(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+
+      final events = <IcsEvent>[];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+
+        final uid = (item['uid'] as String?)?.trim() ?? '';
+        final summary = (item['summary'] as String?)?.trim() ?? '';
+        final startRaw = item['start'] as String?;
+        final endRaw = item['end'] as String?;
+        final allDay = item['allDay'] == true;
+        final start = _parseIsoLocal(startRaw);
+        if (start == null) continue;
+
+        events.add(
+          IcsEvent(
+            uid: uid.isEmpty ? '${summary}_${start.toIso8601String()}' : uid,
+            summary: summary.isEmpty ? '(No title)' : summary,
+            start: start,
+            end: _parseIsoLocal(endRaw),
+            allDay: allDay,
+          ),
+        );
+      }
+      events.sort((a, b) => a.start.compareTo(b.start));
+      return events;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _restoreCachedIcs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedEvents = _decodeCacheEvents(
+      prefs.getString(_prefKeyIcsCacheEvents),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _icsEvents = cachedEvents;
+      _lastIcsSyncAt = _parseIsoLocal(
+        prefs.getString(_prefKeyIcsLastSuccessAt),
+      );
+      _lastIcsFailureAt = _parseIsoLocal(
+        prefs.getString(_prefKeyIcsLastFailureAt),
+      );
+      _lastIcsFailureReason = prefs.getString(_prefKeyIcsLastFailureReason);
+    });
+  }
+
+  Future<void> _saveCacheSuccess({
+    required SharedPreferences prefs,
+    required List<IcsEvent> events,
+    required DateTime now,
+  }) async {
+    await prefs.setString(_prefKeyIcsCacheEvents, _encodeCacheEvents(events));
+    await prefs.setString(_prefKeyIcsLastSuccessAt, now.toIso8601String());
+    await prefs.remove(_prefKeyIcsLastFailureAt);
+    await prefs.remove(_prefKeyIcsLastFailureReason);
+  }
+
+  Future<void> _saveCacheFailure({
+    required SharedPreferences prefs,
+    required DateTime now,
+    required String reason,
+  }) async {
+    await prefs.setString(_prefKeyIcsLastFailureAt, now.toIso8601String());
+    await prefs.setString(_prefKeyIcsLastFailureReason, reason);
+  }
+
+  Future<void> _clearCache(SharedPreferences prefs) async {
+    await prefs.remove(_prefKeyIcsCacheEvents);
+    await prefs.remove(_prefKeyIcsLastSuccessAt);
+    await prefs.remove(_prefKeyIcsLastFailureAt);
+    await prefs.remove(_prefKeyIcsLastFailureReason);
+  }
+
   Future<void> _loadIcs() async {
     final prefs = await SharedPreferences.getInstance();
     final url = (prefs.getString(_prefKeyIcsUrl) ?? '').trim();
@@ -67,13 +181,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     setState(() {
       _loading = true;
       _message = null;
-      _icsEvents = [];
     });
 
     if (url.isEmpty) {
+      await _clearCache(prefs);
       await HomeWidgetService.syncIcsTodayCount(const []);
       setState(() {
         _loading = false;
+        _icsEvents = [];
+        _lastIcsSyncAt = null;
+        _lastIcsFailureAt = null;
+        _lastIcsFailureReason = null;
         _message = 'School calendar is not connected.';
       });
       return;
@@ -87,22 +205,35 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       final events = parseIcs(resp.body)
         ..sort((a, b) => a.start.compareTo(b.start));
+      final now = DateTime.now();
 
       await HomeWidgetService.syncIcsTodayCount(events.map((e) => e.start));
+      await _saveCacheSuccess(prefs: prefs, events: events, now: now);
 
       setState(() {
         _icsEvents = events;
         _loading = false;
-        _lastIcsSyncAt = DateTime.now();
+        _lastIcsSyncAt = now;
+        _lastIcsFailureAt = null;
+        _lastIcsFailureReason = null;
         if (events.isEmpty) {
           _message = 'Connected, but no events found.';
         }
       });
     } catch (e) {
-      await HomeWidgetService.syncIcsTodayCount(const []);
+      final now = DateTime.now();
+      await _saveCacheFailure(prefs: prefs, now: now, reason: '$e');
+      await HomeWidgetService.syncIcsTodayCount(
+        _icsEvents.map((event) => event.start),
+      );
+
       setState(() {
         _loading = false;
-        _message = 'Failed to load school calendar: $e';
+        _lastIcsFailureAt = now;
+        _lastIcsFailureReason = '$e';
+        _message = _icsEvents.isEmpty
+            ? 'Failed to load school calendar: $e'
+            : 'Sync failed. Showing cached events.';
       });
     }
   }
@@ -175,9 +306,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Chip(
-                      label: Text(isTodo ? 'My Todo' : 'School ICS'),
-                    ),
+                    Chip(label: Text(isTodo ? 'My Todo' : 'School ICS')),
                     if (isTodo && todo != null) ...[
                       const SizedBox(width: 8),
                       Chip(
@@ -309,10 +438,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(height: 2),
                 Text(
                   item.subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: cm.textTertiary,
-                  ),
+                  style: TextStyle(fontSize: 12, color: cm.textTertiary),
                 ),
               ],
             ),
@@ -404,9 +530,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           calendarStyle: CalendarStyle(
                             defaultTextStyle: TextStyle(color: cm.textPrimary),
                             weekendTextStyle: TextStyle(color: cm.textPrimary),
-                            outsideTextStyle: TextStyle(
-                              color: cm.textHint,
-                            ),
+                            outsideTextStyle: TextStyle(color: cm.textHint),
                             markerDecoration: const BoxDecoration(
                               color: Color(0xFF8B5CF6),
                               shape: BoxShape.circle,
@@ -467,14 +591,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       else
-                        Text(
-                          _lastIcsSyncAt == null
-                              ? 'Not synced'
-                              : '${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: cm.textHint,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              _lastIcsSyncAt == null
+                                  ? 'Last success: none'
+                                  : 'Last success: ${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: cm.textHint,
+                              ),
+                            ),
+                            if (_lastIcsFailureAt != null)
+                              Text(
+                                'Last failure: ${_fmtYmd(_lastIcsFailureAt!)} ${_fmtHm(_lastIcsFailureAt!)}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: cm.deleteBg,
+                                ),
+                              ),
+                          ],
                         ),
                       const SizedBox(width: 6),
                       IconButton(
@@ -491,14 +628,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        _message!,
-                        style: TextStyle(
-                          color: _message!.startsWith('Failed')
-                              ? cm.deleteBg
-                              : cm.textTertiary,
-                          fontSize: 12,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _message!,
+                            style: TextStyle(
+                              color:
+                                  _message!.startsWith('Failed') ||
+                                      _message!.startsWith('Sync failed')
+                                  ? cm.deleteBg
+                                  : cm.textTertiary,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (_lastIcsFailureReason != null &&
+                              (_message!.startsWith('Failed') ||
+                                  _message!.startsWith('Sync failed')))
+                            Text(
+                              'Reason: ${_lastIcsFailureReason!}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: cm.textHint,
+                                fontSize: 11,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),

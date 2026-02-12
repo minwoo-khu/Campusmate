@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../app/change_history_service.dart';
 import '../../app/change_history_sheet.dart';
 import '../../app/theme.dart';
+import '../todo/todo_model.dart';
 import 'course.dart';
 import 'course_add_screen.dart';
 import 'course_detail_screen.dart';
@@ -124,6 +125,92 @@ class _CourseScreenState extends State<CourseScreen> {
     return total;
   }
 
+  int _countLinkedTodosForNext7Days(Course course, List<TodoItem> todos) {
+    final name = course.name.trim().toLowerCase();
+    if (name.isEmpty) return 0;
+
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 7));
+
+    return todos.where((todo) {
+      if (todo.completed) return false;
+      final due = todo.dueAt;
+      if (due == null) return false;
+      if (due.isBefore(start) || !due.isBefore(end)) return false;
+      return todo.title.toLowerCase().contains(name);
+    }).length;
+  }
+
+  String? _latestMaterialTitleForCourse(
+    Course course,
+    List<CourseMaterial> materials,
+  ) {
+    final courseMaterials =
+        materials.where((m) => m.courseId == course.id).toList()
+          ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
+    if (courseMaterials.isEmpty) return null;
+    return courseMaterials.first.fileName;
+  }
+
+  String? _latestMemoPreviewForCourse(
+    Course course,
+    List<CourseMaterial> materials,
+    Box<String> noteBox,
+    Box<String> pageMemoBox,
+  ) {
+    final courseMaterials =
+        materials.where((m) => m.courseId == course.id).toList()
+          ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
+
+    for (final material in courseMaterials) {
+      final key = material.key;
+      if (key is! int) continue;
+
+      final note = noteBox.get('m:$key')?.trim();
+      if (note != null && note.isNotEmpty) {
+        return note;
+      }
+
+      final raw = pageMemoBox.get('m:$key:pages');
+      if (raw == null || raw.trim().isEmpty) continue;
+
+      try {
+        final parsed = jsonDecode(raw);
+        if (parsed is! Map<String, dynamic>) continue;
+
+        final pageEntries = parsed.entries.toList()
+          ..sort((a, b) {
+            final ap = int.tryParse(a.key) ?? 0;
+            final bp = int.tryParse(b.key) ?? 0;
+            return ap.compareTo(bp);
+          });
+
+        for (final entry in pageEntries) {
+          final value = entry.value;
+          if (value is String) {
+            final text = value.trim();
+            if (text.isNotEmpty) return text;
+            continue;
+          }
+          if (value is Map<String, dynamic>) {
+            final text = (value['text'] as String?)?.trim() ?? '';
+            if (text.isNotEmpty) return text;
+          }
+        }
+      } catch (_) {
+        // Ignore malformed memo payload.
+      }
+    }
+
+    return null;
+  }
+
+  String _trimPreview(String text, {int max = 64}) {
+    if (text.length <= max) return text;
+    return '${text.substring(0, max)}...';
+  }
+
   Future<void> _deleteCourseWithUndo(
     BuildContext context,
     Course course,
@@ -179,6 +266,7 @@ class _CourseScreenState extends State<CourseScreen> {
     final materialBox = Hive.box<CourseMaterial>('course_materials');
     final noteBox = Hive.box<String>('material_notes');
     final pageMemoBox = Hive.box<String>('material_page_memos');
+    final todoBox = Hive.box<TodoItem>('todos');
 
     return Scaffold(
       backgroundColor: cm.scaffoldBg,
@@ -191,6 +279,7 @@ class _CourseScreenState extends State<CourseScreen> {
               materialBox.listenable(),
               noteBox.listenable(),
               pageMemoBox.listenable(),
+              todoBox.listenable(),
               _searchController,
             ]),
             builder: (context, _) {
@@ -199,6 +288,7 @@ class _CourseScreenState extends State<CourseScreen> {
               final courses = courseBox.values.toList()
                 ..sort((a, b) => a.name.compareTo(b.name));
               final materials = materialBox.values.toList();
+              final todos = todoBox.values.toList();
 
               final filtered = query.isEmpty
                   ? courses
@@ -260,6 +350,111 @@ class _CourseScreenState extends State<CourseScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+                  if (query.isEmpty && courses.isNotEmpty) ...[
+                    Text(
+                      'Course dashboard',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: cm.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 138,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: courses.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        itemBuilder: (_, i) {
+                          final course = courses[i];
+                          final linkedTodos = _countLinkedTodosForNext7Days(
+                            course,
+                            todos,
+                          );
+                          final latestMaterial = _latestMaterialTitleForCourse(
+                            course,
+                            materials,
+                          );
+                          final latestMemo = _latestMemoPreviewForCourse(
+                            course,
+                            materials,
+                            noteBox,
+                            pageMemoBox,
+                          );
+
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => CourseDetailScreen(
+                                    courseId: course.id,
+                                    courseName: course.name,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 260,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: cm.cardBg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: cm.cardBorder),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    course.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: cm.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Linked todos (7d): $linkedTodos',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: cm.navActive,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Latest PDF: ${latestMaterial ?? 'No PDF yet'}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: cm.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Recent memo: ${latestMemo == null ? 'No memo yet' : _trimPreview(latestMemo)}',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: cm.textTertiary,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   Expanded(
                     child: filtered.isEmpty
                         ? ListView(
@@ -341,9 +536,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                     decoration: BoxDecoration(
                                       color: cm.cardBg,
                                       borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(
-                                        color: cm.cardBorder,
-                                      ),
+                                      border: Border.all(color: cm.cardBorder),
                                     ),
                                     child: Column(
                                       crossAxisAlignment:
