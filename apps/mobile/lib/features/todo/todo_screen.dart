@@ -232,7 +232,7 @@ class _TodoScreenState extends State<TodoScreen> {
                       labelStyle: TextStyle(
                         color: _filter == _TodoViewFilter.done ? Colors.white : Colors.black,
                       ),
-                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.done),
+                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.completed),
                     ),
                   ],
                 ),
