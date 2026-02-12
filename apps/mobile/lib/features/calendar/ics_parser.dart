@@ -88,6 +88,10 @@ _DtInfo _parseDt(String raw) {
   }
 
   // 일반: 20260128T090000Z or 20260128T090000
+  if (raw.length < 15 || raw[8] != 'T') {
+    throw FormatException('Invalid DTSTART/DTEND format: $raw');
+  }
+
   final hasZ = raw.endsWith('Z');
   final cleaned = hasZ ? raw.substring(0, raw.length - 1) : raw;
 
@@ -98,9 +102,11 @@ _DtInfo _parseDt(String raw) {
   final mm = int.parse(cleaned.substring(11, 13));
   final ss = int.parse(cleaned.substring(13, 15));
 
-  final dt = DateTime(y, m, d, hh, mm, ss);
-  // Z면 UTC로 보고 local로 변환
-  return _DtInfo(hasZ ? dt.toUtc().toLocal() : dt, false);
+  // Z면 UTC 기준이므로 DateTime.utc로 정확히 파싱 후 local로 변환
+  final dt = hasZ
+      ? DateTime.utc(y, m, d, hh, mm, ss).toLocal()
+      : DateTime(y, m, d, hh, mm, ss);
+  return _DtInfo(dt, false);
 }
 
 /// iCal line folding 처리(다음 줄이 공백/탭으로 시작하면 이어붙임)
