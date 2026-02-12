@@ -27,6 +27,8 @@ Future<void> showChangeHistorySheet(BuildContext context) {
             return tr('반복 할 일 생성', 'Recurring todo scheduled');
           case 'Todo updated':
             return tr('할 일 수정', 'Todo updated');
+          case 'Todo snoozed':
+            return tr('할 일 미루기', 'Todo snoozed');
           case 'Todo deleted':
             return tr('할 일 삭제', 'Todo deleted');
           case 'Todo restored':
@@ -45,6 +47,10 @@ Future<void> showChangeHistorySheet(BuildContext context) {
             return tr('PDF 삭제', 'PDF deleted');
           case 'PDF restored':
             return tr('PDF 복원', 'PDF restored');
+          case 'Backup exported':
+            return tr('백업 내보내기', 'Backup exported');
+          case 'Backup restored':
+            return tr('백업 복원', 'Backup restored');
           default:
             return action;
         }
@@ -78,7 +84,7 @@ Future<void> showChangeHistorySheet(BuildContext context) {
               ),
             );
           },
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          separatorBuilder: (_, separatorIndex) => const Divider(height: 1),
           itemCount: entries.length,
         ),
       );

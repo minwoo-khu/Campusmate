@@ -371,7 +371,8 @@ class _CourseScreenState extends State<CourseScreen> {
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         itemCount: courses.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
+                        separatorBuilder: (_, separatorIndex) =>
+                            const SizedBox(width: 10),
                         itemBuilder: (_, i) {
                           final course = courses[i];
                           final linkedTodos = _countLinkedTodosForNext7Days(

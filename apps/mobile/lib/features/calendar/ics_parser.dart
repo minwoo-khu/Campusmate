@@ -43,7 +43,7 @@ List<IcsEvent> parseIcs(String icsText) {
 
         events.add(
           IcsEvent(
-            uid: uid.isEmpty ? '${summary}_${dtStartRaw}' : uid,
+            uid: uid.isEmpty ? '${summary}_$dtStartRaw' : uid,
             summary: summary.isEmpty ? '(No title)' : summary,
             start: startInfo.dateTime,
             end: endInfo?.dateTime,

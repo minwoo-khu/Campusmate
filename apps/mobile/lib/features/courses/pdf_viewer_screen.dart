@@ -77,8 +77,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         // ✅ 구버전 호환: {"3":"텍스트"}
         if (v is String) {
           final text = v.trim();
-          if (text.isNotEmpty)
+          if (text.isNotEmpty) {
             out[p] = _PageMemoData(text: text, tags: const []);
+          }
           continue;
         }
 
@@ -463,7 +464,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                         ? const Center(child: Text('조건에 맞는 메모가 없어.'))
                         : ListView.separated(
                             itemCount: pages.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, separatorIndex) =>
                                 const Divider(height: 1),
                             itemBuilder: (_, i) {
                               final p = pages[i];

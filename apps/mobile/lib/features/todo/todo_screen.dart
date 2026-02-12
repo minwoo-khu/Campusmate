@@ -110,18 +110,16 @@ class _TodoScreenState extends State<TodoScreen> {
     final tomorrow = today.add(const Duration(days: 1));
     final day = _ymd(dt);
 
-    if (_sameYmd(day, today))
+    if (_sameYmd(day, today)) {
       return _t('오늘 ${_fmtHm(dt)}', 'Today ${_fmtHm(dt)}');
+    }
     if (_sameYmd(day, tomorrow)) {
       return _t('내일 ${_fmtHm(dt)}', 'Tomorrow ${_fmtHm(dt)}');
     }
     return '${_fmtYmd(dt)} ${_fmtHm(dt)}';
   }
 
-  Future<DateTime?> _pickDateTime(
-    BuildContext context,
-    DateTime initial,
-  ) async {
+  Future<DateTime?> _pickDateTime(DateTime initial) async {
     final pickedDate = await showDatePicker(
       context: context,
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
@@ -129,6 +127,7 @@ class _TodoScreenState extends State<TodoScreen> {
       initialDate: DateTime(initial.year, initial.month, initial.day),
     );
     if (pickedDate == null) return null;
+    if (!mounted) return null;
 
     final pickedTime = await showTimePicker(
       context: context,
@@ -394,7 +393,7 @@ class _TodoScreenState extends State<TodoScreen> {
 
   Future<void> _pickQuickReminder() async {
     final base = _quickRemindAt ?? _quickDueAt ?? DateTime.now();
-    final picked = await _pickDateTime(context, base);
+    final picked = await _pickDateTime(base);
     if (picked == null) return;
 
     if (_quickDueAt != null && picked.isAfter(_quickDueAt!)) {
@@ -416,25 +415,24 @@ class _TodoScreenState extends State<TodoScreen> {
     setState(() => _quickRemindAt = picked);
   }
 
-  Future<void> _setReminder(BuildContext context, TodoItem item) async {
+  Future<void> _setReminder(TodoItem item) async {
     final base = item.remindAt ?? item.dueAt ?? DateTime.now();
-    final picked = await _pickDateTime(context, base);
+    final picked = await _pickDateTime(base);
     if (picked == null) return;
+    if (!mounted) return;
 
     final due = item.dueAt;
     if (due != null && picked.isAfter(due)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                '리마인더는 마감 이후로 설정할 수 없습니다.',
-                'Reminder cannot be later than due time.',
-              ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              '리마인더는 마감 이후로 설정할 수 없습니다.',
+              'Reminder cannot be later than due time.',
             ),
           ),
-        );
-      }
+        ),
+      );
       return;
     }
 
@@ -445,6 +443,40 @@ class _TodoScreenState extends State<TodoScreen> {
   Future<void> _clearReminder(TodoItem item) async {
     item.remindAt = null;
     await todoRepo.update(item);
+  }
+
+  Future<void> _snoozeReminder(TodoItem item, Duration by) async {
+    final now = DateTime.now();
+    final label = by == const Duration(minutes: 10)
+        ? _t('10분', '10m')
+        : _t('1시간', '1h');
+
+    if (item.completed) return;
+
+    var nextReminder = now.add(by);
+    final due = item.dueAt;
+    if (due != null && nextReminder.isAfter(due)) {
+      nextReminder = due;
+    }
+
+    item.remindAt = nextReminder;
+    await todoRepo.update(item, logAction: false);
+    await ChangeHistoryService.log(
+      'Todo snoozed',
+      detail: '${item.title} (+$label)',
+    );
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _t(
+            '"${item.title}" 리마인더를 $label 미뤘습니다.',
+            'Snoozed "${item.title}" by $label.',
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _openEdit(BuildContext context, TodoItem item) async {
@@ -820,9 +852,13 @@ class _TodoScreenState extends State<TodoScreen> {
                 } else if (menu == _TodoMenu.delete) {
                   await _deleteTodoWithUndo(item);
                 } else if (menu == _TodoMenu.setReminder) {
-                  await _setReminder(context, item);
+                  await _setReminder(item);
                 } else if (menu == _TodoMenu.clearReminder) {
                   await _clearReminder(item);
+                } else if (menu == _TodoMenu.snooze10m) {
+                  await _snoozeReminder(item, const Duration(minutes: 10));
+                } else if (menu == _TodoMenu.snooze1h) {
+                  await _snoozeReminder(item, const Duration(hours: 1));
                 }
               },
               itemBuilder: (_) => [
@@ -843,6 +879,16 @@ class _TodoScreenState extends State<TodoScreen> {
                   value: _TodoMenu.clearReminder,
                   enabled: item.remindAt != null,
                   child: Text(_t('리마인더 해제', 'Clear reminder')),
+                ),
+                PopupMenuItem(
+                  value: _TodoMenu.snooze10m,
+                  enabled: !item.completed,
+                  child: Text(_t('10분 미루기', 'Snooze 10m')),
+                ),
+                PopupMenuItem(
+                  value: _TodoMenu.snooze1h,
+                  enabled: !item.completed,
+                  child: Text(_t('1시간 미루기', 'Snooze 1h')),
                 ),
               ],
             ),
@@ -967,7 +1013,7 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 }
 
-enum _TodoMenu { edit, delete, setReminder, clearReminder }
+enum _TodoMenu { edit, delete, setReminder, clearReminder, snooze10m, snooze1h }
 
 enum _TodoViewFilter { all, active, completed }
 

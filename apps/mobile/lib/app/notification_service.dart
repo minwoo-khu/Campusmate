@@ -85,6 +85,10 @@ class NotificationService {
     await _plugin.cancel(id: notificationId);
   }
 
+  Future<void> cancelAll() async {
+    await _plugin.cancelAll();
+  }
+
   Future<void> scheduleTodo({
     required int notificationId,
     required String todoId,

@@ -127,7 +127,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 crossAxisCount: 6,
                 childAspectRatio: 1,
               ),
-              itemBuilder: (_, __) {
+              itemBuilder: (_, index) {
                 return Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: cm.gridBorder, width: 0.6),
@@ -238,7 +238,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
                           child: Image.file(
                             File(_imagePath!),
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                            errorBuilder: (context, error, stackTrace) =>
+                                _buildPlaceholder(),
                           ),
                         )
                       : _buildPlaceholder(),

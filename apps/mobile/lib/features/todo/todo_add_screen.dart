@@ -107,6 +107,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
       initialDate: DateTime(base.year, base.month, base.day),
     );
     if (pickedDate == null) return;
+    if (!mounted) return;
 
     final pickedTime = await showTimePicker(
       context: context,
@@ -121,20 +122,19 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
       pickedTime.hour,
       pickedTime.minute,
     );
+    if (!mounted) return;
 
     if (_dueAt != null && candidate.isAfter(_dueAt!)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.tr(
-                '리마인더는 마감 이전이어야 합니다.',
-                'Reminder must be before due time.',
-              ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              '리마인더는 마감 이전이어야 합니다.',
+              'Reminder must be before due time.',
             ),
           ),
-        );
-      }
+        ),
+      );
       return;
     }
 

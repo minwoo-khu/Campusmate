@@ -40,17 +40,25 @@ Future<void> main() async {
   runApp(const CampusMateApp());
 }
 
+abstract class CampusMateAppController {
+  ThemeMode get themeMode;
+  String get localeCode;
+  Future<void> setThemeMode(ThemeMode mode);
+  Future<void> setLocaleCode(String code);
+}
+
 class CampusMateApp extends StatefulWidget {
   const CampusMateApp({super.key});
 
-  static _CampusMateAppState? of(BuildContext context) =>
+  static CampusMateAppController? of(BuildContext context) =>
       context.findAncestorStateOfType<_CampusMateAppState>();
 
   @override
   State<CampusMateApp> createState() => _CampusMateAppState();
 }
 
-class _CampusMateAppState extends State<CampusMateApp> {
+class _CampusMateAppState extends State<CampusMateApp>
+    implements CampusMateAppController {
   static const _prefKeyThemeMode = 'theme_mode';
   static const _prefKeyLocaleCode = 'locale_code';
 
@@ -119,12 +127,14 @@ class _CampusMateAppState extends State<CampusMateApp> {
     AppLink.openTodo(target.id);
   }
 
+  @override
   Future<void> setThemeMode(ThemeMode mode) async {
     setState(() => _themeMode = mode);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefKeyThemeMode, _themeModeToString(mode));
   }
 
+  @override
   Future<void> setLocaleCode(String code) async {
     final locale = _parseLocale(code);
     setState(() => _locale = locale);
@@ -132,7 +142,9 @@ class _CampusMateAppState extends State<CampusMateApp> {
     await prefs.setString(_prefKeyLocaleCode, locale.languageCode);
   }
 
+  @override
   ThemeMode get themeMode => _themeMode;
+  @override
   String get localeCode => _locale.languageCode;
 
   static ThemeMode _parseThemeMode(String value) {

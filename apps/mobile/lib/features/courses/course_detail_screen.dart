@@ -185,7 +185,7 @@ class CourseDetailScreen extends StatelessWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(12),
             itemCount: materials.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (_, separatorIndex) => const Divider(height: 1),
             itemBuilder: (_, i) {
               final material = materials[i];
               final dateStr = material.addedAt.toLocal().toString().split(

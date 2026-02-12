@@ -729,7 +729,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 child: _buildEventCard(item),
                               );
                             },
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, separatorIndex) =>
                                 const SizedBox(height: 10),
                             itemCount: selectedItems.length,
                           ),
