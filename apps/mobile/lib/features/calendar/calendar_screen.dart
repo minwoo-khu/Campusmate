@@ -273,7 +273,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: RefreshIndicator(
         onRefresh: _loadIcs,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -285,12 +285,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
-                  IconButton(
+                  IconButton.filledTonal(
                     onPressed: _openIcsSettings,
                     icon: const Icon(Icons.link),
                     tooltip: 'School calendar (ICS)',
                   ),
-                  IconButton(
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
                     onPressed: _loadIcs,
                     icon: const Icon(Icons.refresh),
                     tooltip: 'Refresh',
@@ -298,17 +299,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ],
               ),
 
-              Row(
-                children: [
-                  const Icon(Icons.sync, size: 16, color: Colors.black54),
-                  const SizedBox(width: 6),
-                  Text(
-                    _lastIcsSyncAt == null
-                        ? 'School calendar not synced yet'
-                        : 'Last sync: ${_fmtSyncLabel(_lastIcsSyncAt!)}',
-                    style: const TextStyle(color: Colors.black54),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.sync, size: 16, color: Colors.black54),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _lastIcsSyncAt == null
+                              ? 'School calendar not synced yet'
+                              : 'Last sync: ${_fmtSyncLabel(_lastIcsSyncAt!)}',
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
 
               if (_loading) const LinearProgressIndicator(),
@@ -384,30 +392,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       children: [
                         _buildTodayPanel(box),
 
-                        TableCalendar<_CalItem>(
-                          firstDay: DateTime.utc(2000, 1, 1),
-                          lastDay: DateTime.utc(2100, 12, 31),
-                          focusedDay: _focusedDay,
-                          calendarFormat: _format,
-                          selectedDayPredicate: (day) =>
-                              isSameDay(day, _selectedDay),
-                          onDaySelected: (selectedDay, focusedDay) {
-                            setState(() {
-                              _selectedDay = selectedDay;
-                              _focusedDay = focusedDay;
-                            });
-                          },
-                          onFormatChanged: (format) {
-                            setState(() => _format = format);
-                          },
-                          eventLoader: itemsForDay, // dots/markers
-                          headerStyle: const HeaderStyle(
-                            titleCentered: true,
-                            formatButtonVisible: true,
+                        const SizedBox(height: 10),
+
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: TableCalendar<_CalItem>(
+                              firstDay: DateTime.utc(2000, 1, 1),
+                              lastDay: DateTime.utc(2100, 12, 31),
+                              focusedDay: _focusedDay,
+                              calendarFormat: _format,
+                              selectedDayPredicate: (day) =>
+                                  isSameDay(day, _selectedDay),
+                              onDaySelected: (selectedDay, focusedDay) {
+                                setState(() {
+                                  _selectedDay = selectedDay;
+                                  _focusedDay = focusedDay;
+                                });
+                              },
+                              onFormatChanged: (format) {
+                                setState(() => _format = format);
+                              },
+                              eventLoader: itemsForDay, // dots/markers
+                              headerStyle: const HeaderStyle(
+                                titleCentered: true,
+                                formatButtonVisible: true,
+                              ),
+                            ),
                           ),
                         ),
 
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
@@ -420,24 +435,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         Expanded(
                           child: selectedItems.isEmpty
                               ? const Center(child: Text('No events on this day'))
-                              : ListView.separated(
+                              : ListView.builder(
+                                  padding: const EdgeInsets.only(bottom: 120),
                                   itemCount: selectedItems.length,
-                                  separatorBuilder: (_, __) =>
-                                      const Divider(height: 1),
                                   itemBuilder: (_, i) {
                                     final it = selectedItems[i];
                                     final tag =
                                         it.source == _Source.todo ? 'TODO' : 'SCHOOL';
 
-                                    return ListTile(
-                                      leading: it.source == _Source.todo
-                                          ? const Icon(Icons.check_circle_outline)
-                                          : const Icon(Icons.event_note),
-                                      title: Text(it.title),
-                                      subtitle: Text('$tag • ${it.subtitle}'),
-                                      trailing: it.source == _Source.todo && it.done
-                                          ? const Icon(Icons.check, color: Colors.green)
-                                          : null,
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Card(
+                                        child: ListTile(
+                                          leading: it.source == _Source.todo
+                                              ? const Icon(Icons.check_circle_outline)
+                                              : const Icon(Icons.event_note),
+                                          title: Text(it.title),
+                                          subtitle: Text('$tag • ${it.subtitle}'),
+                                          trailing: it.source == _Source.todo && it.done
+                                              ? const Icon(Icons.check, color: Colors.green)
+                                              : null,
+                                        ),
+                                      ),
                                     );
                                   },
                                 ),

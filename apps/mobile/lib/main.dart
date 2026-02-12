@@ -68,10 +68,22 @@ class CampusMateApp extends StatelessWidget {
           ),
         ),
         chipTheme: base.chipTheme.copyWith(
-          side: BorderSide.none,
-          selectedColor: Colors.black,
-          backgroundColor: Colors.white,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          side: const BorderSide(color: Color(0xFFE5E7EB)),
+          color: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return Colors.black;
+            }
+            return Colors.white;
+          }),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF111827),
+          ),
+          secondaryLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+          ),
+          checkmarkColor: Colors.white,
         ),
         dividerTheme: const DividerThemeData(color: Color(0xFFE5E7EB)),
       ),
