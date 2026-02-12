@@ -66,19 +66,42 @@ class NotificationService {
       },
     );
 
+    await requestPermissions();
+
+    _inited = true;
+  }
+
+  Future<bool> requestPermissions() async {
+    var granted = true;
+
     final androidImpl = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >();
-    await androidImpl?.requestNotificationsPermission();
+    if (androidImpl != null) {
+      final enabled = await androidImpl.areNotificationsEnabled();
+      if (enabled != true) {
+        final requested = await androidImpl.requestNotificationsPermission();
+        granted = (requested ?? false) && granted;
+      }
+    }
 
     final iosImpl = _plugin
         .resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin
         >();
-    await iosImpl?.requestPermissions(alert: true, badge: true, sound: true);
+    if (iosImpl != null) {
+      final requested = await iosImpl.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      if (requested != null) {
+        granted = requested && granted;
+      }
+    }
 
-    _inited = true;
+    return granted;
   }
 
   Future<void> cancel(int notificationId) async {
@@ -95,9 +118,12 @@ class NotificationService {
     required String title,
     required DateTime remindAt,
   }) async {
-    if (remindAt.isBefore(DateTime.now())) return;
+    final now = DateTime.now();
+    final effectiveRemindAt = remindAt.isAfter(now)
+        ? remindAt
+        : now.add(const Duration(seconds: 5));
 
-    final scheduled = tz.TZDateTime.from(remindAt, tz.local);
+    final scheduled = tz.TZDateTime.from(effectiveRemindAt, tz.local);
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(

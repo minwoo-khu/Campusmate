@@ -206,7 +206,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                   Text(
                     _t('시간표', 'Timetable'),
                     style: TextStyle(
-                      fontSize: 34,
+                      fontSize: 32,
                       fontWeight: FontWeight.w800,
                       color: cm.textPrimary,
                     ),

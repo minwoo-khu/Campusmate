@@ -6,7 +6,9 @@ import '../features/courses/course_screen.dart';
 import '../features/timetable/timetable_screen.dart';
 import '../features/todo/todo_screen.dart';
 import 'app_link.dart';
+import 'home_screen.dart';
 import 'l10n.dart';
+import 'notification_service.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
 
@@ -19,8 +21,15 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   static const _prefKeyStartTab = 'start_tab_index';
+  static const _prefKeyStartTabMigratedV2 = 'start_tab_home_migrated_v2';
 
-  int _currentIndex = 0;
+  static const _homeTab = 0;
+  static const _todoTab = 1;
+  static const _calendarTab = 2;
+  static const _timetableTab = 3;
+  static const _coursesTab = 4;
+
+  int _currentIndex = _homeTab;
   bool _loaded = false;
 
   final ValueNotifier<String?> _todoLink = AppLink.todoToOpen;
@@ -30,6 +39,9 @@ class _RootShellState extends State<RootShell> {
     super.initState();
     _todoLink.addListener(_onTodoDeepLink);
     _loadStartTab();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.I.requestPermissions();
+    });
   }
 
   @override
@@ -38,21 +50,40 @@ class _RootShellState extends State<RootShell> {
     super.dispose();
   }
 
+  void _dismissKeyboard() {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus != null) {
+      focus.unfocus();
+    }
+  }
+
   void _onTodoDeepLink() {
     final id = _todoLink.value;
     if (id == null) return;
 
     if (mounted) {
-      setState(() => _currentIndex = 0);
+      setState(() => _currentIndex = _todoTab);
     }
   }
 
   Future<void> _loadStartTab() async {
     final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getInt(_prefKeyStartTab) ?? 0;
+
+    var saved = prefs.getInt(_prefKeyStartTab);
+    final migrated = prefs.getBool(_prefKeyStartTabMigratedV2) ?? false;
+
+    if (!migrated) {
+      if (saved != null) {
+        saved = (saved + 1).clamp(_todoTab, _coursesTab);
+        await prefs.setInt(_prefKeyStartTab, saved);
+      } else {
+        saved = _homeTab;
+      }
+      await prefs.setBool(_prefKeyStartTabMigratedV2, true);
+    }
 
     setState(() {
-      _currentIndex = saved.clamp(0, 3);
+      _currentIndex = (saved ?? _homeTab).clamp(_homeTab, _coursesTab);
       _loaded = true;
     });
   }
@@ -71,7 +102,7 @@ class _RootShellState extends State<RootShell> {
 
     if (selected != null) {
       await _setStartTab(selected);
-      setState(() => _currentIndex = selected);
+      setState(() => _currentIndex = selected.clamp(_homeTab, _coursesTab));
     }
   }
 
@@ -84,6 +115,12 @@ class _RootShellState extends State<RootShell> {
     final cm = context.cmColors;
 
     final tabs = [
+      HomeScreen(
+        onOpenSettings: _openSettings,
+        onNavigateToTab: (index) {
+          setState(() => _currentIndex = index.clamp(_homeTab, _coursesTab));
+        },
+      ),
       TodoScreen(highlightTodoIdListenable: _todoLink),
       const CalendarScreen(),
       const TimetableScreen(),
@@ -91,7 +128,11 @@ class _RootShellState extends State<RootShell> {
     ];
 
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: tabs),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _dismissKeyboard,
+        child: IndexedStack(index: _currentIndex, children: tabs),
+      ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
@@ -112,11 +153,21 @@ class _RootShellState extends State<RootShell> {
             children: [
               Expanded(
                 child: _NavItem(
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home,
+                  label: context.tr('홈', 'Home'),
+                  selected: _currentIndex == _homeTab,
+                  onTap: () => setState(() => _currentIndex = _homeTab),
+                  onLongPress: _openSettings,
+                ),
+              ),
+              Expanded(
+                child: _NavItem(
                   icon: Icons.check_circle_outline,
                   activeIcon: Icons.check_circle,
                   label: context.tr('할 일', 'Todo'),
-                  selected: _currentIndex == 0,
-                  onTap: () => setState(() => _currentIndex = 0),
+                  selected: _currentIndex == _todoTab,
+                  onTap: () => setState(() => _currentIndex = _todoTab),
                   onLongPress: _openSettings,
                 ),
               ),
@@ -125,8 +176,8 @@ class _RootShellState extends State<RootShell> {
                   icon: Icons.calendar_month_outlined,
                   activeIcon: Icons.calendar_month,
                   label: context.tr('캘린더', 'Calendar'),
-                  selected: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
+                  selected: _currentIndex == _calendarTab,
+                  onTap: () => setState(() => _currentIndex = _calendarTab),
                   onLongPress: _openSettings,
                 ),
               ),
@@ -135,8 +186,8 @@ class _RootShellState extends State<RootShell> {
                   icon: Icons.image_outlined,
                   activeIcon: Icons.image,
                   label: context.tr('시간표', 'Timetable'),
-                  selected: _currentIndex == 2,
-                  onTap: () => setState(() => _currentIndex = 2),
+                  selected: _currentIndex == _timetableTab,
+                  onTap: () => setState(() => _currentIndex = _timetableTab),
                   onLongPress: _openSettings,
                 ),
               ),
@@ -145,8 +196,8 @@ class _RootShellState extends State<RootShell> {
                   icon: Icons.menu_book_outlined,
                   activeIcon: Icons.menu_book,
                   label: context.tr('강의', 'Courses'),
-                  selected: _currentIndex == 3,
-                  onTap: () => setState(() => _currentIndex = 3),
+                  selected: _currentIndex == _coursesTab,
+                  onTap: () => setState(() => _currentIndex = _coursesTab),
                   onLongPress: _openSettings,
                 ),
               ),

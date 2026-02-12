@@ -314,7 +314,7 @@ class _CourseScreenState extends State<CourseScreen> {
                       Text(
                         _t('내 강의', 'Courses'),
                         style: TextStyle(
-                          fontSize: 34,
+                          fontSize: 32,
                           fontWeight: FontWeight.w800,
                           color: cm.textPrimary,
                         ),

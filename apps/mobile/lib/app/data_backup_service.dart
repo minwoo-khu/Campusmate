@@ -317,7 +317,7 @@ class DataBackupService {
 
     final settingsRaw = _asMap(payload['settings']);
 
-    final startTab = (_toInt(settingsRaw[_prefStartTab]) ?? 0).clamp(0, 3);
+    final startTab = (_toInt(settingsRaw[_prefStartTab]) ?? 0).clamp(0, 4);
     final themeMode = settingsRaw[_prefThemeMode]?.toString() ?? 'system';
     final localeCode = settingsRaw[_prefLocaleCode]?.toString() ?? 'ko';
 

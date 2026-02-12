@@ -950,7 +950,7 @@ class _TodoScreenState extends State<TodoScreen> {
                       Text(
                         _t('할 일', 'Todo'),
                         style: TextStyle(
-                          fontSize: 34,
+                          fontSize: 32,
                           fontWeight: FontWeight.w800,
                           color: cm.textPrimary,
                           letterSpacing: -0.8,

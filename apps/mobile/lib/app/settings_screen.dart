@@ -59,12 +59,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _startTabLabel(int index) {
     switch (index) {
       case 0:
-        return _t('할 일', 'Todo');
+        return _t('홈', 'Home');
       case 1:
-        return _t('캘린더', 'Calendar');
+        return _t('할 일', 'Todo');
       case 2:
-        return _t('시간표', 'Timetable');
+        return _t('캘린더', 'Calendar');
       case 3:
+        return _t('시간표', 'Timetable');
+      case 4:
         return _t('강의', 'Courses');
       default:
         return '$index';
@@ -434,7 +436,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: List.generate(4, (index) {
+              children: List.generate(5, (index) {
                 return ChoiceChip(
                   label: Text(_startTabLabel(index)),
                   selected: _startTab == index,
