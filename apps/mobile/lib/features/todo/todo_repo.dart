@@ -1,5 +1,7 @@
 import 'package:hive/hive.dart';
 
+import '../../app/change_history_service.dart';
+import '../../app/home_widget_service.dart';
 import '../../app/notification_service.dart';
 import 'todo_model.dart';
 
@@ -68,7 +70,6 @@ class TodoRepo {
     } else if (remind != null) {
       nextRemind = _advance(remind, rule);
     } else {
-      // Recurring todos without time anchors are scheduled from today.
       nextDue = _advance(_endOfDay(DateTime.now()), rule);
     }
 
@@ -120,36 +121,69 @@ class TodoRepo {
     );
   }
 
-  Future<void> add(TodoItem item) async {
-    await _box.add(item);
-    await _syncReminder(item);
+  Future<void> _syncHomeWidget() async {
+    await HomeWidgetService.syncTodoSummary(_box.values);
   }
 
-  Future<void> toggle(TodoItem item) async {
+  Future<void> add(TodoItem item, {bool logAction = true}) async {
+    await _box.add(item);
+    await _syncReminder(item);
+    await _syncHomeWidget();
+
+    if (logAction) {
+      await ChangeHistoryService.log('Todo added', detail: item.title);
+    }
+  }
+
+  Future<void> toggle(TodoItem item, {bool logAction = true}) async {
     final wasCompleted = item.completed;
     item.completed = !item.completed;
     await item.save();
     await _syncReminder(item);
+    await _syncHomeWidget();
+
+    if (logAction) {
+      await ChangeHistoryService.log(
+        item.completed ? 'Todo completed' : 'Todo reopened',
+        detail: item.title,
+      );
+    }
 
     if (!wasCompleted && item.completed) {
       final next = _buildNextRecurringItem(item);
       if (next != null) {
-        await add(next);
+        await add(next, logAction: false);
+        await ChangeHistoryService.log(
+          'Recurring todo scheduled',
+          detail: next.title,
+        );
       }
     }
   }
 
-  Future<void> update(TodoItem item) async {
+  Future<void> update(TodoItem item, {bool logAction = true}) async {
     await item.save();
     await _syncReminder(item);
+    await _syncHomeWidget();
+
+    if (logAction) {
+      await ChangeHistoryService.log('Todo updated', detail: item.title);
+    }
   }
 
-  Future<void> remove(TodoItem item) async {
+  Future<void> remove(TodoItem item, {bool logAction = true}) async {
     final nid = item.notificationId;
     if (nid != null) {
       await NotificationService.I.cancel(nid);
     }
+
+    final title = item.title;
     await item.delete();
+    await _syncHomeWidget();
+
+    if (logAction) {
+      await ChangeHistoryService.log('Todo deleted', detail: title);
+    }
   }
 }
 

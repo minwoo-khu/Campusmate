@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'app/change_history_service.dart';
+import 'app/home_widget_service.dart';
 import 'app/root_shell.dart';
 import 'app/notification_service.dart';
 import 'features/todo/todo_model.dart';
 import 'features/courses/course_material.dart';
 import 'features/courses/course.dart';
-
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,11 +21,13 @@ Future<void> main() async {
   await Hive.openBox<TodoItem>('todos');
   await Hive.openBox<Course>('courses');
   await Hive.openBox<CourseMaterial>('course_materials');
-  await Hive.openBox<String>('material_notes');      
-  await Hive.openBox<String>('material_page_memos'); 
+  await Hive.openBox<String>('material_notes');
+  await Hive.openBox<String>('material_page_memos');
+  await Hive.openBox<String>(ChangeHistoryService.boxName);
 
   await Hive.openBox<int>('notif');
   await NotificationService.I.init();
+  await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
 
   runApp(const CampusMateApp());
 }

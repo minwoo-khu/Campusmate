@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../../app/change_history_service.dart';
 import 'course.dart';
 
 class CourseAddScreen extends StatefulWidget {
@@ -27,6 +28,7 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
 
     final box = Hive.box<Course>('courses');
     await box.add(Course(id: id, name: name));
+    await ChangeHistoryService.log('Course added', detail: name);
 
     if (!mounted) return;
     Navigator.of(context).pop(true);
@@ -50,10 +52,7 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
             const Spacer(),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: _save,
-                child: const Text('Save'),
-              ),
+              child: FilledButton(onPressed: _save, child: const Text('Save')),
             ),
           ],
         ),

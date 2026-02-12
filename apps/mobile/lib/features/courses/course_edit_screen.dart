@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/change_history_service.dart';
 import 'course.dart';
 
 class CourseEditScreen extends StatefulWidget {
@@ -30,6 +31,7 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
 
     widget.course.name = name;
     await widget.course.save();
+    await ChangeHistoryService.log('Course updated', detail: name);
 
     if (!mounted) return;
     Navigator.of(context).pop(true);
@@ -53,10 +55,7 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
             const Spacer(),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: _save,
-                child: const Text('Save'),
-              ),
+              child: FilledButton(onPressed: _save, child: const Text('Save')),
             ),
           ],
         ),

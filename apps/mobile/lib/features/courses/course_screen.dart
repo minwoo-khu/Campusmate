@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../app/change_history_service.dart';
+import '../../app/change_history_sheet.dart';
 import 'course.dart';
 import 'course_add_screen.dart';
 import 'course_detail_screen.dart';
@@ -37,33 +39,61 @@ class _CourseScreenState extends State<CourseScreen> {
     );
   }
 
-  Future<void> _deleteCourse(BuildContext context, Course course) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('강의를 삭제할까요?'),
-        content: Text(course.name),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('취소'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('삭제'),
-          ),
-        ],
-      ),
-    );
+  String _courseSearchBlob({
+    required Course course,
+    required List<CourseMaterial> materials,
+    required Box<String> noteBox,
+    required Box<String> pageMemoBox,
+  }) {
+    final parts = <String>[course.name];
 
-    if (ok != true) return;
+    final courseMaterials = materials.where((m) => m.courseId == course.id);
+    for (final material in courseMaterials) {
+      parts.add(material.fileName);
 
-    await course.delete();
-    if (!context.mounted) return;
+      final key = material.key;
+      if (key is! int) continue;
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('강의가 삭제되었습니다.')));
+      final overallNote = noteBox.get('m:$key');
+      if (overallNote != null && overallNote.trim().isNotEmpty) {
+        parts.add(overallNote);
+      }
+
+      final pageRaw = pageMemoBox.get('m:$key:pages');
+      if (pageRaw == null || pageRaw.trim().isEmpty) continue;
+
+      try {
+        final parsed = jsonDecode(pageRaw);
+        if (parsed is! Map<String, dynamic>) continue;
+
+        for (final entry in parsed.entries) {
+          final value = entry.value;
+          if (value is String) {
+            parts.add(value);
+            continue;
+          }
+          if (value is Map<String, dynamic>) {
+            final text = value['text'];
+            if (text is String && text.trim().isNotEmpty) {
+              parts.add(text);
+            }
+
+            final tags = value['tags'];
+            if (tags is List) {
+              for (final t in tags) {
+                if (t is String && t.trim().isNotEmpty) {
+                  parts.add(t);
+                }
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // Ignore malformed memo payload.
+      }
+    }
+
+    return parts.join(' ').toLowerCase();
   }
 
   int _countPageMemosForCourse(
@@ -86,17 +116,66 @@ class _CourseScreenState extends State<CourseScreen> {
           total += parsed.length;
         }
       } catch (_) {
-        // Ignore malformed memo data.
+        // Ignore malformed payload.
       }
     }
 
     return total;
   }
 
+  Future<void> _deleteCourseWithUndo(
+    BuildContext context,
+    Course course,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete course?'),
+        content: Text(course.name),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+
+    final backup = Course(id: course.id, name: course.name);
+    await course.delete();
+    await ChangeHistoryService.log('Course deleted', detail: backup.name);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Deleted "${backup.name}"'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            await Hive.box<Course>('courses').add(backup);
+            await ChangeHistoryService.log(
+              'Course restored',
+              detail: backup.name,
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final courseBox = Hive.box<Course>('courses');
     final materialBox = Hive.box<CourseMaterial>('course_materials');
+    final noteBox = Hive.box<String>('material_notes');
     final pageMemoBox = Hive.box<String>('material_page_memos');
 
     return Scaffold(
@@ -108,6 +187,7 @@ class _CourseScreenState extends State<CourseScreen> {
             animation: Listenable.merge([
               courseBox.listenable(),
               materialBox.listenable(),
+              noteBox.listenable(),
               pageMemoBox.listenable(),
               _searchController,
             ]),
@@ -116,13 +196,19 @@ class _CourseScreenState extends State<CourseScreen> {
 
               final courses = courseBox.values.toList()
                 ..sort((a, b) => a.name.compareTo(b.name));
-
               final materials = materialBox.values.toList();
 
               final filtered = query.isEmpty
                   ? courses
                   : courses
-                        .where((c) => c.name.toLowerCase().contains(query))
+                        .where(
+                          (c) => _courseSearchBlob(
+                            course: c,
+                            materials: materials,
+                            noteBox: noteBox,
+                            pageMemoBox: pageMemoBox,
+                          ).contains(query),
+                        )
                         .toList();
 
               return Column(
@@ -131,14 +217,23 @@ class _CourseScreenState extends State<CourseScreen> {
                   Row(
                     children: [
                       const Text(
-                        '내 강의',
+                        'Courses',
                         style: TextStyle(
-                          fontSize: 42 / 1.25,
+                          fontSize: 34,
                           fontWeight: FontWeight.w800,
                           color: Color(0xFF0F172A),
                         ),
                       ),
                       const Spacer(),
+                      IconButton(
+                        tooltip: 'Recent changes',
+                        onPressed: () => showChangeHistorySheet(context),
+                        icon: const Icon(Icons.history),
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFFE8EEF9),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       IconButton(
                         onPressed: () => _openAdd(context),
                         icon: const Icon(Icons.add),
@@ -152,7 +247,7 @@ class _CourseScreenState extends State<CourseScreen> {
                   TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: '과목명 또는 메모 검색...',
+                      hintText: 'Search course, PDF name, note text, tag...',
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: const Color(0xFFEAECEF),
@@ -168,7 +263,7 @@ class _CourseScreenState extends State<CourseScreen> {
                         ? ListView(
                             children: const [
                               SizedBox(height: 120),
-                              Center(child: Text('표시할 강의가 없습니다.')),
+                              Center(child: Text('No matching course found.')),
                             ],
                           )
                         : ListView.builder(
@@ -191,7 +286,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'PDF 학습 기능',
+                                        'PDF learning mode',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           color: Color(0xFF1D4ED8),
@@ -199,7 +294,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                       ),
                                       SizedBox(height: 6),
                                       Text(
-                                        '강의자료를 열어 페이지 단위로 메모를 남기고 태그로 필터링할 수 있습니다.',
+                                        'Open materials and attach page-level notes/tags. Search now supports these notes.',
                                         style: TextStyle(
                                           color: Color(0xFF2563EB),
                                           height: 1.35,
@@ -259,7 +354,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                                   Text(
                                                     course.name,
                                                     style: const TextStyle(
-                                                      fontSize: 28 / 1.5,
+                                                      fontSize: 18,
                                                       fontWeight:
                                                           FontWeight.w800,
                                                       color: Color(0xFF0F172A),
@@ -288,7 +383,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                                   );
                                                 } else if (value ==
                                                     _CourseMenu.delete) {
-                                                  await _deleteCourse(
+                                                  await _deleteCourseWithUndo(
                                                     context,
                                                     course,
                                                   );
@@ -297,11 +392,11 @@ class _CourseScreenState extends State<CourseScreen> {
                                               itemBuilder: (_) => const [
                                                 PopupMenuItem(
                                                   value: _CourseMenu.edit,
-                                                  child: Text('수정'),
+                                                  child: Text('Edit'),
                                                 ),
                                                 PopupMenuItem(
                                                   value: _CourseMenu.delete,
-                                                  child: Text('삭제'),
+                                                  child: Text('Delete'),
                                                 ),
                                               ],
                                             ),
@@ -324,7 +419,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                                     BorderRadius.circular(10),
                                               ),
                                               child: Text(
-                                                '강의자료 $pdfCount',
+                                                'PDF $pdfCount',
                                                 style: const TextStyle(
                                                   color: Color(0xFF7E22CE),
                                                   fontWeight: FontWeight.w600,
@@ -344,7 +439,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                                     BorderRadius.circular(10),
                                               ),
                                               child: Text(
-                                                '페이지 메모 $memoCount',
+                                                'Page notes $memoCount',
                                                 style: const TextStyle(
                                                   color: Color(0xFFEA580C),
                                                   fontWeight: FontWeight.w600,

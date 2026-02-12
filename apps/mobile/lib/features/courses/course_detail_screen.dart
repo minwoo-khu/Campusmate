@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../app/change_history_service.dart';
 import 'course_material.dart';
 import 'pdf_viewer_screen.dart';
 
@@ -40,8 +41,6 @@ class CourseDetailScreen extends StatelessWidget {
 
     final fileName = p.basename(pickedPath);
     final targetPath = p.join(folder.path, fileName);
-
-    // 같은 이름 파일이 있으면 뒤에 (1) 붙이기
     final targetFile = await _uniquePath(targetPath);
 
     await File(pickedPath).copy(targetFile);
@@ -56,9 +55,15 @@ class CourseDetailScreen extends StatelessWidget {
       ),
     );
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('PDF 저장 완료')),
+    await ChangeHistoryService.log(
+      'PDF uploaded',
+      detail: p.basename(targetFile),
     );
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('PDF uploaded.')));
   }
 
   static Future<String> _uniquePath(String path) async {
@@ -76,12 +81,15 @@ class CourseDetailScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _deleteMaterial(BuildContext context, CourseMaterial m) async {
+  Future<void> _deleteMaterialWithUndo(
+    BuildContext context,
+    CourseMaterial material,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete PDF?'),
-        content: Text(m.fileName),
+        content: Text(material.fileName),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -97,14 +105,46 @@ class CourseDetailScreen extends StatelessWidget {
 
     if (ok != true) return;
 
-    final f = File(m.localPath);
+    final backup = CourseMaterial(
+      courseId: material.courseId,
+      fileName: material.fileName,
+      localPath: material.localPath,
+      addedAt: material.addedAt,
+    );
+
+    List<int>? bytes;
+    final f = File(material.localPath);
     if (await f.exists()) {
+      bytes = await f.readAsBytes();
       await f.delete();
     }
-    await m.delete();
 
+    await material.delete();
+    await ChangeHistoryService.log('PDF deleted', detail: backup.fileName);
+
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('삭제 완료')),
+      SnackBar(
+        content: Text('Deleted "${backup.fileName}"'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () async {
+            if (bytes != null) {
+              final restoreFile = File(backup.localPath);
+              await restoreFile.parent.create(recursive: true);
+              await restoreFile.writeAsBytes(bytes);
+            }
+
+            await Hive.box<CourseMaterial>('course_materials').add(backup);
+            await ChangeHistoryService.log(
+              'PDF restored',
+              detail: backup.fileName,
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -121,10 +161,9 @@ class CourseDetailScreen extends StatelessWidget {
       body: ValueListenableBuilder(
         valueListenable: box.listenable(),
         builder: (context, Box<CourseMaterial> b, _) {
-          final materials = b.values
-              .where((m) => m.courseId == courseId)
-              .toList()
-            ..sort((a, c) => c.addedAt.compareTo(a.addedAt));
+          final materials =
+              b.values.where((m) => m.courseId == courseId).toList()
+                ..sort((a, c) => c.addedAt.compareTo(a.addedAt));
 
           if (materials.isEmpty) {
             return const Center(child: Text('No PDFs yet. Tap + to upload.'));
@@ -135,26 +174,28 @@ class CourseDetailScreen extends StatelessWidget {
             itemCount: materials.length,
             separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (_, i) {
-              final m = materials[i];
-              final dateStr = m.addedAt.toLocal().toString().split(' ')[0];
+              final material = materials[i];
+              final dateStr = material.addedAt.toLocal().toString().split(
+                ' ',
+              )[0];
 
               return ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
-                title: Text(m.fileName),
+                title: Text(material.fileName),
                 subtitle: Text('Added: $dateStr'),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _deleteMaterial(context, m),
+                  onPressed: () => _deleteMaterialWithUndo(context, material),
                 ),
                 onTap: () {
-                  final k = m.key;
+                  final k = material.key;
                   if (k is int) {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (_) => PdfViewerScreen(
                           materialKey: k,
-                          filePath: m.localPath,
-                          fileName: m.fileName,
+                          filePath: material.localPath,
+                          fileName: material.fileName,
                         ),
                       ),
                     );
