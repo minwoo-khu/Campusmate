@@ -17,11 +17,12 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
     return TodoItem(
-      id: fields[0] as String,
-      title: fields[1] as String,
-      completed: fields[3] as bool,
-      notificationId: fields[5] as int?,
-    )
+        id: fields[0] as String,
+        title: fields[1] as String,
+        completed: fields[3] as bool,
+        notificationId: fields[5] as int?,
+        repeatRule: TodoRepeatX.fromStorage(fields[6] as String?),
+      )
       ..dueAtMillis = fields[2] as int?
       ..remindAtMillis = fields[4] as int?;
   }
@@ -29,7 +30,7 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
   @override
   void write(BinaryWriter writer, TodoItem obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class TodoItemAdapter extends TypeAdapter<TodoItem> {
       ..writeByte(4)
       ..write(obj.remindAtMillis)
       ..writeByte(5)
-      ..write(obj.notificationId);
+      ..write(obj.notificationId)
+      ..writeByte(6)
+      ..write(obj.repeat);
   }
 
   @override
