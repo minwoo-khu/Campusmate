@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 import '../../app/l10n.dart';
+import '../../app/theme.dart';
 import '../../app/change_history_service.dart';
 import 'course.dart';
 
@@ -37,6 +38,8 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cm = context.cmColors;
+
     return Scaffold(
       appBar: AppBar(title: Text(context.tr('강의 추가', 'Add Course'))),
       body: Padding(
@@ -54,6 +57,11 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: cm.navActive,
+                  foregroundColor: Colors.white,
+                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 onPressed: _save,
                 child: Text(context.tr('저장', 'Save')),
               ),

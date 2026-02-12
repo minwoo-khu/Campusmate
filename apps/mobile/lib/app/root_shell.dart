@@ -22,6 +22,7 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> {
   static const _prefKeyStartTab = 'start_tab_index';
   static const _prefKeyStartTabMigratedV2 = 'start_tab_home_migrated_v2';
+  static const _prefKeyStartTabExplicit = 'start_tab_explicit_v1';
 
   static const _homeTab = 0;
   static const _todoTab = 1;
@@ -30,6 +31,7 @@ class _RootShellState extends State<RootShell> {
   static const _coursesTab = 4;
 
   int _currentIndex = _homeTab;
+  int _startTabIndex = _homeTab;
   bool _loaded = false;
 
   final ValueNotifier<String?> _todoLink = AppLink.todoToOpen;
@@ -71,6 +73,7 @@ class _RootShellState extends State<RootShell> {
 
     var saved = prefs.getInt(_prefKeyStartTab);
     final migrated = prefs.getBool(_prefKeyStartTabMigratedV2) ?? false;
+    final explicit = prefs.getBool(_prefKeyStartTabExplicit) ?? false;
 
     if (!migrated) {
       if (saved != null) {
@@ -82,27 +85,40 @@ class _RootShellState extends State<RootShell> {
       await prefs.setBool(_prefKeyStartTabMigratedV2, true);
     }
 
+    // If user has not explicitly chosen a start tab yet, default to Home.
+    if (!explicit) {
+      saved = _homeTab;
+      await prefs.setInt(_prefKeyStartTab, _homeTab);
+    }
+
     setState(() {
-      _currentIndex = (saved ?? _homeTab).clamp(_homeTab, _coursesTab);
+      _startTabIndex = (saved ?? _homeTab).clamp(_homeTab, _coursesTab);
+      _currentIndex = _startTabIndex;
       _loaded = true;
     });
   }
 
-  Future<void> _setStartTab(int index) async {
+  Future<void> _setStartTab(int index, {bool markExplicit = true}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_prefKeyStartTab, index);
+    if (markExplicit) {
+      await prefs.setBool(_prefKeyStartTabExplicit, true);
+    }
   }
 
   Future<void> _openSettings() async {
     final selected = await Navigator.of(context).push<int>(
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(currentStartTab: _currentIndex),
+        builder: (_) => SettingsScreen(currentStartTab: _startTabIndex),
       ),
     );
 
     if (selected != null) {
       await _setStartTab(selected);
-      setState(() => _currentIndex = selected.clamp(_homeTab, _coursesTab));
+      setState(() {
+        _startTabIndex = selected.clamp(_homeTab, _coursesTab);
+        _currentIndex = _startTabIndex;
+      });
     }
   }
 

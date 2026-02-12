@@ -845,6 +845,15 @@ class _TodoScreenState extends State<TodoScreen> {
               child: _buildMetaLine(item),
             ),
             trailing: PopupMenuButton<_TodoMenu>(
+              color: cm.cardBg,
+              surfaceTintColor: Colors.transparent,
+              shadowColor: cm.navBarShadow,
+              elevation: 8,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: cm.cardBorder),
+              ),
+              menuPadding: const EdgeInsets.symmetric(vertical: 6),
               icon: Icon(Icons.more_horiz, color: cm.textHint),
               onSelected: (menu) async {
                 if (menu == _TodoMenu.edit) {
@@ -864,31 +873,69 @@ class _TodoScreenState extends State<TodoScreen> {
               itemBuilder: (_) => [
                 PopupMenuItem(
                   value: _TodoMenu.edit,
-                  child: Text(_t('수정', 'Edit')),
+                  child: Text(
+                    _t('수정', 'Edit'),
+                    style: TextStyle(
+                      color: cm.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 PopupMenuItem(
                   value: _TodoMenu.delete,
-                  child: Text(_t('삭제', 'Delete')),
+                  child: Text(
+                    _t('삭제', 'Delete'),
+                    style: TextStyle(
+                      color: cm.deleteBg,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                const PopupMenuDivider(),
+                PopupMenuDivider(height: 8, color: cm.cardBorder),
                 PopupMenuItem(
                   value: _TodoMenu.setReminder,
-                  child: Text(_t('리마인더 설정', 'Set reminder')),
+                  child: Text(
+                    _t('리마인더 설정', 'Set reminder'),
+                    style: TextStyle(
+                      color: cm.textPrimary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 PopupMenuItem(
                   value: _TodoMenu.clearReminder,
                   enabled: item.remindAt != null,
-                  child: Text(_t('리마인더 해제', 'Clear reminder')),
+                  child: Text(
+                    _t('리마인더 해제', 'Clear reminder'),
+                    style: TextStyle(
+                      color: item.remindAt != null
+                          ? cm.textPrimary
+                          : cm.textHint,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 PopupMenuItem(
                   value: _TodoMenu.snooze10m,
                   enabled: !item.completed,
-                  child: Text(_t('10분 미루기', 'Snooze 10m')),
+                  child: Text(
+                    _t('10분 미루기', 'Snooze 10m'),
+                    style: TextStyle(
+                      color: !item.completed ? cm.textPrimary : cm.textHint,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 PopupMenuItem(
                   value: _TodoMenu.snooze1h,
                   enabled: !item.completed,
-                  child: Text(_t('1시간 미루기', 'Snooze 1h')),
+                  child: Text(
+                    _t('1시간 미루기', 'Snooze 1h'),
+                    style: TextStyle(
+                      color: !item.completed ? cm.textPrimary : cm.textHint,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),

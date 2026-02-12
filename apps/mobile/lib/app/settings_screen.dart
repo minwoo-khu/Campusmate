@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import 'data_backup_service.dart';
 import 'l10n.dart';
+import 'theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   final int currentStartTab;
@@ -27,6 +28,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _t(String ko, String en) => context.tr(ko, en);
+
+  ButtonStyle _filledStyle(BuildContext context) {
+    final cm = context.cmColors;
+    return FilledButton.styleFrom(
+      backgroundColor: cm.navActive,
+      foregroundColor: Colors.white,
+      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    );
+  }
+
+  ButtonStyle _outlinedStyle(BuildContext context, {bool destructive = false}) {
+    final cm = context.cmColors;
+    final fg = destructive ? cm.deleteBg : cm.textSecondary;
+    return OutlinedButton.styleFrom(
+      foregroundColor: fg,
+      side: BorderSide(color: destructive ? cm.deleteBg : cm.cardBorder),
+      backgroundColor: cm.inputBg,
+      textStyle: const TextStyle(fontWeight: FontWeight.w600),
+    );
+  }
+
+  ButtonStyle _textStyle(BuildContext context) {
+    final cm = context.cmColors;
+    return TextButton.styleFrom(
+      foregroundColor: cm.textSecondary,
+      textStyle: const TextStyle(fontWeight: FontWeight.w600),
+    );
+  }
 
   Future<void> _loadBackupPinState() async {
     final hasPin = await DataBackupService.hasBackupPin();
@@ -82,6 +111,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
+        final cm = dialogContext.cmColors;
         return AlertDialog(
           title: Text(title),
           content: Column(
@@ -99,7 +129,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 decoration: InputDecoration(
                   labelText: _t('PIN', 'PIN'),
                   hintText: _t('숫자 4자리 이상', 'At least 4 digits'),
-                  border: const OutlineInputBorder(),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: cm.cardBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: cm.navActive, width: 1.6),
+                  ),
+                  filled: true,
+                  fillColor: cm.inputBg,
                   counterText: '',
                 ),
               ),
@@ -107,10 +144,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           actions: [
             TextButton(
+              style: _textStyle(dialogContext),
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(_t('취소', 'Cancel')),
             ),
             FilledButton(
+              style: _filledStyle(dialogContext),
               onPressed: () {
                 final value = controller.text.trim();
                 if (value.isEmpty) return;
@@ -314,6 +353,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await showDialog<bool>(
           context: context,
           builder: (dialogContext) {
+            final cm = dialogContext.cmColors;
             return AlertDialog(
               title: Text(_t('백업 복원', 'Restore backup')),
               content: Text(
@@ -324,10 +364,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               actions: [
                 TextButton(
+                  style: _textStyle(dialogContext),
                   onPressed: () => Navigator.of(dialogContext).pop(false),
                   child: Text(_t('취소', 'Cancel')),
                 ),
                 FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: cm.deleteBg,
+                    foregroundColor: Colors.white,
+                    textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   onPressed: () => Navigator.of(dialogContext).pop(true),
                   child: Text(_t('복원', 'Restore')),
                 ),
@@ -421,6 +467,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final appState = CampusMateApp.of(context);
     final currentMode = appState?.themeMode ?? ThemeMode.system;
     final currentLocaleCode = appState?.localeCode ?? 'ko';
+    final cm = context.cmColors;
 
     return Scaffold(
       appBar: AppBar(title: Text(_t('설정', 'Settings'))),
@@ -502,6 +549,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
+                    style: _outlinedStyle(context),
                     onPressed: _exportBackup,
                     icon: const Icon(Icons.download_outlined),
                     label: Text(_t('백업 내보내기', 'Export backup')),
@@ -510,6 +558,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: FilledButton.icon(
+                    style: _filledStyle(context),
                     onPressed: _importBackup,
                     icon: const Icon(Icons.upload_file_outlined),
                     label: Text(_t('백업 복원', 'Restore backup')),
@@ -522,7 +571,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                color: cm.inputBg,
+                border: Border.all(color: cm.cardBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,6 +588,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton(
+                          style: _outlinedStyle(context),
                           onPressed: _setOrChangeBackupPin,
                           child: Text(
                             _hasBackupPin
@@ -549,6 +600,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: OutlinedButton(
+                          style: _outlinedStyle(context, destructive: true),
                           onPressed: _hasBackupPin ? _clearBackupPin : null,
                           child: Text(_t('PIN 해제', 'Disable PIN')),
                         ),
@@ -564,6 +616,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
             const SizedBox(height: 24),
             FilledButton(
+              style: _filledStyle(context),
               onPressed: () => Navigator.of(context).pop(_startTab),
               child: Text(_t('저장', 'Save')),
             ),
@@ -584,6 +637,7 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cm = context.cmColors;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Column(
@@ -595,7 +649,7 @@ class _SectionTitle extends StatelessWidget {
             subtitle,
             style: Theme.of(
               context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+            ).textTheme.bodySmall?.copyWith(color: cm.textHint),
           ),
         ],
       ),

@@ -228,29 +228,42 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                        Row(
                           children: [
-                            _QuickActionButton(
-                              icon: Icons.check_circle_outline,
-                              label: _t(context, '할 일', 'Todo'),
-                              onTap: () => onNavigateToTab(1),
+                            Expanded(
+                              child: _QuickActionButton(
+                                icon: Icons.check_circle_outline,
+                                label: _t(context, '할 일', 'Todo'),
+                                onTap: () => onNavigateToTab(1),
+                              ),
                             ),
-                            _QuickActionButton(
-                              icon: Icons.calendar_month_outlined,
-                              label: _t(context, '캘린더', 'Calendar'),
-                              onTap: () => onNavigateToTab(2),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _QuickActionButton(
+                                icon: Icons.calendar_month_outlined,
+                                label: _t(context, '캘린더', 'Calendar'),
+                                onTap: () => onNavigateToTab(2),
+                              ),
                             ),
-                            _QuickActionButton(
-                              icon: Icons.image_outlined,
-                              label: _t(context, '시간표', 'Timetable'),
-                              onTap: () => onNavigateToTab(3),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _QuickActionButton(
+                                icon: Icons.image_outlined,
+                                label: _t(context, '시간표', 'Timetable'),
+                                onTap: () => onNavigateToTab(3),
+                              ),
                             ),
-                            _QuickActionButton(
-                              icon: Icons.menu_book_outlined,
-                              label: _t(context, '강의', 'Courses'),
-                              onTap: () => onNavigateToTab(4),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _QuickActionButton(
+                                icon: Icons.menu_book_outlined,
+                                label: _t(context, '강의', 'Courses'),
+                                onTap: () => onNavigateToTab(4),
+                              ),
                             ),
                           ],
                         ),
