@@ -1,4 +1,4 @@
-package com.example.mobile
+﻿package com.campusmate
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -61,3 +61,5 @@ class TodayWidgetProvider : HomeWidgetProvider() {
         }
     }
 }
+
+

@@ -1,0 +1,11 @@
+﻿# Copy to android/key.properties and fill with your release keystore values.
+# Example:
+# storeFile=../keystore/upload-keystore.jks
+# storePassword=your_store_password
+# keyAlias=upload
+# keyPassword=your_key_password
+
+storeFile=
+storePassword=
+keyAlias=
+keyPassword=
