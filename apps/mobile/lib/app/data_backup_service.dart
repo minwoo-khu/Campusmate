@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
+import 'package:cryptography/cryptography.dart';
 import 'package:hive/hive.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -29,8 +31,13 @@ class BackupSummary {
 class BackupExportResult {
   final String filePath;
   final BackupSummary summary;
+  final bool encrypted;
 
-  const BackupExportResult({required this.filePath, required this.summary});
+  const BackupExportResult({
+    required this.filePath,
+    required this.summary,
+    required this.encrypted,
+  });
 }
 
 class BackupImportResult {
@@ -38,12 +45,14 @@ class BackupImportResult {
   final int startTab;
   final String themeMode;
   final String localeCode;
+  final bool encrypted;
 
   const BackupImportResult({
     required this.summary,
     required this.startTab,
     required this.themeMode,
     required this.localeCode,
+    required this.encrypted,
   });
 }
 
@@ -51,6 +60,7 @@ class DataBackupService {
   DataBackupService._();
 
   static const _schemaVersion = 1;
+  static const _encryptedFormat = 'encrypted_v1';
 
   static const _prefStartTab = 'start_tab_index';
   static const _prefThemeMode = 'theme_mode';
@@ -62,38 +72,121 @@ class DataBackupService {
   static const _prefIcsLastFailureReason = 'ics_last_failure_reason_v1';
   static const _prefTimetablePath = 'timetable_image_path';
 
-  static Future<BackupExportResult> exportToFile({String? targetPath}) async {
+  static const _prefBackupPinSalt = 'backup_pin_salt_v1';
+  static const _prefBackupPinHash = 'backup_pin_hash_v1';
+
+  static const _kdfIterations = 120000;
+  static const _kdfBits = 256;
+  static const _pinMinLength = 4;
+
+  static Future<bool> hasBackupPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    final salt = prefs.getString(_prefBackupPinSalt);
+    final hash = prefs.getString(_prefBackupPinHash);
+    return salt != null && hash != null && salt.isNotEmpty && hash.isNotEmpty;
+  }
+
+  static Future<void> setBackupPin(String pin) async {
+    final normalized = pin.trim();
+    if (normalized.length < _pinMinLength) {
+      throw const FormatException('PIN must be at least 4 digits.');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final salt = _randomBytes(16);
+    final hash = await _hashPin(normalized, salt);
+
+    await prefs.setString(_prefBackupPinSalt, base64Encode(salt));
+    await prefs.setString(_prefBackupPinHash, hash);
+  }
+
+  static Future<bool> verifyBackupPin(String pin) async {
+    final normalized = pin.trim();
+    if (normalized.isEmpty) return false;
+
+    final prefs = await SharedPreferences.getInstance();
+    final saltBase64 = prefs.getString(_prefBackupPinSalt);
+    final hash = prefs.getString(_prefBackupPinHash);
+    if (saltBase64 == null || hash == null) return false;
+
+    final salt = base64Decode(saltBase64);
+    final computed = await _hashPin(normalized, salt);
+    return computed == hash;
+  }
+
+  static Future<void> clearBackupPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefBackupPinSalt);
+    await prefs.remove(_prefBackupPinHash);
+  }
+
+  static Future<bool> isEncryptedBackupFile(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) return false;
+
+    try {
+      final decoded = jsonDecode(await file.readAsString());
+      final map = _asMap(decoded);
+      return map['backupFormat'] == _encryptedFormat;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<BackupExportResult> exportToFile({
+    String? targetPath,
+    String? pin,
+  }) async {
     final payload = await _buildPayload();
+
+    final normalizedPin = pin?.trim();
+    final encrypted = normalizedPin != null && normalizedPin.isNotEmpty;
+
+    final outObject = encrypted
+        ? await _encryptPayload(payload, normalizedPin)
+        : payload;
 
     final outPath = targetPath ?? await _defaultBackupPath();
     final outFile = File(outPath);
     await outFile.parent.create(recursive: true);
     await outFile.writeAsString(
-      const JsonEncoder.withIndent('  ').convert(payload),
+      const JsonEncoder.withIndent('  ').convert(outObject),
     );
 
     final summary = _extractSummary(payload);
     await ChangeHistoryService.log(
       'Backup exported',
-      detail: p.basename(outFile.path),
+      detail: encrypted
+          ? '${p.basename(outFile.path)} (encrypted)'
+          : p.basename(outFile.path),
     );
 
-    return BackupExportResult(filePath: outFile.path, summary: summary);
+    return BackupExportResult(
+      filePath: outFile.path,
+      summary: summary,
+      encrypted: encrypted,
+    );
   }
 
-  static Future<BackupImportResult> importFromFile(String filePath) async {
+  static Future<BackupImportResult> importFromFile(
+    String filePath, {
+    String? pin,
+  }) async {
     final file = File(filePath);
     if (!await file.exists()) {
       throw const FormatException('Backup file does not exist.');
     }
 
-    final raw = await file.readAsString();
-    final decoded = jsonDecode(raw);
-    if (decoded is! Map<String, dynamic>) {
+    final decoded = jsonDecode(await file.readAsString());
+    final decodedMap = _asMap(decoded);
+    if (decodedMap.isEmpty) {
       throw const FormatException('Backup format is invalid.');
     }
 
-    final version = decoded['schemaVersion'];
+    final encrypted = decodedMap['backupFormat'] == _encryptedFormat;
+    final payload = await _decodePayloadForImport(decodedMap, pin: pin);
+
+    final version = payload['schemaVersion'];
     if (version is! int || version <= 0 || version > _schemaVersion) {
       throw const FormatException('Backup schema version is not supported.');
     }
@@ -117,7 +210,7 @@ class DataBackupService {
     await historyBox.clear();
     await notifBox.clear();
 
-    final coursesRaw = _asList(decoded['courses']);
+    final coursesRaw = _asList(payload['courses']);
     for (final rawCourse in coursesRaw) {
       final m = _asMap(rawCourse);
       final id = m['id']?.toString() ?? '';
@@ -126,7 +219,7 @@ class DataBackupService {
       await courseBox.add(Course(id: id, name: name));
     }
 
-    final todosRaw = _asList(decoded['todos']);
+    final todosRaw = _asList(payload['todos']);
     for (final rawTodo in todosRaw) {
       final m = _asMap(rawTodo);
       final id = m['id']?.toString() ?? '';
@@ -156,8 +249,8 @@ class DataBackupService {
       );
     }
 
-    final materialFiles = _asMap(decoded['materialFiles']);
-    final materialsRaw = _asList(decoded['courseMaterials']);
+    final materialFiles = _asMap(payload['materialFiles']);
+    final materialsRaw = _asList(payload['courseMaterials']);
     final materialRoot = await _materialRestoreRoot();
     await materialRoot.create(recursive: true);
 
@@ -191,28 +284,28 @@ class DataBackupService {
       );
     }
 
-    final notesRaw = _asMap(decoded['materialNotes']);
+    final notesRaw = _asMap(payload['materialNotes']);
     for (final entry in notesRaw.entries) {
       final value = entry.value?.toString();
       if (value == null) continue;
       await noteBox.put(entry.key.toString(), value);
     }
 
-    final pageMemosRaw = _asMap(decoded['materialPageMemos']);
+    final pageMemosRaw = _asMap(payload['materialPageMemos']);
     for (final entry in pageMemosRaw.entries) {
       final value = entry.value?.toString();
       if (value == null) continue;
       await pageMemoBox.put(entry.key.toString(), value);
     }
 
-    final historyRaw = _asList(decoded['changeHistory']);
+    final historyRaw = _asList(payload['changeHistory']);
     for (final entry in historyRaw) {
       final value = entry?.toString();
       if (value == null || value.isEmpty) continue;
       await historyBox.add(value);
     }
 
-    final notifRaw = _asMap(decoded['notif']);
+    final notifRaw = _asMap(payload['notif']);
     for (final entry in notifRaw.entries) {
       final value = _toInt(entry.value);
       if (value == null) continue;
@@ -222,7 +315,7 @@ class DataBackupService {
       await notifBox.put('nextId', 1);
     }
 
-    final settingsRaw = _asMap(decoded['settings']);
+    final settingsRaw = _asMap(payload['settings']);
 
     final startTab = (_toInt(settingsRaw[_prefStartTab]) ?? 0).clamp(0, 3);
     final themeMode = settingsRaw[_prefThemeMode]?.toString() ?? 'system';
@@ -253,7 +346,7 @@ class DataBackupService {
       settingsRaw[_prefIcsLastFailureReason],
     );
 
-    final timetableRaw = _asMap(decoded['timetable']);
+    final timetableRaw = _asMap(payload['timetable']);
     final timetableName = timetableRaw['fileName']?.toString();
     final timetableBytesBase64 = timetableRaw['bytesBase64']?.toString();
 
@@ -282,16 +375,128 @@ class DataBackupService {
 
     await ChangeHistoryService.log(
       'Backup restored',
-      detail: p.basename(filePath),
+      detail: encrypted
+          ? '${p.basename(filePath)} (encrypted)'
+          : p.basename(filePath),
     );
 
-    final summary = _extractSummary(decoded);
+    final summary = _extractSummary(payload);
     return BackupImportResult(
       summary: summary,
       startTab: startTab,
       themeMode: themeMode,
       localeCode: localeCode,
+      encrypted: encrypted,
     );
+  }
+
+  static Future<Map<String, dynamic>> _decodePayloadForImport(
+    Map<String, dynamic> decodedMap, {
+    String? pin,
+  }) async {
+    final isEncrypted = decodedMap['backupFormat'] == _encryptedFormat;
+    if (!isEncrypted) {
+      return decodedMap;
+    }
+
+    final normalizedPin = pin?.trim() ?? '';
+    if (normalizedPin.isEmpty) {
+      throw const FormatException('PIN is required for encrypted backup.');
+    }
+
+    final saltBase64 = decodedMap['saltBase64']?.toString() ?? '';
+    final nonceBase64 = decodedMap['nonceBase64']?.toString() ?? '';
+    final cipherTextBase64 = decodedMap['cipherTextBase64']?.toString() ?? '';
+    final macBase64 = decodedMap['macBase64']?.toString() ?? '';
+
+    if (saltBase64.isEmpty ||
+        nonceBase64.isEmpty ||
+        cipherTextBase64.isEmpty ||
+        macBase64.isEmpty) {
+      throw const FormatException('Encrypted backup is malformed.');
+    }
+
+    final salt = base64Decode(saltBase64);
+    final nonce = base64Decode(nonceBase64);
+    final cipherText = base64Decode(cipherTextBase64);
+    final macBytes = base64Decode(macBase64);
+
+    final secretKey = await _deriveAesKey(normalizedPin, salt);
+    final algorithm = AesGcm.with256bits();
+
+    try {
+      final clearBytes = await algorithm.decrypt(
+        SecretBox(cipherText, nonce: nonce, mac: Mac(macBytes)),
+        secretKey: secretKey,
+      );
+      final clearText = utf8.decode(clearBytes);
+      final clearDecoded = jsonDecode(clearText);
+      final payload = _asMap(clearDecoded);
+      if (payload.isEmpty) {
+        throw const FormatException('Decrypted backup payload is invalid.');
+      }
+      return payload;
+    } on SecretBoxAuthenticationError {
+      throw const FormatException('Incorrect PIN or corrupted backup file.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> _encryptPayload(
+    Map<String, dynamic> payload,
+    String pin,
+  ) async {
+    final normalizedPin = pin.trim();
+    if (normalizedPin.length < _pinMinLength) {
+      throw const FormatException('PIN must be at least 4 digits.');
+    }
+
+    final plaintext = utf8.encode(jsonEncode(payload));
+    final salt = _randomBytes(16);
+    final nonce = _randomBytes(12);
+    final secretKey = await _deriveAesKey(normalizedPin, salt);
+
+    final algorithm = AesGcm.with256bits();
+    final secretBox = await algorithm.encrypt(
+      plaintext,
+      secretKey: secretKey,
+      nonce: nonce,
+    );
+
+    return {
+      'app': 'CampusMate',
+      'backupFormat': _encryptedFormat,
+      'schemaVersion': _schemaVersion,
+      'exportedAt': payload['exportedAt'] ?? DateTime.now().toIso8601String(),
+      'kdf': {
+        'algorithm': 'pbkdf2-hmac-sha256',
+        'iterations': _kdfIterations,
+        'bits': _kdfBits,
+      },
+      'cipher': 'aes-gcm-256',
+      'saltBase64': base64Encode(salt),
+      'nonceBase64': base64Encode(nonce),
+      'cipherTextBase64': base64Encode(secretBox.cipherText),
+      'macBase64': base64Encode(secretBox.mac.bytes),
+    };
+  }
+
+  static Future<SecretKey> _deriveAesKey(String pin, List<int> salt) {
+    final kdf = Pbkdf2(
+      macAlgorithm: Hmac.sha256(),
+      iterations: _kdfIterations,
+      bits: _kdfBits,
+    );
+    return kdf.deriveKeyFromPassword(password: pin, nonce: salt);
+  }
+
+  static Future<String> _hashPin(String pin, List<int> salt) async {
+    final hash = await Sha256().hash([...salt, ...utf8.encode(pin)]);
+    return base64Encode(hash.bytes);
+  }
+
+  static List<int> _randomBytes(int length) {
+    final rng = Random.secure();
+    return List<int>.generate(length, (_) => rng.nextInt(256));
   }
 
   static Future<Map<String, dynamic>> _buildPayload() async {

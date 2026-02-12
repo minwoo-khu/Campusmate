@@ -17,14 +17,22 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late int _startTab;
   bool _busy = false;
+  bool _hasBackupPin = false;
 
   @override
   void initState() {
     super.initState();
     _startTab = widget.currentStartTab;
+    _loadBackupPinState();
   }
 
   String _t(String ko, String en) => context.tr(ko, en);
+
+  Future<void> _loadBackupPinState() async {
+    final hasPin = await DataBackupService.hasBackupPin();
+    if (!mounted) return;
+    setState(() => _hasBackupPin = hasPin);
+  }
 
   ThemeMode _parseThemeMode(String value) {
     switch (value) {
@@ -63,7 +71,183 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<String?> _promptPin({
+    required String title,
+    required String confirmLabel,
+    String? message,
+  }) async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(title),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (message != null) ...[
+                Text(message),
+                const SizedBox(height: 10),
+              ],
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 16,
+                decoration: InputDecoration(
+                  labelText: _t('PIN', 'PIN'),
+                  hintText: _t('숫자 4자리 이상', 'At least 4 digits'),
+                  border: const OutlineInputBorder(),
+                  counterText: '',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(_t('취소', 'Cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                final value = controller.text.trim();
+                if (value.isEmpty) return;
+                Navigator.of(dialogContext).pop(value);
+              },
+              child: Text(confirmLabel),
+            ),
+          ],
+        );
+      },
+    );
+    controller.dispose();
+    return result;
+  }
+
+  Future<void> _setOrChangeBackupPin() async {
+    if (_hasBackupPin) {
+      final currentPin = await _promptPin(
+        title: _t('현재 백업 PIN 확인', 'Verify current backup PIN'),
+        confirmLabel: _t('확인', 'Verify'),
+      );
+      if (currentPin == null) return;
+
+      final ok = await DataBackupService.verifyBackupPin(currentPin);
+      if (!ok) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'))),
+        );
+        return;
+      }
+    }
+
+    final newPin = await _promptPin(
+      title: _t('새 백업 PIN 설정', 'Set new backup PIN'),
+      confirmLabel: _t('다음', 'Next'),
+      message: _t(
+        '백업 파일 암호화를 위해 사용할 PIN입니다.',
+        'This PIN will encrypt backup files.',
+      ),
+    );
+    if (newPin == null) return;
+
+    final confirmPin = await _promptPin(
+      title: _t('새 PIN 다시 입력', 'Confirm new PIN'),
+      confirmLabel: _t('저장', 'Save'),
+    );
+    if (confirmPin == null) return;
+
+    if (newPin != confirmPin) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('PIN이 일치하지 않습니다.', 'PIN does not match.'))),
+      );
+      return;
+    }
+
+    try {
+      await DataBackupService.setBackupPin(newPin);
+      if (!mounted) return;
+      setState(() => _hasBackupPin = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_t('백업 PIN이 설정되었습니다.', 'Backup PIN has been set.')),
+        ),
+      );
+    } on FormatException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_t('설정 실패: ${e.message}', 'Failed: ${e.message}')),
+        ),
+      );
+    }
+  }
+
+  Future<void> _clearBackupPin() async {
+    if (!_hasBackupPin) return;
+
+    final pin = await _promptPin(
+      title: _t('백업 PIN 해제', 'Disable backup PIN'),
+      confirmLabel: _t('해제', 'Disable'),
+      message: _t(
+        '현재 PIN을 입력하면 백업 암호화가 해제됩니다.',
+        'Enter current PIN to disable backup encryption.',
+      ),
+    );
+    if (pin == null) return;
+
+    final ok = await DataBackupService.verifyBackupPin(pin);
+    if (!ok) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'))),
+      );
+      return;
+    }
+
+    await DataBackupService.clearBackupPin();
+    if (!mounted) return;
+    setState(() => _hasBackupPin = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_t('백업 PIN이 해제되었습니다.', 'Backup PIN has been disabled.')),
+      ),
+    );
+  }
+
+  Future<String?> _resolvePinForExport() async {
+    if (!_hasBackupPin) return null;
+    final pin = await _promptPin(
+      title: _t('백업 내보내기 PIN', 'Export backup PIN'),
+      confirmLabel: _t('내보내기', 'Export'),
+      message: _t(
+        '암호화 백업 생성을 위해 PIN을 입력하세요.',
+        'Enter PIN to create encrypted backup.',
+      ),
+    );
+    if (pin == null) return null;
+
+    final ok = await DataBackupService.verifyBackupPin(pin);
+    if (!ok) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'))),
+      );
+      return null;
+    }
+
+    return pin;
+  }
+
   Future<void> _exportBackup() async {
+    String? pin;
+    if (_hasBackupPin) {
+      pin = await _resolvePinForExport();
+      if (pin == null) return;
+    }
+
     setState(() => _busy = true);
     try {
       final now = DateTime.now();
@@ -83,16 +267,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final result = await DataBackupService.exportToFile(
         targetPath: targetPath,
+        pin: pin,
       );
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _t(
-              '백업 저장 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
-              'Backup exported (${result.summary.todos} todos, ${result.summary.courses} courses)',
-            ),
+            result.encrypted
+                ? _t(
+                    '암호화 백업 완료 (${result.summary.todos}개 할 일)',
+                    'Encrypted backup exported (${result.summary.todos} todos)',
+                  )
+                : _t(
+                    '백업 저장 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
+                    'Backup exported (${result.summary.todos} todos, ${result.summary.courses} courses)',
+                  ),
           ),
         ),
       );
@@ -158,9 +348,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final path = picked.files.single.path;
     if (path == null || path.isEmpty) return;
 
+    String? importPin;
+    final encrypted = await DataBackupService.isEncryptedBackupFile(path);
+    if (encrypted) {
+      importPin = await _promptPin(
+        title: _t('암호화 백업 PIN', 'Encrypted backup PIN'),
+        confirmLabel: _t('복원', 'Restore'),
+        message: _t(
+          '선택한 백업 파일의 PIN을 입력하세요.',
+          'Enter PIN for selected backup file.',
+        ),
+      );
+      if (importPin == null) return;
+    }
+
     setState(() => _busy = true);
     try {
-      final result = await DataBackupService.importFromFile(path);
+      final result = await DataBackupService.importFromFile(
+        path,
+        pin: importPin,
+      );
 
       if (!mounted) return;
       final appState = CampusMateApp.of(context);
@@ -174,10 +381,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _t(
-              '복원 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
-              'Restore completed (${result.summary.todos} todos, ${result.summary.courses} courses)',
-            ),
+            result.encrypted
+                ? _t(
+                    '암호화 백업 복원 완료 (${result.summary.todos}개 할 일)',
+                    'Encrypted backup restored (${result.summary.todos} todos)',
+                  )
+                : _t(
+                    '복원 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
+                    'Restore completed (${result.summary.todos} todos, ${result.summary.courses} courses)',
+                  ),
           ),
         ),
       );
@@ -280,8 +492,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SectionTitle(
               title: _t('데이터', 'Data'),
               subtitle: _t(
-                '백업 파일로 내보내거나 복원할 수 있습니다',
-                'Export or restore using a backup file',
+                '백업 파일 내보내기/복원 및 PIN 암호화를 관리합니다',
+                'Manage backup export/restore and PIN encryption',
               ),
             ),
             Row(
@@ -302,6 +514,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _hasBackupPin
+                        ? _t('백업 PIN: 설정됨', 'Backup PIN: Enabled')
+                        : _t('백업 PIN: 미설정', 'Backup PIN: Disabled'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _setOrChangeBackupPin,
+                          child: Text(
+                            _hasBackupPin
+                                ? _t('PIN 변경', 'Change PIN')
+                                : _t('PIN 설정', 'Set PIN'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _hasBackupPin ? _clearBackupPin : null,
+                          child: Text(_t('PIN 해제', 'Disable PIN')),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             if (_busy) ...[
               const SizedBox(height: 12),
