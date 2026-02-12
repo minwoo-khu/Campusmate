@@ -204,37 +204,32 @@ class _TodoScreenState extends State<TodoScreen> {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      ChoiceChip(
-                        label: Text('전체 ${allItems.length}'),
-                        selected: _filter == _TodoViewFilter.all,
-                        onSelected: (_) =>
-                            setState(() => _filter = _TodoViewFilter.all),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: Text('전체 ${allItems.length}'),
+                      selected: _filter == _TodoViewFilter.all,
+                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.all),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(
+                        '진행 ${allItems.where((t) => !t.completed).length}',
                       ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        label: Text(
-                          '진행 ${allItems.where((t) => !t.completed).length}',
-                        ),
-                        selected: _filter == _TodoViewFilter.active,
-                        onSelected: (_) =>
-                            setState(() => _filter = _TodoViewFilter.active),
+                      selected: _filter == _TodoViewFilter.active,
+                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.active),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(
+                        '완료 ${allItems.where((t) => t.completed).length}',
                       ),
-                      const SizedBox(width: 8),
-                      ChoiceChip(
-                        label: Text(
-                          '완료 ${allItems.where((t) => t.completed).length}',
-                        ),
-                        selected: _filter == _TodoViewFilter.completed,
-                        onSelected: (_) =>
-                            setState(() => _filter = _TodoViewFilter.completed),
-                      ),
-                    ],
-                  ),
+                      selected: _filter == _TodoViewFilter.completed,
+                      onSelected: (_) =>
+                          setState(() => _filter = _TodoViewFilter.completed),
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -242,7 +237,6 @@ class _TodoScreenState extends State<TodoScreen> {
                     ? const Center(child: Text('조건에 맞는 Todo가 없어.'))
                     : ListView.builder(
                         controller: _scroll,
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
                         itemCount: items.length,
                         itemBuilder: (_, i) {
                           final t = items[i];
@@ -259,105 +253,89 @@ class _TodoScreenState extends State<TodoScreen> {
                               _highlightUntil != null &&
                               DateTime.now().isBefore(_highlightUntil!));
 
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Dismissible(
-                              key: ValueKey('${t.key}_${t.id}'),
-                              background: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                alignment: Alignment.centerLeft,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: const Icon(Icons.delete, color: Colors.white),
+                          return Dismissible(
+                            key: ValueKey('${t.key}_${t.id}'),
+                            background: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: const Icon(Icons.delete, color: Colors.white),
+                            ),
+                            secondaryBackground: Container(
+                              color: Colors.red,
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: const Icon(Icons.delete, color: Colors.white),
+                            ),
+                            onDismissed: (_) async {
+                              await todoRepo.remove(t);
+                            },
+                            child: ListTile(
+                              tileColor: isHighlight
+                                  ? Theme.of(context).colorScheme.primaryContainer
+                                  : null,
+                              onTap: () => _openEdit(context, t),
+                              leading: Checkbox(
+                                value: t.completed,
+                                onChanged: (_) async {
+                                  await todoRepo.toggle(t);
+                                  setState(() {}); // highlight 유지/표시 갱신용
+                                },
                               ),
-                              secondaryBackground: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(20),
+                              title: Text(
+                                t.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  decoration:
+                                      t.completed ? TextDecoration.lineThrough : null,
                                 ),
-                                alignment: Alignment.centerRight,
-                                padding: const EdgeInsets.symmetric(horizontal: 16),
-                                child: const Icon(Icons.delete, color: Colors.white),
                               ),
-                              onDismissed: (_) async {
-                                await todoRepo.remove(t);
-                              },
-                              child: Card(
-                                color: isHighlight
-                                    ? Theme.of(context).colorScheme.primaryContainer
-                                    : Colors.white,
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 4,
-                                  ),
-                                  onTap: () => _openEdit(context, t),
-                                  leading: Checkbox(
-                                    value: t.completed,
-                                    onChanged: (_) async {
-                                      await todoRepo.toggle(t);
-                                      setState(() {});
-                                    },
-                                  ),
-                                  title: Text(
-                                    t.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      decoration: t.completed
-                                          ? TextDecoration.lineThrough
-                                          : null,
+
+                              subtitle: (dueStr == null && remindStr == null)
+                                  ? null
+                                  : Text(
+                                      [
+                                        if (dueStr != null) 'Due: $dueStr',
+                                        if (remindStr != null) '🔔 $remindStr',
+                                      ].join('  ·  '),
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                              trailing: PopupMenuButton<_TodoMenu>(
+                                tooltip: '메뉴',
+                                onSelected: (m) async {
+                                  if (m == _TodoMenu.edit) {
+                                    await _openEdit(context, t);
+                                  } else if (m == _TodoMenu.delete) {
+                                    await _confirmDelete(context, t);
+                                  } else if (m == _TodoMenu.setReminder) {
+                                    await _setReminder(context, t);
+                                  } else if (m == _TodoMenu.clearReminder) {
+                                    await _clearReminder(t);
+                                  }
+                                },
+                                itemBuilder: (_) => [
+                                  const PopupMenuItem(
+                                    value: _TodoMenu.edit,
+                                    child: Text('수정'),
                                   ),
-                                  subtitle: (dueStr == null && remindStr == null)
-                                      ? null
-                                      : Text(
-                                          [
-                                            if (dueStr != null) 'Due: $dueStr',
-                                            if (remindStr != null) '🔔 $remindStr',
-                                          ].join('  ·  '),
-                                          maxLines: 1,
-                                          softWrap: false,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                  trailing: PopupMenuButton<_TodoMenu>(
-                                    tooltip: '메뉴',
-                                    onSelected: (m) async {
-                                      if (m == _TodoMenu.edit) {
-                                        await _openEdit(context, t);
-                                      } else if (m == _TodoMenu.delete) {
-                                        await _confirmDelete(context, t);
-                                      } else if (m == _TodoMenu.setReminder) {
-                                        await _setReminder(context, t);
-                                      } else if (m == _TodoMenu.clearReminder) {
-                                        await _clearReminder(t);
-                                      }
-                                    },
-                                    itemBuilder: (_) => [
-                                      const PopupMenuItem(
-                                        value: _TodoMenu.edit,
-                                        child: Text('수정'),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: _TodoMenu.delete,
-                                        child: Text('삭제'),
-                                      ),
-                                      const PopupMenuDivider(),
-                                      const PopupMenuItem(
-                                        value: _TodoMenu.setReminder,
-                                        child: Text('리마인더 설정'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: _TodoMenu.clearReminder,
-                                        enabled: t.remindAt != null,
-                                        child: const Text('리마인더 해제'),
-                                      ),
-                                    ],
+                                  const PopupMenuItem(
+                                    value: _TodoMenu.delete,
+                                    child: Text('삭제'),
                                   ),
-                                ),
+                                  const PopupMenuDivider(),
+                                  const PopupMenuItem(
+                                    value: _TodoMenu.setReminder,
+                                    child: Text('리마인더 설정'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: _TodoMenu.clearReminder,
+                                    enabled: t.remindAt != null,
+                                    child: const Text('리마인더 해제'),
+                                  ),
+                                ],
                               ),
                             ),
                           );
