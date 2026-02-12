@@ -208,26 +208,31 @@ class _TodoScreenState extends State<TodoScreen> {
                 child: Row(
                   children: [
                     ChoiceChip(
-                      label: Text('전체 ${allItems.length}'),
+                      label: const Text('전체'),
                       selected: _filter == _TodoViewFilter.all,
+                      selectedColor: Theme.of(context).colorScheme.primary,
+                      labelStyle: TextStyle(
+                        color: _filter == _TodoViewFilter.all ? Colors.white : Colors.black,
+                      ),
                       onSelected: (_) => setState(() => _filter = _TodoViewFilter.all),
                     ),
-                    const SizedBox(width: 8),
                     ChoiceChip(
-                      label: Text(
-                        '진행 ${allItems.where((t) => !t.completed).length}',
-                      ),
+                      label: const Text('진행'),
                       selected: _filter == _TodoViewFilter.active,
+                      selectedColor: Theme.of(context).colorScheme.primary,
+                      labelStyle: TextStyle(
+                        color: _filter == _TodoViewFilter.active ? Colors.white : Colors.black,
+                      ),
                       onSelected: (_) => setState(() => _filter = _TodoViewFilter.active),
                     ),
-                    const SizedBox(width: 8),
                     ChoiceChip(
-                      label: Text(
-                        '완료 ${allItems.where((t) => t.completed).length}',
+                      label: const Text('완료'),
+                      selected: _filter == _TodoViewFilter.done,
+                      selectedColor: Theme.of(context).colorScheme.primary,
+                      labelStyle: TextStyle(
+                        color: _filter == _TodoViewFilter.done ? Colors.white : Colors.black,
                       ),
-                      selected: _filter == _TodoViewFilter.completed,
-                      onSelected: (_) =>
-                          setState(() => _filter = _TodoViewFilter.completed),
+                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.done),
                     ),
                   ],
                 ),
