@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -250,6 +251,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final items = <_CalItem>[];
 
     for (final todo in box.values) {
+      if (todo.completed) continue;
       final due = todo.dueAt;
       if (due != null && _sameYmd(due, day)) {
         items.add(
@@ -539,13 +541,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               color: isDark
                                   ? const Color(0xFF1E3A5F)
                                   : const Color(0xFFE0E7FF),
-                              borderRadius: BorderRadius.circular(10),
+                              shape: BoxShape.circle,
                             ),
                             selectedDecoration: BoxDecoration(
                               color: isDark
                                   ? const Color(0xFF1E40AF)
                                   : const Color(0xFFDBEAFE),
-                              borderRadius: BorderRadius.circular(10),
+                              shape: BoxShape.circle,
                               border: Border.all(
                                 color: isDark
                                     ? const Color(0xFF3B82F6)
@@ -644,7 +646,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ),
                           if (_lastIcsFailureReason != null &&
                               (_message!.startsWith('Failed') ||
-                                  _message!.startsWith('Sync failed')))
+                                  _message!.startsWith('Sync failed')) &&
+                              kDebugMode)
                             Text(
                               'Reason: ${_lastIcsFailureReason!}',
                               maxLines: 1,
