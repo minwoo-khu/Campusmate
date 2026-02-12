@@ -25,6 +25,7 @@ class _TodoScreenState extends State<TodoScreen> {
 
   String? _highlightId;
   DateTime? _highlightUntil;
+  _TodoViewFilter _filter = _TodoViewFilter.all;
 
   @override
   void initState() {
@@ -47,6 +48,7 @@ class _TodoScreenState extends State<TodoScreen> {
     setState(() {
       _highlightId = id;
       _highlightUntil = DateTime.now().add(const Duration(milliseconds: 2500));
+      _filter = _TodoViewFilter.all;
     });
 
     // 실제 스크롤은 build에서 items를 만든 뒤에 처리해야 하므로
@@ -73,6 +75,17 @@ class _TodoScreenState extends State<TodoScreen> {
     if (_sameYmd(d, today)) return '오늘 ${_fmtHm(dt)}';
     if (_sameYmd(d, tomorrow)) return '내일 ${_fmtHm(dt)}';
     return '${_fmtYmd(dt)} ${_fmtHm(dt)}';
+  }
+
+  List<TodoItem> _applyFilter(List<TodoItem> items) {
+    switch (_filter) {
+      case _TodoViewFilter.active:
+        return items.where((t) => !t.completed).toList();
+      case _TodoViewFilter.completed:
+        return items.where((t) => t.completed).toList();
+      case _TodoViewFilter.all:
+        return items;
+    }
   }
 
   Future<DateTime?> _pickDateTime(BuildContext context, DateTime initial) async {
@@ -161,7 +174,8 @@ class _TodoScreenState extends State<TodoScreen> {
       body: ValueListenableBuilder(
         valueListenable: box.listenable(),
         builder: (context, Box<TodoItem> b, _) {
-          final items = todoRepo.list();
+          final allItems = todoRepo.list();
+          final items = _applyFilter(allItems);
 
           // --- 하이라이트 스크롤 처리 (items가 준비된 뒤) ---
           final id = _highlightId;
@@ -169,10 +183,11 @@ class _TodoScreenState extends State<TodoScreen> {
             final idx = items.indexWhere((t) => t.id == id);
             if (idx >= 0) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                // 대략적인 항목 높이로 스크롤 (trailing 폭 줄였으니 안정적)
-                const estTileH = 76.0;
-                final target = (idx * estTileH).clamp(0.0, _scroll.position.maxScrollExtent);
                 if (_scroll.hasClients) {
+                  // 대략적인 항목 높이로 스크롤 (trailing 폭 줄였으니 안정적)
+                  const estTileH = 76.0;
+                  final target =
+                      (idx * estTileH).clamp(0.0, _scroll.position.maxScrollExtent);
                   _scroll.animateTo(
                     target,
                     duration: const Duration(milliseconds: 300),
@@ -186,117 +201,168 @@ class _TodoScreenState extends State<TodoScreen> {
             AppLink.clearTodo();
           }
 
-          if (items.isEmpty) {
-            return const Center(child: Text('Todo가 아직 없어.'));
-          }
-
-          return ListView.builder(
-            controller: _scroll,
-            itemCount: items.length,
-            itemBuilder: (_, i) {
-              final t = items[i];
-              final due = t.dueAt;
-              final remind = t.remindAt;
-
-              final dueStr = due == null ? null : _fmtYmd(due.toLocal());
-              final remindStr = (remind == null || t.completed)
-                  ? null
-                  : _fmtReminderLabel(remind.toLocal());
-
-              final isHighlight = (_highlightId != null &&
-                  t.id == _highlightId &&
-                  _highlightUntil != null &&
-                  DateTime.now().isBefore(_highlightUntil!));
-
-              return Dismissible(
-                key: ValueKey('${t.key}_${t.id}'),
-                background: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerLeft,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                secondaryBackground: Container(
-                  color: Colors.red,
-                  alignment: Alignment.centerRight,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: const Icon(Icons.delete, color: Colors.white),
-                ),
-                onDismissed: (_) async {
-                  await todoRepo.remove(t);
-                },
-                child: ListTile(
-                  tileColor: isHighlight ? Colors.yellow.withOpacity(0.18) : null,
-                  onTap: () => _openEdit(context, t),
-                  leading: Checkbox(
-                    value: t.completed,
-                    onChanged: (_) async {
-                      await todoRepo.toggle(t);
-                      setState(() {}); // highlight 유지/표시 갱신용
-                    },
-                  ),
-                  title: Text(
-                    t.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      decoration: t.completed ? TextDecoration.lineThrough : null,
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                    ChoiceChip(
+                      label: Text('전체 ${allItems.length}'),
+                      selected: _filter == _TodoViewFilter.all,
+                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.all),
                     ),
-                  ),
-
-                  // ✅ 여기서 Due가 깨지던 문제 해결:
-                  // - trailing 폭을 줄였고
-                  // - subtitle을 "한 줄 ellipsis"로 고정
-                  subtitle: (dueStr == null && remindStr == null)
-                      ? null
-                      : Text(
-                          [
-                            if (dueStr != null) 'Due: $dueStr',
-                            if (remindStr != null) '🔔 $remindStr',
-                          ].join('  ·  '),
-                          maxLines: 1,
-                          softWrap: false,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                  // ✅ trailing을 메뉴 하나로 축소 (폭 최소화)
-                  trailing: PopupMenuButton<_TodoMenu>(
-                    tooltip: '메뉴',
-                    onSelected: (m) async {
-                      if (m == _TodoMenu.edit) {
-                        await _openEdit(context, t);
-                      } else if (m == _TodoMenu.delete) {
-                        await _confirmDelete(context, t);
-                      } else if (m == _TodoMenu.setReminder) {
-                        await _setReminder(context, t);
-                      } else if (m == _TodoMenu.clearReminder) {
-                        await _clearReminder(t);
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: _TodoMenu.edit,
-                        child: Text('수정'),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(
+                        '진행 ${allItems.where((t) => !t.completed).length}',
                       ),
-                      const PopupMenuItem(
-                        value: _TodoMenu.delete,
-                        child: Text('삭제'),
+                      selected: _filter == _TodoViewFilter.active,
+                      onSelected: (_) => setState(() => _filter = _TodoViewFilter.active),
+                    ),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      label: Text(
+                        '완료 ${allItems.where((t) => t.completed).length}',
                       ),
-                      const PopupMenuDivider(),
-                      const PopupMenuItem(
-                        value: _TodoMenu.setReminder,
-                        child: Text('리마인더 설정'),
-                      ),
-                      PopupMenuItem(
-                        value: _TodoMenu.clearReminder,
-                        enabled: t.remindAt != null,
-                        child: const Text('리마인더 해제'),
-                      ),
+                      selected: _filter == _TodoViewFilter.completed,
+                      onSelected: (_) =>
+                          setState(() => _filter = _TodoViewFilter.completed),
+                    ),
                     ],
                   ),
                 ),
-              );
-            },
+              ),
+              Expanded(
+                child: items.isEmpty
+                    ? const Center(child: Text('조건에 맞는 Todo가 없어.'))
+                    : ListView.builder(
+                        controller: _scroll,
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 120),
+                        itemCount: items.length,
+                        itemBuilder: (_, i) {
+                          final t = items[i];
+                          final due = t.dueAt;
+                          final remind = t.remindAt;
+
+                          final dueStr = due == null ? null : _fmtYmd(due.toLocal());
+                          final remindStr = (remind == null || t.completed)
+                              ? null
+                              : _fmtReminderLabel(remind.toLocal());
+
+                          final isHighlight = (_highlightId != null &&
+                              t.id == _highlightId &&
+                              _highlightUntil != null &&
+                              DateTime.now().isBefore(_highlightUntil!));
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Dismissible(
+                              key: ValueKey('${t.key}_${t.id}'),
+                              background: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: const Icon(Icons.delete, color: Colors.white),
+                              ),
+                              secondaryBackground: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: const Icon(Icons.delete, color: Colors.white),
+                              ),
+                              onDismissed: (_) async {
+                                await todoRepo.remove(t);
+                              },
+                              child: Card(
+                                color: isHighlight
+                                    ? Theme.of(context).colorScheme.primaryContainer
+                                    : Colors.white,
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 4,
+                                  ),
+                                  onTap: () => _openEdit(context, t),
+                                  leading: Checkbox(
+                                    value: t.completed,
+                                    onChanged: (_) async {
+                                      await todoRepo.toggle(t);
+                                      setState(() {});
+                                    },
+                                  ),
+                                  title: Text(
+                                    t.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      decoration: t.completed
+                                          ? TextDecoration.lineThrough
+                                          : null,
+                                    ),
+                                  ),
+                                  subtitle: (dueStr == null && remindStr == null)
+                                      ? null
+                                      : Text(
+                                          [
+                                            if (dueStr != null) 'Due: $dueStr',
+                                            if (remindStr != null) '🔔 $remindStr',
+                                          ].join('  ·  '),
+                                          maxLines: 1,
+                                          softWrap: false,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                  trailing: PopupMenuButton<_TodoMenu>(
+                                    tooltip: '메뉴',
+                                    onSelected: (m) async {
+                                      if (m == _TodoMenu.edit) {
+                                        await _openEdit(context, t);
+                                      } else if (m == _TodoMenu.delete) {
+                                        await _confirmDelete(context, t);
+                                      } else if (m == _TodoMenu.setReminder) {
+                                        await _setReminder(context, t);
+                                      } else if (m == _TodoMenu.clearReminder) {
+                                        await _clearReminder(t);
+                                      }
+                                    },
+                                    itemBuilder: (_) => [
+                                      const PopupMenuItem(
+                                        value: _TodoMenu.edit,
+                                        child: Text('수정'),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: _TodoMenu.delete,
+                                        child: Text('삭제'),
+                                      ),
+                                      const PopupMenuDivider(),
+                                      const PopupMenuItem(
+                                        value: _TodoMenu.setReminder,
+                                        child: Text('리마인더 설정'),
+                                      ),
+                                      PopupMenuItem(
+                                        value: _TodoMenu.clearReminder,
+                                        enabled: t.remindAt != null,
+                                        child: const Text('리마인더 해제'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
@@ -313,3 +379,5 @@ class _TodoScreenState extends State<TodoScreen> {
 }
 
 enum _TodoMenu { edit, delete, setReminder, clearReminder }
+
+enum _TodoViewFilter { all, active, completed }

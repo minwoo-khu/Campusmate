@@ -28,12 +28,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
   // ICS state
   bool _loading = false;
   String? _message;
+  DateTime? _lastIcsSyncAt;
   List<IcsEvent> _icsEvents = [];
 
   @override
   void initState() {
     super.initState();
     _loadIcs();
+  }
+
+  String _fmtHm(DateTime dt) {
+    String two(int x) => x.toString().padLeft(2, '0');
+    return '${two(dt.hour)}:${two(dt.minute)}';
+  }
+
+  String _fmtSyncLabel(DateTime dt) {
+    final ymd = dt.toLocal().toString().split(' ')[0];
+    return '$ymd ${_fmtHm(dt.toLocal())}';
   }
 
   Future<void> _openIcsSettings() async {
@@ -75,6 +86,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       setState(() {
         _icsEvents = events;
         _loading = false;
+        _lastIcsSyncAt = DateTime.now();
         if (events.isEmpty) {
           _message = 'School calendar connected, but no events found.';
         }
@@ -91,11 +103,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   DateTime _ymd(DateTime d) => DateTime(d.year, d.month, d.day);
-
-  String _fmtHm(DateTime dt) {
-    String two(int x) => x.toString().padLeft(2, '0');
-    return '${two(dt.hour)}:${two(dt.minute)}';
-  }
 
   Widget _buildTodayPanel(Box<TodoItem> box) {
     final now = DateTime.now();
@@ -263,159 +270,204 @@ class _CalendarScreenState extends State<CalendarScreen> {
         },
         child: const Icon(Icons.add),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
-              children: [
-                const Text(
-                  'Calendar',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+      body: RefreshIndicator(
+        onRefresh: _loadIcs,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  const Text(
+                    'Calendar',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton.filledTonal(
+                    onPressed: _openIcsSettings,
+                    icon: const Icon(Icons.link),
+                    tooltip: 'School calendar (ICS)',
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton.filledTonal(
+                    onPressed: _loadIcs,
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Refresh',
+                  ),
+                ],
+              ),
+
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.sync, size: 16, color: Colors.black54),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _lastIcsSyncAt == null
+                              ? 'School calendar not synced yet'
+                              : 'Last sync: ${_fmtSyncLabel(_lastIcsSyncAt!)}',
+                          style: const TextStyle(color: Colors.black54),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
-                IconButton(
-                  onPressed: _openIcsSettings,
-                  icon: const Icon(Icons.link),
-                  tooltip: 'School calendar (ICS)',
-                ),
-                IconButton(
-                  onPressed: _loadIcs,
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh',
+              ),
+
+              if (_loading) const LinearProgressIndicator(),
+
+              if (_message != null) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _message!,
+                        style: TextStyle(
+                          color: _message!.startsWith('Failed') ? Colors.red : null,
+                        ),
+                      ),
+                    ),
+                    if (_message!.startsWith('Failed'))
+                      TextButton(
+                        onPressed: _loadIcs,
+                        child: const Text('Retry'),
+                      ),
+                  ],
                 ),
               ],
-            ),
 
-            if (_loading) const LinearProgressIndicator(),
+              const SizedBox(height: 8),
 
-            if (_message != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                _message!,
-                style: TextStyle(
-                  color: _message!.startsWith('Failed') ? Colors.red : null,
+              Expanded(
+                child: ValueListenableBuilder(
+                  valueListenable: todoBox.listenable(),
+                  builder: (context, Box<TodoItem> box, _) {
+                    List<_CalItem> itemsForDay(DateTime day) {
+                      final items = <_CalItem>[];
+
+                      // Todo items
+                      for (final t in box.values) {
+                        final due = t.dueAt;
+                        if (due != null && _sameYmd(due, day)) {
+                          items.add(
+                            _CalItem(
+                              title: t.title,
+                              when: due,
+                              source: _Source.todo,
+                              subtitle: 'Due',
+                              done: t.completed,
+                            ),
+                          );
+                        }
+                      }
+
+                      // ICS events (start day only for MVP)
+                      for (final e in _icsEvents) {
+                        if (_sameYmd(e.start, day)) {
+                          items.add(
+                            _CalItem(
+                              title: e.summary,
+                              when: e.start,
+                              source: _Source.ics,
+                              subtitle: e.allDay ? 'All day' : 'School',
+                              done: false,
+                            ),
+                          );
+                        }
+                      }
+
+                      items.sort((a, b) => a.when.compareTo(b.when));
+                      return items;
+                    }
+
+                    final selectedItems = itemsForDay(_selectedDay);
+
+                    return Column(
+                      children: [
+                        _buildTodayPanel(box),
+
+                        const SizedBox(height: 10),
+
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: TableCalendar<_CalItem>(
+                          firstDay: DateTime.utc(2000, 1, 1),
+                          lastDay: DateTime.utc(2100, 12, 31),
+                          focusedDay: _focusedDay,
+                          calendarFormat: _format,
+                          selectedDayPredicate: (day) =>
+                              isSameDay(day, _selectedDay),
+                          onDaySelected: (selectedDay, focusedDay) {
+                            setState(() {
+                              _selectedDay = selectedDay;
+                              _focusedDay = focusedDay;
+                            });
+                          },
+                          onFormatChanged: (format) {
+                            setState(() => _format = format);
+                          },
+                          eventLoader: itemsForDay, // dots/markers
+                          headerStyle: const HeaderStyle(
+                            titleCentered: true,
+                            formatButtonVisible: true,
+                          ),
+                        ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Selected: ${_selectedDay.toLocal().toString().split(' ')[0]}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+
+                        Expanded(
+                          child: selectedItems.isEmpty
+                              ? const Center(child: Text('No events on this day'))
+                              : ListView.builder(
+                                  padding: const EdgeInsets.only(bottom: 120),
+                                  itemCount: selectedItems.length,
+                                  itemBuilder: (_, i) {
+                                    final it = selectedItems[i];
+                                    final tag =
+                                        it.source == _Source.todo ? 'TODO' : 'SCHOOL';
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Card(
+                                        child: ListTile(
+                                          leading: it.source == _Source.todo
+                                              ? const Icon(Icons.check_circle_outline)
+                                              : const Icon(Icons.event_note),
+                                          title: Text(it.title),
+                                          subtitle: Text('$tag • ${it.subtitle}'),
+                                          trailing: it.source == _Source.todo && it.done
+                                              ? const Icon(Icons.check, color: Colors.green)
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
-
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: ValueListenableBuilder(
-                valueListenable: todoBox.listenable(),
-                builder: (context, Box<TodoItem> box, _) {
-                  List<_CalItem> itemsForDay(DateTime day) {
-                    final items = <_CalItem>[];
-
-                    // Todo items
-                    for (final t in box.values) {
-                      final due = t.dueAt;
-                      if (due != null && _sameYmd(due, day)) {
-                        items.add(
-                          _CalItem(
-                            title: t.title,
-                            when: due,
-                            source: _Source.todo,
-                            subtitle: 'Due',
-                            done: t.completed,
-                          ),
-                        );
-                      }
-                    }
-
-                    // ICS events (start day only for MVP)
-                    for (final e in _icsEvents) {
-                      if (_sameYmd(e.start, day)) {
-                        items.add(
-                          _CalItem(
-                            title: e.summary,
-                            when: e.start,
-                            source: _Source.ics,
-                            subtitle: e.allDay ? 'All day' : 'School',
-                            done: false,
-                          ),
-                        );
-                      }
-                    }
-
-                    items.sort((a, b) => a.when.compareTo(b.when));
-                    return items;
-                  }
-
-                  final selectedItems = itemsForDay(_selectedDay);
-
-                  return Column(
-                    children: [
-                      _buildTodayPanel(box),
-
-                      TableCalendar<_CalItem>(
-                        firstDay: DateTime.utc(2000, 1, 1),
-                        lastDay: DateTime.utc(2100, 12, 31),
-                        focusedDay: _focusedDay,
-                        calendarFormat: _format,
-                        selectedDayPredicate: (day) =>
-                            isSameDay(day, _selectedDay),
-                        onDaySelected: (selectedDay, focusedDay) {
-                          setState(() {
-                            _selectedDay = selectedDay;
-                            _focusedDay = focusedDay;
-                          });
-                        },
-                        onFormatChanged: (format) {
-                          setState(() => _format = format);
-                        },
-                        eventLoader: itemsForDay, // dots/markers
-                        headerStyle: const HeaderStyle(
-                          titleCentered: true,
-                          formatButtonVisible: true,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Selected: ${_selectedDay.toLocal().toString().split(' ')[0]}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-
-                      Expanded(
-                        child: selectedItems.isEmpty
-                            ? const Center(child: Text('No events on this day'))
-                            : ListView.separated(
-                                itemCount: selectedItems.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 1),
-                                itemBuilder: (_, i) {
-                                  final it = selectedItems[i];
-                                  final tag =
-                                      it.source == _Source.todo ? 'TODO' : 'SCHOOL';
-
-                                  return ListTile(
-                                    leading: it.source == _Source.todo
-                                        ? const Icon(Icons.check_circle_outline)
-                                        : const Icon(Icons.event_note),
-                                    title: Text(it.title),
-                                    subtitle: Text('$tag • ${it.subtitle}'),
-                                    trailing: it.source == _Source.todo && it.done
-                                        ? const Icon(Icons.check,
-                                            color: Colors.green)
-                                        : null,
-                                  );
-                                },
-                              ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
