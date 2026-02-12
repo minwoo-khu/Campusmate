@@ -217,7 +217,11 @@ class CampusMateColors extends ThemeExtension<CampusMateColors> {
       tileBg: Color.lerp(tileBg, other.tileBg, t)!,
       tileCompletedBg: Color.lerp(tileCompletedBg, other.tileCompletedBg, t)!,
       tileBorder: Color.lerp(tileBorder, other.tileBorder, t)!,
-      tileHighlightBorder: Color.lerp(tileHighlightBorder, other.tileHighlightBorder, t)!,
+      tileHighlightBorder: Color.lerp(
+        tileHighlightBorder,
+        other.tileHighlightBorder,
+        t,
+      )!,
       checkActive: Color.lerp(checkActive, other.checkActive, t)!,
       checkInactive: Color.lerp(checkInactive, other.checkInactive, t)!,
       todoEventBg: Color.lerp(todoEventBg, other.todoEventBg, t)!,

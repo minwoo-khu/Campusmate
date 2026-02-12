@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../../app/l10n.dart';
 import '../../app/change_history_service.dart';
 import 'course.dart';
 
@@ -37,22 +38,25 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Course')),
+      appBar: AppBar(title: Text(context.tr('강의 추가', 'Add Course'))),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             TextField(
               controller: _controller,
-              decoration: const InputDecoration(
-                labelText: 'Course name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.tr('강의명', 'Course name'),
+                border: const OutlineInputBorder(),
               ),
             ),
             const Spacer(),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(onPressed: _save, child: const Text('Save')),
+              child: FilledButton(
+                onPressed: _save,
+                child: Text(context.tr('저장', 'Save')),
+              ),
             ),
           ],
         ),

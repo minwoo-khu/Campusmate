@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../app/change_history_service.dart';
 import '../../app/change_history_sheet.dart';
+import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../todo/todo_model.dart';
 import 'course.dart';
@@ -22,6 +23,8 @@ class CourseScreen extends StatefulWidget {
 
 class _CourseScreenState extends State<CourseScreen> {
   final TextEditingController _searchController = TextEditingController();
+
+  String _t(String ko, String en) => context.tr(ko, en);
 
   @override
   void dispose() {
@@ -218,16 +221,16 @@ class _CourseScreenState extends State<CourseScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete course?'),
+        title: Text(_t('강의를 삭제할까요?', 'Delete course?')),
         content: Text(course.name),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(_t('취소', 'Cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(_t('삭제', 'Delete')),
           ),
         ],
       ),
@@ -244,9 +247,9 @@ class _CourseScreenState extends State<CourseScreen> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Deleted "${backup.name}"'),
+        content: Text(_t('"${backup.name}" 삭제됨', 'Deleted "${backup.name}"')),
         action: SnackBarAction(
-          label: 'Undo',
+          label: _t('실행 취소', 'Undo'),
           onPressed: () async {
             await Hive.box<Course>('courses').add(backup);
             await ChangeHistoryService.log(
@@ -309,7 +312,7 @@ class _CourseScreenState extends State<CourseScreen> {
                   Row(
                     children: [
                       Text(
-                        'Courses',
+                        _t('내 강의', 'Courses'),
                         style: TextStyle(
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
@@ -318,7 +321,7 @@ class _CourseScreenState extends State<CourseScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        tooltip: 'Recent changes',
+                        tooltip: _t('최근 변경', 'Recent changes'),
                         onPressed: () => showChangeHistorySheet(context),
                         icon: const Icon(Icons.history),
                         style: IconButton.styleFrom(
@@ -339,7 +342,10 @@ class _CourseScreenState extends State<CourseScreen> {
                   TextField(
                     controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search course, PDF name, note text, tag...',
+                      hintText: _t(
+                        '강의명, PDF 이름, 메모, 태그 검색...',
+                        'Search course, PDF name, note text, tag...',
+                      ),
                       prefixIcon: const Icon(Icons.search),
                       filled: true,
                       fillColor: cm.inputBg,
@@ -352,7 +358,7 @@ class _CourseScreenState extends State<CourseScreen> {
                   const SizedBox(height: 12),
                   if (query.isEmpty && courses.isNotEmpty) ...[
                     Text(
-                      'Course dashboard',
+                      _t('강의 대시보드', 'Course dashboard'),
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -418,7 +424,10 @@ class _CourseScreenState extends State<CourseScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'Linked todos (7d): $linkedTodos',
+                                    _t(
+                                      '연결된 할 일(7일): $linkedTodos',
+                                      'Linked todos (7d): $linkedTodos',
+                                    ),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: cm.navActive,
@@ -427,7 +436,10 @@ class _CourseScreenState extends State<CourseScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Latest PDF: ${latestMaterial ?? 'No PDF yet'}',
+                                    _t(
+                                      '최근 PDF: ${latestMaterial ?? '없음'}',
+                                      'Latest PDF: ${latestMaterial ?? 'No PDF yet'}',
+                                    ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -437,7 +449,10 @@ class _CourseScreenState extends State<CourseScreen> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    'Recent memo: ${latestMemo == null ? 'No memo yet' : _trimPreview(latestMemo)}',
+                                    _t(
+                                      '최근 메모: ${latestMemo == null ? '없음' : _trimPreview(latestMemo)}',
+                                      'Recent memo: ${latestMemo == null ? 'No memo yet' : _trimPreview(latestMemo)}',
+                                    ),
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -462,7 +477,10 @@ class _CourseScreenState extends State<CourseScreen> {
                               const SizedBox(height: 120),
                               Center(
                                 child: Text(
-                                  'No matching course found.',
+                                  _t(
+                                    '검색 결과가 없습니다.',
+                                    'No matching course found.',
+                                  ),
                                   style: TextStyle(color: cm.textTertiary),
                                 ),
                               ),
@@ -488,7 +506,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'PDF learning mode',
+                                        _t('PDF 학습 모드', 'PDF learning mode'),
                                         style: TextStyle(
                                           fontWeight: FontWeight.w700,
                                           color: cm.tipBannerTitle,
@@ -496,7 +514,10 @@ class _CourseScreenState extends State<CourseScreen> {
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
-                                        'Open materials and attach page-level notes/tags. Search now supports these notes.',
+                                        _t(
+                                          '자료를 열어 페이지 단위 메모/태그를 남겨 보세요. 검색에서 메모까지 찾을 수 있습니다.',
+                                          'Open materials and attach page-level notes/tags. Search now supports these notes.',
+                                        ),
                                         style: TextStyle(
                                           color: cm.tipBannerBody,
                                           height: 1.35,
@@ -562,7 +583,10 @@ class _CourseScreenState extends State<CourseScreen> {
                                                   ),
                                                   const SizedBox(height: 2),
                                                   Text(
-                                                    'Course materials',
+                                                    _t(
+                                                      '강의 자료',
+                                                      'Course materials',
+                                                    ),
                                                     style: TextStyle(
                                                       color: cm.textTertiary,
                                                     ),
@@ -589,14 +613,16 @@ class _CourseScreenState extends State<CourseScreen> {
                                                   );
                                                 }
                                               },
-                                              itemBuilder: (_) => const [
+                                              itemBuilder: (_) => [
                                                 PopupMenuItem(
                                                   value: _CourseMenu.edit,
-                                                  child: Text('Edit'),
+                                                  child: Text(_t('수정', 'Edit')),
                                                 ),
                                                 PopupMenuItem(
                                                   value: _CourseMenu.delete,
-                                                  child: Text('Delete'),
+                                                  child: Text(
+                                                    _t('삭제', 'Delete'),
+                                                  ),
                                                 ),
                                               ],
                                             ),
@@ -619,7 +645,10 @@ class _CourseScreenState extends State<CourseScreen> {
                                                     BorderRadius.circular(10),
                                               ),
                                               child: Text(
-                                                'PDF $pdfCount',
+                                                _t(
+                                                  'PDF $pdfCount',
+                                                  'PDF $pdfCount',
+                                                ),
                                                 style: TextStyle(
                                                   color: cm.pdfBadgeText,
                                                   fontWeight: FontWeight.w600,
@@ -639,7 +668,10 @@ class _CourseScreenState extends State<CourseScreen> {
                                                     BorderRadius.circular(10),
                                               ),
                                               child: Text(
-                                                'Page notes $memoCount',
+                                                _t(
+                                                  '페이지 메모 $memoCount',
+                                                  'Page notes $memoCount',
+                                                ),
                                                 style: TextStyle(
                                                   color: cm.memoBadgeText,
                                                   fontWeight: FontWeight.w600,

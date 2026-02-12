@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'l10n.dart';
 import '../main.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -24,49 +25,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final appState = CampusMateApp.of(context);
     final currentMode = appState?.themeMode ?? ThemeMode.system;
+    final currentLocaleCode = appState?.localeCode ?? 'ko';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(context.tr('설정', 'Settings'))),
       body: ListView(
         children: [
-          const ListTile(
-            title: Text('Home screen'),
-            subtitle: Text('Choose which tab opens first'),
+          ListTile(
+            title: Text(context.tr('홈 화면', 'Home screen')),
+            subtitle: Text(
+              context.tr('시작 탭을 선택하세요', 'Choose which tab opens first'),
+            ),
           ),
           RadioListTile<int>(
             value: 0,
             groupValue: _startTab,
-            title: const Text('Todo'),
+            title: Text(context.tr('할 일', 'Todo')),
             onChanged: (v) => setState(() => _startTab = v!),
           ),
           RadioListTile<int>(
             value: 1,
             groupValue: _startTab,
-            title: const Text('Calendar'),
+            title: Text(context.tr('캘린더', 'Calendar')),
             onChanged: (v) => setState(() => _startTab = v!),
           ),
           RadioListTile<int>(
             value: 2,
             groupValue: _startTab,
-            title: const Text('Timetable'),
+            title: Text(context.tr('시간표', 'Timetable')),
             onChanged: (v) => setState(() => _startTab = v!),
           ),
           RadioListTile<int>(
             value: 3,
             groupValue: _startTab,
-            title: const Text('Courses'),
+            title: Text(context.tr('강의', 'Courses')),
             onChanged: (v) => setState(() => _startTab = v!),
           ),
           const Divider(height: 32),
-          const ListTile(
-            title: Text('Appearance'),
-            subtitle: Text('Choose theme mode'),
+          ListTile(
+            title: Text(context.tr('화면 테마', 'Appearance')),
+            subtitle: Text(context.tr('테마 모드를 선택하세요', 'Choose theme mode')),
           ),
           RadioListTile<ThemeMode>(
             value: ThemeMode.system,
             groupValue: currentMode,
-            title: const Text('System'),
-            subtitle: const Text('Follow device setting'),
+            title: Text(context.tr('시스템', 'System')),
+            subtitle: Text(context.tr('기기 설정 따르기', 'Follow device setting')),
             onChanged: (v) {
               appState?.setThemeMode(v!);
               setState(() {});
@@ -75,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           RadioListTile<ThemeMode>(
             value: ThemeMode.light,
             groupValue: currentMode,
-            title: const Text('Light'),
+            title: Text(context.tr('라이트', 'Light')),
             onChanged: (v) {
               appState?.setThemeMode(v!);
               setState(() {});
@@ -84,9 +88,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
           RadioListTile<ThemeMode>(
             value: ThemeMode.dark,
             groupValue: currentMode,
-            title: const Text('Dark'),
+            title: Text(context.tr('다크', 'Dark')),
             onChanged: (v) {
               appState?.setThemeMode(v!);
+              setState(() {});
+            },
+          ),
+          const Divider(height: 32),
+          ListTile(
+            title: Text(context.tr('언어', 'Language')),
+            subtitle: Text(context.tr('앱 언어를 선택하세요', 'Choose app language')),
+          ),
+          RadioListTile<String>(
+            value: 'ko',
+            groupValue: currentLocaleCode,
+            title: const Text('한국어'),
+            onChanged: (v) {
+              if (v == null) return;
+              appState?.setLocaleCode(v);
+              setState(() {});
+            },
+          ),
+          RadioListTile<String>(
+            value: 'en',
+            groupValue: currentLocaleCode,
+            title: const Text('English'),
+            onChanged: (v) {
+              if (v == null) return;
+              appState?.setLocaleCode(v);
               setState(() {});
             },
           ),
@@ -95,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.all(16),
             child: FilledButton(
               onPressed: () => Navigator.of(context).pop(_startTab),
-              child: const Text('Save'),
+              child: Text(context.tr('저장', 'Save')),
             ),
           ),
         ],

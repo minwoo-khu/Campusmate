@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../app/app_link.dart';
 import '../../app/change_history_service.dart';
 import '../../app/change_history_sheet.dart';
+import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import 'todo_edit_screen.dart';
 import 'todo_model.dart';
@@ -77,14 +78,43 @@ class _TodoScreenState extends State<TodoScreen> {
 
   String _fmtHm(DateTime d) => '${_two(d.hour)}:${_two(d.minute)}';
 
+  String _t(String ko, String en) => context.tr(ko, en);
+
+  String _repeatLabel(TodoRepeat rule) {
+    switch (rule) {
+      case TodoRepeat.none:
+        return _t('없음', 'None');
+      case TodoRepeat.daily:
+        return _t('매일', 'Daily');
+      case TodoRepeat.weekly:
+        return _t('매주', 'Weekly');
+    }
+  }
+
+  String _priorityLabel(TodoPriority priority) {
+    switch (priority) {
+      case TodoPriority.none:
+        return _t('없음', 'None');
+      case TodoPriority.low:
+        return _t('낮음', 'Low');
+      case TodoPriority.medium:
+        return _t('보통', 'Medium');
+      case TodoPriority.high:
+        return _t('높음', 'High');
+    }
+  }
+
   String _fmtReminderLabel(DateTime dt) {
     final now = DateTime.now();
     final today = _ymd(now);
     final tomorrow = today.add(const Duration(days: 1));
     final day = _ymd(dt);
 
-    if (_sameYmd(day, today)) return 'Today ${_fmtHm(dt)}';
-    if (_sameYmd(day, tomorrow)) return 'Tomorrow ${_fmtHm(dt)}';
+    if (_sameYmd(day, today))
+      return _t('오늘 ${_fmtHm(dt)}', 'Today ${_fmtHm(dt)}');
+    if (_sameYmd(day, tomorrow)) {
+      return _t('내일 ${_fmtHm(dt)}', 'Tomorrow ${_fmtHm(dt)}');
+    }
     return '${_fmtYmd(dt)} ${_fmtHm(dt)}';
   }
 
@@ -144,7 +174,10 @@ class _TodoScreenState extends State<TodoScreen> {
 
     if (_filter == _TodoViewFilter.completed) {
       return [
-        _TodoSection(title: 'Completed', items: List<TodoItem>.from(items)),
+        _TodoSection(
+          title: _t('완료됨', 'Completed'),
+          items: List<TodoItem>.from(items),
+        ),
       ];
     }
 
@@ -182,9 +215,9 @@ class _TodoScreenState extends State<TodoScreen> {
     // Sort each group by priority then due
     void sortByPriority(List<TodoItem> list) {
       list.sort((a, b) {
-        final pc = _priorityOrder(a.priorityLevel).compareTo(
-          _priorityOrder(b.priorityLevel),
-        );
+        final pc = _priorityOrder(
+          a.priorityLevel,
+        ).compareTo(_priorityOrder(b.priorityLevel));
         if (pc != 0) return pc;
         final da = a.dueAt;
         final db = b.dueAt;
@@ -202,20 +235,29 @@ class _TodoScreenState extends State<TodoScreen> {
 
     final sections = <_TodoSection>[];
     if (overdue.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Overdue', items: overdue));
+      sections.add(_TodoSection(title: _t('기한 지남', 'Overdue'), items: overdue));
     }
     if (todayItems.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Today / Active', items: todayItems));
+      sections.add(
+        _TodoSection(
+          title: _t('오늘 / 진행 중', 'Today / Active'),
+          items: todayItems,
+        ),
+      );
     }
     if (upcoming.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Upcoming', items: upcoming));
+      sections.add(_TodoSection(title: _t('예정됨', 'Upcoming'), items: upcoming));
     }
     if (noDueDate.isNotEmpty) {
-      sections.add(_TodoSection(title: 'No due date', items: noDueDate));
+      sections.add(
+        _TodoSection(title: _t('마감일 없음', 'No due date'), items: noDueDate),
+      );
     }
 
     if (_filter == _TodoViewFilter.all && completed.isNotEmpty) {
-      sections.add(_TodoSection(title: 'Completed', items: completed));
+      sections.add(
+        _TodoSection(title: _t('완료됨', 'Completed'), items: completed),
+      );
     }
 
     return sections;
@@ -254,9 +296,9 @@ class _TodoScreenState extends State<TodoScreen> {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Deleted "${backup.title}"'),
+        content: Text(_t('"${backup.title}" 삭제됨', 'Deleted "${backup.title}"')),
         action: SnackBarAction(
-          label: 'Undo',
+          label: _t('실행 취소', 'Undo'),
           onPressed: () async {
             await todoRepo.add(backup, logAction: false);
             await ChangeHistoryService.log(
@@ -293,8 +335,13 @@ class _TodoScreenState extends State<TodoScreen> {
     if (due != null && remind != null && remind.isAfter(due)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reminder cannot be later than due time.'),
+          SnackBar(
+            content: Text(
+              _t(
+                '리마인더는 마감 이후로 설정할 수 없습니다.',
+                'Reminder cannot be later than due time.',
+              ),
+            ),
           ),
         );
       }
@@ -353,8 +400,13 @@ class _TodoScreenState extends State<TodoScreen> {
     if (_quickDueAt != null && picked.isAfter(_quickDueAt!)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reminder cannot be later than due time.'),
+          SnackBar(
+            content: Text(
+              _t(
+                '리마인더는 마감 이후로 설정할 수 없습니다.',
+                'Reminder cannot be later than due time.',
+              ),
+            ),
           ),
         );
       }
@@ -373,8 +425,13 @@ class _TodoScreenState extends State<TodoScreen> {
     if (due != null && picked.isAfter(due)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Reminder cannot be later than due time.'),
+          SnackBar(
+            content: Text(
+              _t(
+                '리마인더는 마감 이후로 설정할 수 없습니다.',
+                'Reminder cannot be later than due time.',
+              ),
+            ),
           ),
         );
       }
@@ -411,9 +468,11 @@ class _TodoScreenState extends State<TodoScreen> {
 
   Widget _buildQuickCapture() {
     final cm = context.cmColors;
-    final dueLabel = _quickDueAt == null ? 'None' : _fmtYmd(_quickDueAt!);
+    final dueLabel = _quickDueAt == null
+        ? _t('없음', 'None')
+        : _fmtYmd(_quickDueAt!);
     final reminderLabel = _quickRemindAt == null
-        ? 'None'
+        ? _t('없음', 'None')
         : _fmtReminderLabel(_quickRemindAt!);
 
     return Container(
@@ -432,8 +491,10 @@ class _TodoScreenState extends State<TodoScreen> {
                   decoration: InputDecoration(
                     isDense: true,
                     border: InputBorder.none,
-                    hintText:
-                        'Quick capture (e.g. tomorrow 9:30 OS review / 내일 9시 복습)',
+                    hintText: _t(
+                      '빠른 입력 (예: 내일 9:30 운영체제 복습)',
+                      'Quick capture (e.g. tomorrow 9:30 OS review)',
+                    ),
                     hintStyle: TextStyle(color: cm.textHint),
                   ),
                 ),
@@ -470,19 +531,19 @@ class _TodoScreenState extends State<TodoScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Due: $dueLabel',
+                    '${_t('마감', 'Due')}: $dueLabel',
                     style: TextStyle(color: cm.textTertiary, fontSize: 12),
                   ),
                 ),
                 TextButton(
                   onPressed: _pickQuickDueDate,
-                  child: const Text('Pick'),
+                  child: Text(_t('선택', 'Pick')),
                 ),
                 TextButton(
                   onPressed: _quickDueAt == null
                       ? null
                       : () => setState(() => _quickDueAt = null),
-                  child: const Text('Clear'),
+                  child: Text(_t('지우기', 'Clear')),
                 ),
               ],
             ),
@@ -490,34 +551,34 @@ class _TodoScreenState extends State<TodoScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Reminder: $reminderLabel',
+                    '${_t('리마인더', 'Reminder')}: $reminderLabel',
                     style: TextStyle(color: cm.textTertiary, fontSize: 12),
                   ),
                 ),
                 TextButton(
                   onPressed: _pickQuickReminder,
-                  child: const Text('Pick'),
+                  child: Text(_t('선택', 'Pick')),
                 ),
                 TextButton(
                   onPressed: _quickRemindAt == null
                       ? null
                       : () => setState(() => _quickRemindAt = null),
-                  child: const Text('Clear'),
+                  child: Text(_t('지우기', 'Clear')),
                 ),
               ],
             ),
             DropdownButtonFormField<TodoRepeat>(
               initialValue: _quickRepeat,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
-                labelText: 'Repeat',
-                border: OutlineInputBorder(),
+                labelText: _t('반복', 'Repeat'),
+                border: const OutlineInputBorder(),
               ),
               items: TodoRepeat.values
                   .map(
                     (rule) => DropdownMenuItem<TodoRepeat>(
                       value: rule,
-                      child: Text(rule.label),
+                      child: Text(_repeatLabel(rule)),
                     ),
                   )
                   .toList(),
@@ -530,7 +591,7 @@ class _TodoScreenState extends State<TodoScreen> {
             Row(
               children: [
                 Text(
-                  'Priority: ',
+                  '${_t('우선순위', 'Priority')}: ',
                   style: TextStyle(color: cm.textTertiary, fontSize: 12),
                 ),
                 const SizedBox(width: 8),
@@ -539,10 +600,9 @@ class _TodoScreenState extends State<TodoScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: ChoiceChip(
-                      label: Text(p.label),
+                      label: Text(_priorityLabel(p)),
                       selected: selected,
-                      onSelected: (_) =>
-                          setState(() => _quickPriority = p),
+                      onSelected: (_) => setState(() => _quickPriority = p),
                       avatar: p == TodoPriority.none
                           ? null
                           : Icon(
@@ -568,19 +628,19 @@ class _TodoScreenState extends State<TodoScreen> {
       child: Row(
         children: [
           ChoiceChip(
-            label: Text('All $totalCount'),
+            label: Text('${_t('전체', 'All')} $totalCount'),
             selected: _filter == _TodoViewFilter.all,
             onSelected: (_) => setState(() => _filter = _TodoViewFilter.all),
           ),
           const SizedBox(width: 8),
           ChoiceChip(
-            label: Text('Active $activeCount'),
+            label: Text('${_t('진행 중', 'Active')} $activeCount'),
             selected: _filter == _TodoViewFilter.active,
             onSelected: (_) => setState(() => _filter = _TodoViewFilter.active),
           ),
           const SizedBox(width: 8),
           ChoiceChip(
-            label: Text('Completed $completedCount'),
+            label: Text('${_t('완료', 'Completed')} $completedCount'),
             selected: _filter == _TodoViewFilter.completed,
             onSelected: (_) =>
                 setState(() => _filter = _TodoViewFilter.completed),
@@ -607,10 +667,7 @@ class _TodoScreenState extends State<TodoScreen> {
           const SizedBox(width: 8),
           Text(
             '${row.count}',
-            style: TextStyle(
-              color: cm.textHint,
-              fontWeight: FontWeight.w600,
-            ),
+            style: TextStyle(color: cm.textHint, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -626,8 +683,8 @@ class _TodoScreenState extends State<TodoScreen> {
     final dueText = due == null
         ? null
         : _sameYmd(_ymd(due), _ymd(DateTime.now()))
-        ? 'Due today'
-        : 'Due ${_fmtYmd(due)}';
+        ? _t('오늘 마감', 'Due today')
+        : _t('${_fmtYmd(due)} 마감', 'Due ${_fmtYmd(due)}');
 
     final parts = <Widget>[];
 
@@ -638,8 +695,12 @@ class _TodoScreenState extends State<TodoScreen> {
       parts.add(const SizedBox(width: 3));
       parts.add(
         Text(
-          priority.label,
-          style: TextStyle(fontSize: 12, color: pColor, fontWeight: FontWeight.w600),
+          _priorityLabel(priority),
+          style: TextStyle(
+            fontSize: 12,
+            color: pColor,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
@@ -649,10 +710,7 @@ class _TodoScreenState extends State<TodoScreen> {
       parts.add(Icon(Icons.schedule, size: 12, color: cm.textHint));
       parts.add(const SizedBox(width: 3));
       parts.add(
-        Text(
-          dueText,
-          style: TextStyle(fontSize: 12, color: cm.textHint),
-        ),
+        Text(dueText, style: TextStyle(fontSize: 12, color: cm.textHint)),
       );
     }
 
@@ -660,9 +718,7 @@ class _TodoScreenState extends State<TodoScreen> {
       if (parts.isNotEmpty) {
         parts.add(const SizedBox(width: 8));
       }
-      parts.add(
-        Icon(Icons.notifications_none, size: 12, color: cm.navActive),
-      );
+      parts.add(Icon(Icons.notifications_none, size: 12, color: cm.navActive));
       parts.add(const SizedBox(width: 3));
       parts.add(
         Text(
@@ -680,7 +736,7 @@ class _TodoScreenState extends State<TodoScreen> {
       parts.add(const SizedBox(width: 3));
       parts.add(
         Text(
-          item.repeatRule.label,
+          _repeatLabel(item.repeatRule),
           style: TextStyle(fontSize: 12, color: cm.textHint),
         ),
       );
@@ -770,20 +826,23 @@ class _TodoScreenState extends State<TodoScreen> {
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: _TodoMenu.edit, child: Text('Edit')),
-                const PopupMenuItem(
+                PopupMenuItem(
+                  value: _TodoMenu.edit,
+                  child: Text(_t('수정', 'Edit')),
+                ),
+                PopupMenuItem(
                   value: _TodoMenu.delete,
-                  child: Text('Delete'),
+                  child: Text(_t('삭제', 'Delete')),
                 ),
                 const PopupMenuDivider(),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: _TodoMenu.setReminder,
-                  child: Text('Set reminder'),
+                  child: Text(_t('리마인더 설정', 'Set reminder')),
                 ),
                 PopupMenuItem(
                   value: _TodoMenu.clearReminder,
                   enabled: item.remindAt != null,
-                  child: const Text('Clear reminder'),
+                  child: Text(_t('리마인더 해제', 'Clear reminder')),
                 ),
               ],
             ),
@@ -843,7 +902,7 @@ class _TodoScreenState extends State<TodoScreen> {
                   child: Row(
                     children: [
                       Text(
-                        'Todo',
+                        _t('할 일', 'Todo'),
                         style: TextStyle(
                           fontSize: 34,
                           fontWeight: FontWeight.w800,
@@ -853,7 +912,7 @@ class _TodoScreenState extends State<TodoScreen> {
                       ),
                       const Spacer(),
                       IconButton(
-                        tooltip: 'Recent changes',
+                        tooltip: _t('최근 변경', 'Recent changes'),
                         onPressed: () => showChangeHistorySheet(context),
                         icon: const Icon(Icons.history),
                         style: IconButton.styleFrom(
@@ -879,7 +938,10 @@ class _TodoScreenState extends State<TodoScreen> {
                   child: rows.isEmpty
                       ? Center(
                           child: Text(
-                            'No todos for this filter.',
+                            _t(
+                              '필터 조건에 맞는 할 일이 없습니다.',
+                              'No todos for this filter.',
+                            ),
                             style: TextStyle(color: cm.textTertiary),
                           ),
                         )

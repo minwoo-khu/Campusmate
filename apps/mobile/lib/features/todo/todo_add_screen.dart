@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import 'todo_model.dart';
 import 'todo_repo.dart';
@@ -39,6 +40,30 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
   String _fmtDateTime(DateTime dt) {
     String two(int x) => x.toString().padLeft(2, '0');
     return '${dt.year}-${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
+  }
+
+  String _repeatLabel(TodoRepeat rule) {
+    switch (rule) {
+      case TodoRepeat.none:
+        return context.tr('없음', 'None');
+      case TodoRepeat.daily:
+        return context.tr('매일', 'Daily');
+      case TodoRepeat.weekly:
+        return context.tr('매주', 'Weekly');
+    }
+  }
+
+  String _priorityLabel(TodoPriority priority) {
+    switch (priority) {
+      case TodoPriority.none:
+        return context.tr('없음', 'None');
+      case TodoPriority.low:
+        return context.tr('낮음', 'Low');
+      case TodoPriority.medium:
+        return context.tr('보통', 'Medium');
+      case TodoPriority.high:
+        return context.tr('높음', 'High');
+    }
   }
 
   Future<void> _pickDueDate() async {
@@ -100,7 +125,14 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
     if (_dueAt != null && candidate.isAfter(_dueAt!)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Reminder must be before due time.')),
+          SnackBar(
+            content: Text(
+              context.tr(
+                '리마인더는 마감 이전이어야 합니다.',
+                'Reminder must be before due time.',
+              ),
+            ),
+          ),
         );
       }
       return;
@@ -148,66 +180,90 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
-    final dueText = _dueAt == null ? 'None' : _fmtDateTime(_dueAt!);
-    final remindText = _remindAt == null ? 'None' : _fmtDateTime(_remindAt!);
+    final dueText = _dueAt == null
+        ? context.tr('없음', 'None')
+        : _fmtDateTime(_dueAt!);
+    final remindText = _remindAt == null
+        ? context.tr('없음', 'None')
+        : _fmtDateTime(_remindAt!);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Todo')),
+      appBar: AppBar(title: Text(context.tr('할 일 추가', 'Add Todo'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Title', style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary)),
+          Text(
+            context.tr('제목', 'Title'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: cm.textPrimary,
+            ),
+          ),
           const SizedBox(height: 8),
           TextField(
             controller: _titleController,
             autofocus: true,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              hintText: 'Enter todo title',
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              hintText: context.tr('할 일을 입력하세요', 'Enter todo title'),
             ),
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _save(),
           ),
           const SizedBox(height: 16),
           Text(
-            'Due (optional)',
-            style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary),
+            context.tr('마감 (선택)', 'Due (optional)'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: cm.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: Text('Due: $dueText')),
+              Expanded(child: Text('${context.tr('마감', 'Due')}: $dueText')),
               TextButton(
                 onPressed: _pickDueDate,
-                child: const Text('Pick date'),
+                child: Text(context.tr('날짜 선택', 'Pick date')),
               ),
               TextButton(
                 onPressed: _dueAt == null ? null : _clearDueDate,
-                child: const Text('Clear'),
+                child: Text(context.tr('지우기', 'Clear')),
               ),
             ],
           ),
           const Divider(height: 24),
           Text(
-            'Reminder (optional)',
-            style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary),
+            context.tr('리마인더 (선택)', 'Reminder (optional)'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: cm.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(child: Text('Reminder: $remindText')),
+              Expanded(
+                child: Text('${context.tr('리마인더', 'Reminder')}: $remindText'),
+              ),
               TextButton(
                 onPressed: _pickReminder,
-                child: const Text('Pick time'),
+                child: Text(context.tr('시간 선택', 'Pick time')),
               ),
               TextButton(
                 onPressed: _remindAt == null ? null : _clearReminder,
-                child: const Text('Clear'),
+                child: Text(context.tr('지우기', 'Clear')),
               ),
             ],
           ),
           const Divider(height: 24),
-          Text('Repeat', style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary)),
+          Text(
+            context.tr('반복', 'Repeat'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: cm.textPrimary,
+            ),
+          ),
           const SizedBox(height: 8),
           DropdownButtonFormField<TodoRepeat>(
             initialValue: _repeat,
@@ -216,7 +272,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
                 .map(
                   (rule) => DropdownMenuItem<TodoRepeat>(
                     value: rule,
-                    child: Text(rule.label),
+                    child: Text(_repeatLabel(rule)),
                   ),
                 )
                 .toList(),
@@ -226,14 +282,20 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
             },
           ),
           const Divider(height: 24),
-          Text('Priority', style: TextStyle(fontWeight: FontWeight.bold, color: cm.textPrimary)),
+          Text(
+            context.tr('우선순위', 'Priority'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: cm.textPrimary,
+            ),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: TodoPriority.values.map((p) {
               final selected = _priority == p;
               return ChoiceChip(
-                label: Text(p.label),
+                label: Text(_priorityLabel(p)),
                 selected: selected,
                 onSelected: (_) => setState(() => _priority = p),
                 avatar: p == TodoPriority.none
@@ -246,7 +308,7 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
           FilledButton.icon(
             onPressed: _save,
             icon: const Icon(Icons.save),
-            label: const Text('Save'),
+            label: Text(context.tr('저장', 'Save')),
           ),
         ],
       ),

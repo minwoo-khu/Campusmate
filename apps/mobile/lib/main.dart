@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -51,8 +52,10 @@ class CampusMateApp extends StatefulWidget {
 
 class _CampusMateAppState extends State<CampusMateApp> {
   static const _prefKeyThemeMode = 'theme_mode';
+  static const _prefKeyLocaleCode = 'locale_code';
 
   ThemeMode _themeMode = ThemeMode.system;
+  Locale _locale = const Locale('ko');
   StreamSubscription<Uri?>? _widgetLaunchSub;
   String? _lastHandledWidgetUri;
 
@@ -60,6 +63,7 @@ class _CampusMateAppState extends State<CampusMateApp> {
   void initState() {
     super.initState();
     _loadThemeMode();
+    _loadLocaleCode();
     _bindWidgetLaunchEvents();
   }
 
@@ -73,6 +77,12 @@ class _CampusMateAppState extends State<CampusMateApp> {
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getString(_prefKeyThemeMode) ?? 'system';
     setState(() => _themeMode = _parseThemeMode(value));
+  }
+
+  Future<void> _loadLocaleCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final code = prefs.getString(_prefKeyLocaleCode) ?? 'ko';
+    setState(() => _locale = _parseLocale(code));
   }
 
   Future<void> _bindWidgetLaunchEvents() async {
@@ -115,7 +125,15 @@ class _CampusMateAppState extends State<CampusMateApp> {
     await prefs.setString(_prefKeyThemeMode, _themeModeToString(mode));
   }
 
+  Future<void> setLocaleCode(String code) async {
+    final locale = _parseLocale(code);
+    setState(() => _locale = locale);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyLocaleCode, locale.languageCode);
+  }
+
   ThemeMode get themeMode => _themeMode;
+  String get localeCode => _locale.languageCode;
 
   static ThemeMode _parseThemeMode(String value) {
     switch (value) {
@@ -139,6 +157,11 @@ class _CampusMateAppState extends State<CampusMateApp> {
     }
   }
 
+  static Locale _parseLocale(String code) {
+    if (code.toLowerCase().startsWith('en')) return const Locale('en');
+    return const Locale('ko');
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -146,6 +169,13 @@ class _CampusMateAppState extends State<CampusMateApp> {
       theme: CampusMateTheme.light(),
       darkTheme: CampusMateTheme.dark(),
       themeMode: _themeMode,
+      locale: _locale,
+      supportedLocales: const [Locale('ko'), Locale('en')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const RootShell(),
     );
   }

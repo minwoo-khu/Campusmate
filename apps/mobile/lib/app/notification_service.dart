@@ -12,7 +12,8 @@ class NotificationService {
   NotificationService._();
   static final NotificationService I = NotificationService._();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
 
   static const String _channelId = 'todo_reminders';
   static const String _channelName = 'Todo Reminders';
@@ -65,12 +66,16 @@ class NotificationService {
       },
     );
 
-    final androidImpl =
-        _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await androidImpl?.requestNotificationsPermission();
 
-    final iosImpl =
-        _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    final iosImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     await iosImpl?.requestPermissions(alert: true, badge: true, sound: true);
 
     _inited = true;
@@ -101,10 +106,7 @@ class NotificationService {
       iOS: const DarwinNotificationDetails(),
     );
 
-    final payload = jsonEncode({
-      'type': 'todo',
-      'todoId': todoId,
-    });
+    final payload = jsonEncode({'type': 'todo', 'todoId': todoId});
 
     await _plugin.zonedSchedule(
       id: notificationId,

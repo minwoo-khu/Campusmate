@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/l10n.dart';
 import '../../app/theme.dart';
 
 class TimetableScreen extends StatefulWidget {
@@ -27,6 +28,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
     super.initState();
     _loadSavedPath();
   }
+
+  String _t(String ko, String en) => context.tr(ko, en);
 
   Future<void> _loadSavedPath() async {
     final prefs = await SharedPreferences.getInstance();
@@ -49,7 +52,14 @@ class _TimetableScreenState extends State<TimetableScreen> {
     if (kIsWeb) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('웹에서는 파일 저장 경로가 제한됩니다. 모바일에서 사용해 주세요.')),
+        SnackBar(
+          content: Text(
+            _t(
+              '웹에서는 파일 저장 경로가 제한됩니다. 모바일에서 사용해 주세요.',
+              'File save path is limited on web. Please use mobile.',
+            ),
+          ),
+        ),
       );
       return;
     }
@@ -78,17 +88,17 @@ class _TimetableScreenState extends State<TimetableScreen> {
     setState(() => _imagePath = targetPath);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('시간표 이미지 저장 완료')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_t('시간표 이미지를 저장했습니다.', 'Timetable image saved.'))),
+    );
   }
 
   Future<void> _removeImage() async {
     final path = _imagePath;
     if (path != null && !kIsWeb) {
-      final f = File(path);
-      if (await f.exists()) {
-        await f.delete();
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
       }
     }
 
@@ -96,9 +106,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
     setState(() => _imagePath = null);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('시간표 이미지가 제거되었습니다.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_t('시간표 이미지를 삭제했습니다.', 'Timetable image removed.')),
+      ),
+    );
   }
 
   Widget _buildPlaceholder() {
@@ -118,10 +130,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
               itemBuilder: (_, __) {
                 return Container(
                   decoration: BoxDecoration(
-                    border: Border.all(
-                      color: cm.gridBorder,
-                      width: 0.6,
-                    ),
+                    border: Border.all(color: cm.gridBorder, width: 0.6),
                   ),
                 );
               },
@@ -134,23 +143,22 @@ class _TimetableScreenState extends State<TimetableScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.image_outlined,
-                  size: 56,
-                  color: cm.checkInactive,
-                ),
+                Icon(Icons.image_outlined, size: 56, color: cm.checkInactive),
                 const SizedBox(height: 14),
                 Text(
-                  '시간표 이미지가 없습니다',
+                  _t('시간표 이미지가 없습니다', 'No timetable image'),
                   style: TextStyle(
-                    fontSize: 28 / 1.5,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: cm.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '갤러리에서 이번 학기 시간표 이미지를 업로드하고\n확대/축소하여 확인하세요.',
+                  _t(
+                    '갤러리에서 이번 학기 시간표 이미지를 업로드하고\n확대/축소하여 확인하세요.',
+                    'Upload your semester timetable image\nand zoom in/out to view.',
+                  ),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: cm.textHint, height: 1.4),
                 ),
@@ -167,7 +175,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('이미지 업로드 (로컬 저장)'),
+                  child: Text(_t('이미지 업로드 (로컬 저장)', 'Upload image (local)')),
                 ),
               ],
             ),
@@ -196,9 +204,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
               Row(
                 children: [
                   Text(
-                    '시간표',
+                    _t('시간표', 'Timetable'),
                     style: TextStyle(
-                      fontSize: 42 / 1.25,
+                      fontSize: 34,
                       fontWeight: FontWeight.w800,
                       color: cm.textPrimary,
                     ),
@@ -230,9 +238,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                           child: Image.file(
                             File(_imagePath!),
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) {
-                              return _buildPlaceholder();
-                            },
+                            errorBuilder: (_, __, ___) => _buildPlaceholder(),
                           ),
                         )
                       : _buildPlaceholder(),
@@ -245,7 +251,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                   child: OutlinedButton.icon(
                     onPressed: _removeImage,
                     icon: const Icon(Icons.delete_outline),
-                    label: const Text('이미지 삭제'),
+                    label: Text(_t('이미지 삭제', 'Delete image')),
                   ),
                 ),
               ],

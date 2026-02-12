@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../app/l10n.dart';
 import '../../app/change_history_service.dart';
 import 'course.dart';
 
@@ -40,22 +42,25 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Edit Course')),
+      appBar: AppBar(title: Text(context.tr('강의 수정', 'Edit Course'))),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             TextField(
               controller: _controller,
-              decoration: const InputDecoration(
-                labelText: 'Course name',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: context.tr('강의명', 'Course name'),
+                border: const OutlineInputBorder(),
               ),
             ),
             const Spacer(),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(onPressed: _save, child: const Text('Save')),
+              child: FilledButton(
+                onPressed: _save,
+                child: Text(context.tr('저장', 'Save')),
+              ),
             ),
           ],
         ),

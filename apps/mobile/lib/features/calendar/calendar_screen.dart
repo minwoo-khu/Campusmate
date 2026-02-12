@@ -10,6 +10,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../app/app_link.dart';
 import '../../app/home_widget_service.dart';
 import '../../app/ics_settings_screen.dart';
+import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../todo/todo_edit_screen.dart';
 import '../todo/todo_model.dart';
@@ -59,6 +60,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   String _monthLabel(DateTime day) =>
       '${day.year} ${day.month.toString().padLeft(2, '0')}';
+
+  String _t(String ko, String en) => context.tr(ko, en);
 
   Future<void> _openIcsSettings() async {
     final changed = await Navigator.of(
@@ -193,7 +196,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _lastIcsSyncAt = null;
         _lastIcsFailureAt = null;
         _lastIcsFailureReason = null;
-        _message = 'School calendar is not connected.';
+        _message = _t(
+          '학교 캘린더가 연결되지 않았습니다.',
+          'School calendar is not connected.',
+        );
       });
       return;
     }
@@ -218,7 +224,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _lastIcsFailureAt = null;
         _lastIcsFailureReason = null;
         if (events.isEmpty) {
-          _message = 'Connected, but no events found.';
+          _message = _t('연결되었지만 일정이 없습니다.', 'Connected, but no events found.');
         }
       });
     } catch (e) {
@@ -233,8 +239,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _lastIcsFailureAt = now;
         _lastIcsFailureReason = '$e';
         _message = _icsEvents.isEmpty
-            ? 'Failed to load school calendar: $e'
-            : 'Sync failed. Showing cached events.';
+            ? _t('학교 캘린더를 불러오지 못했습니다: $e', 'Failed to load school calendar: $e')
+            : _t(
+                '동기화 실패. 캐시된 일정을 표시합니다.',
+                'Sync failed. Showing cached events.',
+              );
       });
     }
   }
@@ -258,7 +267,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _CalItem.todo(
             todoItem: todo,
             when: due,
-            subtitle: 'Due ${_fmtHm(due)}',
+            subtitle: _t('${_fmtHm(due)} 마감', 'Due ${_fmtHm(due)}'),
           ),
         );
       }
@@ -270,7 +279,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _CalItem.ics(
             event: event,
             when: event.start,
-            subtitle: event.allDay ? 'All day' : '${_fmtHm(event.start)} start',
+            subtitle: event.allDay
+                ? _t('종일', 'All day')
+                : _t(
+                    '${_fmtHm(event.start)} 시작',
+                    '${_fmtHm(event.start)} start',
+                  ),
           ),
         );
       }
@@ -308,11 +322,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    Chip(label: Text(isTodo ? 'My Todo' : 'School ICS')),
+                    Chip(
+                      label: Text(
+                        isTodo
+                            ? _t('내 할 일', 'My Todo')
+                            : _t('학교 ICS', 'School ICS'),
+                      ),
+                    ),
                     if (isTodo && todo != null) ...[
                       const SizedBox(width: 8),
                       Chip(
-                        label: Text(todo.completed ? 'Completed' : 'Active'),
+                        label: Text(
+                          todo.completed
+                              ? _t('완료', 'Completed')
+                              : _t('진행 중', 'Active'),
+                        ),
                       ),
                     ],
                   ],
@@ -332,7 +356,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             AppLink.openTodo(todo.id);
                           },
                           icon: const Icon(Icons.open_in_new),
-                          label: const Text('Open in Todo'),
+                          label: Text(_t('할 일에서 열기', 'Open in Todo')),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -348,7 +372,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             );
                           },
                           icon: const Icon(Icons.edit),
-                          label: const Text('Edit'),
+                          label: Text(_t('수정', 'Edit')),
                         ),
                       ),
                     ],
@@ -363,7 +387,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       },
                       icon: Icon(todo.completed ? Icons.undo : Icons.check),
                       label: Text(
-                        todo.completed ? 'Mark active' : 'Mark completed',
+                        todo.completed
+                            ? _t('진행으로 변경', 'Mark active')
+                            : _t('완료로 변경', 'Mark completed'),
                       ),
                     ),
                   ),
@@ -378,7 +404,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         });
                         Navigator.of(sheetContext).pop();
                       },
-                      child: const Text('Go to this date'),
+                      child: Text(_t('이 날짜로 이동', 'Go to this date')),
                     ),
                   ),
                 ],
@@ -421,7 +447,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isTodo ? 'My Todo' : 'School Calendar (ICS)',
+                  isTodo
+                      ? _t('내 할 일', 'My Todo')
+                      : _t('학교 캘린더 (ICS)', 'School Calendar (ICS)'),
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -578,7 +606,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Row(
                     children: [
                       Text(
-                        '${_selectedDay.month}/${_selectedDay.day} Schedule',
+                        context.tr(
+                          '${_selectedDay.month}/${_selectedDay.day} 일정',
+                          '${_selectedDay.month}/${_selectedDay.day} Schedule',
+                        ),
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -598,8 +629,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           children: [
                             Text(
                               _lastIcsSyncAt == null
-                                  ? 'Last success: none'
-                                  : 'Last success: ${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
+                                  ? context.tr(
+                                      '최근 성공: 없음',
+                                      'Last success: none',
+                                    )
+                                  : context.tr(
+                                      '최근 성공: ${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
+                                      'Last success: ${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
+                                    ),
                               style: TextStyle(
                                 fontSize: 11,
                                 color: cm.textHint,
@@ -607,7 +644,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                             if (_lastIcsFailureAt != null)
                               Text(
-                                'Last failure: ${_fmtYmd(_lastIcsFailureAt!)} ${_fmtHm(_lastIcsFailureAt!)}',
+                                context.tr(
+                                  '최근 실패: ${_fmtYmd(_lastIcsFailureAt!)} ${_fmtHm(_lastIcsFailureAt!)}',
+                                  'Last failure: ${_fmtYmd(_lastIcsFailureAt!)} ${_fmtHm(_lastIcsFailureAt!)}',
+                                ),
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: cm.deleteBg,
@@ -620,7 +660,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         onPressed: _loadIcs,
                         icon: const Icon(Icons.refresh, size: 18),
                         visualDensity: VisualDensity.compact,
-                        tooltip: 'Sync',
+                        tooltip: context.tr('동기화', 'Sync'),
                       ),
                     ],
                   ),
@@ -636,20 +676,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           Text(
                             _message!,
                             style: TextStyle(
-                              color:
-                                  _message!.startsWith('Failed') ||
-                                      _message!.startsWith('Sync failed')
+                              color: _lastIcsFailureAt != null
                                   ? cm.deleteBg
                                   : cm.textTertiary,
                               fontSize: 12,
                             ),
                           ),
                           if (_lastIcsFailureReason != null &&
-                              (_message!.startsWith('Failed') ||
-                                  _message!.startsWith('Sync failed')) &&
+                              _lastIcsFailureAt != null &&
                               kDebugMode)
                             Text(
-                              'Reason: ${_lastIcsFailureReason!}',
+                              context.tr(
+                                '원인: ${_lastIcsFailureReason!}',
+                                'Reason: ${_lastIcsFailureReason!}',
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -670,7 +710,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               const SizedBox(height: 120),
                               Center(
                                 child: Text(
-                                  'No events for selected date.',
+                                  context.tr(
+                                    '선택한 날짜의 일정이 없습니다.',
+                                    'No events for selected date.',
+                                  ),
                                   style: TextStyle(color: cm.textTertiary),
                                 ),
                               ),

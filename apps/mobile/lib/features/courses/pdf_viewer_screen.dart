@@ -28,7 +28,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   int _pageCount = 0;
 
   String _noteKey() => 'm:${widget.materialKey}';
-  String _pageMemoKey() => 'm:${widget.materialKey}:pages'; // JSON map page -> {text,tags}
+  String _pageMemoKey() =>
+      'm:${widget.materialKey}:pages'; // JSON map page -> {text,tags}
 
   static const List<String> _presetTags = ['시험', '중요', '암기', '과제', '질문'];
 
@@ -76,13 +77,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         // ✅ 구버전 호환: {"3":"텍스트"}
         if (v is String) {
           final text = v.trim();
-          if (text.isNotEmpty) out[p] = _PageMemoData(text: text, tags: const []);
+          if (text.isNotEmpty)
+            out[p] = _PageMemoData(text: text, tags: const []);
           continue;
         }
 
         // ✅ 신버전: {"3":{"text":"...","tags":["시험"]}}
         if (v is Map) {
-          final text = (v['text'] is String) ? (v['text'] as String).trim() : '';
+          final text = (v['text'] is String)
+              ? (v['text'] as String).trim()
+              : '';
           final tagsRaw = v['tags'];
           final tags = <String>[];
 
@@ -112,10 +116,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     final map = <String, dynamic>{};
 
     for (final e in memos.entries) {
-      map[e.key.toString()] = {
-        'text': e.value.text,
-        'tags': e.value.tags,
-      };
+      map[e.key.toString()] = {'text': e.value.text, 'tags': e.value.tags};
     }
 
     await box.put(_pageMemoKey(), jsonEncode(map));
@@ -141,7 +142,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('PDF 메모', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                'PDF 메모',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
@@ -228,8 +232,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('페이지 메모 (p.$page)',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                    '페이지 메모 (p.$page)',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: textController,
@@ -241,7 +247,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  const Text('태그', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    '태그',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
 
                   Wrap(
@@ -298,16 +307,17 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   Row(
                     children: [
                       OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(_PageMemoResult.delete),
+                        onPressed: () =>
+                            Navigator.of(context).pop(_PageMemoResult.delete),
                         child: const Text('삭제'),
                       ),
                       const Spacer(),
                       FilledButton(
                         onPressed: () {
                           // 현재 선택 태그를 result에 담아서 저장하도록
-                          Navigator.of(context).pop(
-                            _PageMemoResult.saveWith(selectedTags),
-                          );
+                          Navigator.of(
+                            context,
+                          ).pop(_PageMemoResult.saveWith(selectedTags));
                         },
                         child: const Text('저장'),
                       ),
@@ -325,8 +335,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
     if (result.kind == _PageMemoResultKind.save) {
       final text = textController.text.trim();
-      final tags = result.tags.map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
-        ..sort();
+      final tags =
+          result.tags.map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+            ..sort();
 
       // 텍스트도 태그도 없으면 제거
       if (text.isEmpty && tags.isEmpty) {
@@ -428,14 +439,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                             ChoiceChip(
                               label: const Text('전체'),
                               selected: tagFilter == null,
-                              onSelected: (_) => setLocal(() => tagFilter = null),
+                              onSelected: (_) =>
+                                  setLocal(() => tagFilter = null),
                             ),
                             const SizedBox(width: 8),
                             for (final t in tagList) ...[
                               ChoiceChip(
                                 label: Text(t),
                                 selected: tagFilter == t,
-                                onSelected: (_) => setLocal(() => tagFilter = t),
+                                onSelected: (_) =>
+                                    setLocal(() => tagFilter = t),
                               ),
                               const SizedBox(width: 8),
                             ],
@@ -450,7 +463,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                         ? const Center(child: Text('조건에 맞는 메모가 없어.'))
                         : ListView.separated(
                             itemCount: pages.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
                             itemBuilder: (_, i) {
                               final p = pages[i];
                               final d = memos[p]!;
@@ -463,7 +477,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (preview.trim().isNotEmpty) Text(preview),
+                                    if (preview.trim().isNotEmpty)
+                                      Text(preview),
                                     if (d.tags.isNotEmpty)
                                       Wrap(
                                         spacing: 6,
@@ -472,7 +487,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                           for (final t in d.tags.take(6))
                                             Chip(
                                               label: Text(t),
-                                              visualDensity: VisualDensity.compact,
+                                              visualDensity:
+                                                  VisualDensity.compact,
                                             ),
                                         ],
                                       ),
@@ -526,7 +542,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         actions: [
           IconButton(
             tooltip: 'PDF 메모',
-            icon: Icon(hasOverallNote ? Icons.sticky_note_2 : Icons.sticky_note_2_outlined),
+            icon: Icon(
+              hasOverallNote
+                  ? Icons.sticky_note_2
+                  : Icons.sticky_note_2_outlined,
+            ),
             onPressed: _editOverallNote,
           ),
           IconButton(
@@ -573,10 +593,7 @@ class _PageMemoData {
   final String text;
   final List<String> tags;
 
-  const _PageMemoData({
-    required this.text,
-    required this.tags,
-  });
+  const _PageMemoData({required this.text, required this.tags});
 
   factory _PageMemoData.empty() => const _PageMemoData(text: '', tags: []);
 }
@@ -592,5 +609,8 @@ class _PageMemoResult {
   factory _PageMemoResult.saveWith(List<String> tags) =>
       _PageMemoResult._(_PageMemoResultKind.save, tags);
 
-  static const _PageMemoResult delete = _PageMemoResult._(_PageMemoResultKind.delete, []);
+  static const _PageMemoResult delete = _PageMemoResult._(
+    _PageMemoResultKind.delete,
+    [],
+  );
 }

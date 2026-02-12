@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../../app/change_history_service.dart';
+import '../../app/l10n.dart';
 import 'course_material.dart';
 import 'pdf_viewer_screen.dart';
 
@@ -61,9 +62,9 @@ class CourseDetailScreen extends StatelessWidget {
     );
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('PDF uploaded.')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(context.tr('PDF를 업로드했습니다.', 'PDF uploaded.'))),
+    );
   }
 
   static Future<String> _uniquePath(String path) async {
@@ -88,16 +89,16 @@ class CourseDetailScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete PDF?'),
+        title: Text(context.tr('PDF를 삭제할까요?', 'Delete PDF?')),
         content: Text(material.fileName),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: Text(context.tr('취소', 'Cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Delete'),
+            child: Text(context.tr('삭제', 'Delete')),
           ),
         ],
       ),
@@ -127,9 +128,14 @@ class CourseDetailScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Deleted "${backup.fileName}"'),
+        content: Text(
+          context.tr(
+            '"${backup.fileName}" 삭제됨',
+            'Deleted "${backup.fileName}"',
+          ),
+        ),
         action: SnackBarAction(
-          label: 'Undo',
+          label: context.tr('실행 취소', 'Undo'),
           onPressed: () async {
             if (bytes != null) {
               final restoreFile = File(backup.localPath);
@@ -166,7 +172,14 @@ class CourseDetailScreen extends StatelessWidget {
                 ..sort((a, c) => c.addedAt.compareTo(a.addedAt));
 
           if (materials.isEmpty) {
-            return const Center(child: Text('No PDFs yet. Tap + to upload.'));
+            return Center(
+              child: Text(
+                context.tr(
+                  '아직 PDF가 없습니다. + 버튼으로 업로드하세요.',
+                  'No PDFs yet. Tap + to upload.',
+                ),
+              ),
+            );
           }
 
           return ListView.separated(
@@ -182,7 +195,7 @@ class CourseDetailScreen extends StatelessWidget {
               return ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
                 title: Text(material.fileName),
-                subtitle: Text('Added: $dateStr'),
+                subtitle: Text(context.tr('추가됨: $dateStr', 'Added: $dateStr')),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _deleteMaterialWithUndo(context, material),

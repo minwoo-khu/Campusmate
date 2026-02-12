@@ -6,6 +6,7 @@ import '../features/courses/course_screen.dart';
 import '../features/timetable/timetable_screen.dart';
 import '../features/todo/todo_screen.dart';
 import 'app_link.dart';
+import 'l10n.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
 
@@ -113,7 +114,7 @@ class _RootShellState extends State<RootShell> {
                 child: _NavItem(
                   icon: Icons.check_circle_outline,
                   activeIcon: Icons.check_circle,
-                  label: 'Todo',
+                  label: context.tr('할 일', 'Todo'),
                   selected: _currentIndex == 0,
                   onTap: () => setState(() => _currentIndex = 0),
                   onLongPress: _openSettings,
@@ -123,7 +124,7 @@ class _RootShellState extends State<RootShell> {
                 child: _NavItem(
                   icon: Icons.calendar_month_outlined,
                   activeIcon: Icons.calendar_month,
-                  label: 'Calendar',
+                  label: context.tr('캘린더', 'Calendar'),
                   selected: _currentIndex == 1,
                   onTap: () => setState(() => _currentIndex = 1),
                   onLongPress: _openSettings,
@@ -133,7 +134,7 @@ class _RootShellState extends State<RootShell> {
                 child: _NavItem(
                   icon: Icons.image_outlined,
                   activeIcon: Icons.image,
-                  label: 'Timetable',
+                  label: context.tr('시간표', 'Timetable'),
                   selected: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
                   onLongPress: _openSettings,
@@ -143,7 +144,7 @@ class _RootShellState extends State<RootShell> {
                 child: _NavItem(
                   icon: Icons.menu_book_outlined,
                   activeIcon: Icons.menu_book,
-                  label: 'Courses',
+                  label: context.tr('강의', 'Courses'),
                   selected: _currentIndex == 3,
                   onTap: () => setState(() => _currentIndex = 3),
                   onLongPress: _openSettings,

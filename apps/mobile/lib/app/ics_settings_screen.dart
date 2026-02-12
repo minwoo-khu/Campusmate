@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'l10n.dart';
+
 class IcsSettingsScreen extends StatefulWidget {
   const IcsSettingsScreen({super.key});
 
@@ -47,25 +49,28 @@ class _IcsSettingsScreenState extends State<IcsSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_loaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('School Calendar (ICS)')),
+      appBar: AppBar(
+        title: Text(context.tr('학교 캘린더 (ICS)', 'School Calendar (ICS)')),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            const Text(
-              'Paste your school iCal/ICS feed URL. Events will appear in Calendar as read-only.',
+            Text(
+              context.tr(
+                '학교 iCal/ICS 피드 URL을 붙여 넣으세요. 일정은 캘린더에 읽기 전용으로 표시됩니다.',
+                'Paste your school iCal/ICS feed URL. Events will appear in Calendar as read-only.',
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _controller,
-              decoration: const InputDecoration(
-                labelText: 'ICS feed URL',
+              decoration: InputDecoration(
+                labelText: context.tr('ICS 피드 URL', 'ICS feed URL'),
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.url,
@@ -75,9 +80,9 @@ class _IcsSettingsScreenState extends State<IcsSettingsScreen> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: _save,
-                child: const Text('Save'),
+                child: Text(context.tr('저장', 'Save')),
               ),
-            )
+            ),
           ],
         ),
       ),
