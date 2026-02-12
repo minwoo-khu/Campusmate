@@ -227,10 +227,10 @@ class _TodoScreenState extends State<TodoScreen> {
                     ),
                     ChoiceChip(
                       label: const Text('완료'),
-                      selected: _filter == _TodoViewFilter.done,
+                      selected: _filter == _TodoViewFilter.completed,
                       selectedColor: Theme.of(context).colorScheme.primary,
                       labelStyle: TextStyle(
-                        color: _filter == _TodoViewFilter.done ? Colors.white : Colors.black,
+                        color: _filter == _TodoViewFilter.completed ? Colors.white : Colors.black,
                       ),
                       onSelected: (_) => setState(() => _filter = _TodoViewFilter.completed),
                     ),
