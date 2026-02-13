@@ -35,7 +35,7 @@ CampusMate ("the App") minimizes personal data collection and is designed as a l
 - The app is not specifically targeted at children and does not knowingly collect children's personal data.
 
 ## 8. Contact
-- Support email: (add your support email here)
+- Support email: minwooj02@gmail.com
 
 ---
 This is a draft and should be reviewed before public release.
