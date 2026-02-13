@@ -175,6 +175,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return DateTime.tryParse(raw)?.toLocal();
   }
 
+  Uri? _validatedIcsUri(String raw) {
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return null;
+    if (uri.scheme.toLowerCase() != 'https' || uri.host.isEmpty) return null;
+    return uri;
+  }
+
   String _encodeCacheEvents(List<IcsEvent> events) {
     final payload = events
         .map(
@@ -296,9 +303,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
       });
       return;
     }
+    final uri = _validatedIcsUri(url);
+    if (uri == null) {
+      final now = DateTime.now();
+      final reason = 'ICS URL must use HTTPS.';
+      await _saveCacheFailure(prefs: prefs, now: now, reason: reason);
+      await HomeWidgetService.syncIcsTodayCount(
+        _icsEvents.map((event) => event.start),
+      );
+      setState(() {
+        _loading = false;
+        _lastIcsFailureAt = now;
+        _lastIcsFailureReason = reason;
+        _message = _t(
+          'ICS URL 형식이 올바르지 않습니다. HTTPS URL을 사용하세요.',
+          'Invalid ICS URL. Use an HTTPS URL.',
+        );
+      });
+      return;
+    }
 
     try {
-      final resp = await http.get(Uri.parse(url));
+      final resp = await http.get(uri).timeout(const Duration(seconds: 15));
+      final finalUri = resp.request?.url;
+      if (finalUri != null &&
+          (finalUri.scheme.toLowerCase() != 'https' || finalUri.host.isEmpty)) {
+        throw Exception('Redirected to non-HTTPS URL');
+      }
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         throw Exception('HTTP ${resp.statusCode}');
       }

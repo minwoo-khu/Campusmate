@@ -120,8 +120,9 @@ class CourseDetailScreen extends StatelessWidget {
     String targetFile;
     try {
       final appDir = await getApplicationDocumentsDirectory();
+      final safeCourseFolder = _safeFolderName(courseId);
       final folder = Directory(
-        p.join(appDir.path, 'course_materials', courseId),
+        p.join(appDir.path, 'course_materials', safeCourseFolder),
       );
       if (!await folder.exists()) {
         await folder.create(recursive: true);
@@ -189,6 +190,12 @@ class CourseDetailScreen extends StatelessWidget {
       if (!await File(candidate).exists()) return candidate;
       i++;
     }
+  }
+
+  static String _safeFolderName(String raw) {
+    final out = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
+    if (out.isEmpty || out == '.' || out == '..') return 'course';
+    return out;
   }
 
   Future<void> _deleteMaterialWithUndo(

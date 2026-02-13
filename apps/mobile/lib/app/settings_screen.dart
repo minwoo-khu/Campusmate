@@ -150,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 maxLength: 16,
                 decoration: InputDecoration(
                   labelText: _t('PIN', 'PIN'),
-                  hintText: _t('숫자 4자리 이상', 'At least 4 digits'),
+                  hintText: _t('숫자 6자리 이상', 'At least 6 digits'),
                   border: OutlineInputBorder(
                     borderSide: BorderSide(color: cm.cardBorder),
                   ),

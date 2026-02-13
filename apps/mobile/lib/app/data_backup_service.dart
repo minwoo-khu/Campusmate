@@ -82,7 +82,9 @@ class DataBackupService {
 
   static const _kdfIterations = 120000;
   static const _kdfBits = 256;
-  static const _pinMinLength = 4;
+  static const _pinMinLength = 6;
+  static const _legacyPinMinLength = 4;
+  static const _pinHashPrefix = 'pbkdf2_sha256_v1:';
 
   static Future<bool> hasBackupPin() async {
     final prefs = await SharedPreferences.getInstance();
@@ -94,7 +96,7 @@ class DataBackupService {
   static Future<void> setBackupPin(String pin) async {
     final normalized = pin.trim();
     if (normalized.length < _pinMinLength) {
-      throw const FormatException('PIN must be at least 4 digits.');
+      throw const FormatException('PIN must be at least 6 digits.');
     }
 
     final prefs = await SharedPreferences.getInstance();
@@ -115,8 +117,20 @@ class DataBackupService {
     if (saltBase64 == null || hash == null) return false;
 
     final salt = base64Decode(saltBase64);
-    final computed = await _hashPin(normalized, salt);
-    return computed == hash;
+
+    if (_isPbkdf2PinHash(hash)) {
+      final computed = await _hashPin(normalized, salt);
+      return _constantTimeEquals(computed, hash);
+    }
+
+    final legacyHash = await _hashPinLegacySha256(normalized, salt);
+    final matchedLegacy = _constantTimeEquals(legacyHash, hash);
+    if (!matchedLegacy) return false;
+
+    // Upgrade legacy verifier hash to PBKDF2 after first successful check.
+    final upgradedHash = await _hashPin(normalized, salt);
+    await prefs.setString(_prefBackupPinHash, upgradedHash);
+    return true;
   }
 
   static Future<void> clearBackupPin() async {
@@ -302,7 +316,10 @@ class DataBackupService {
       if (bytes.length > SafetyLimits.maxBackupMaterialFileBytes) {
         continue;
       }
-      final targetPath = p.join(materialRoot.path, _safePath(relativePath));
+      final targetPath = p.join(
+        materialRoot.path,
+        _safeRelativePath(relativePath),
+      );
       final targetFile = File(targetPath);
       await targetFile.parent.create(recursive: true);
       await targetFile.writeAsBytes(bytes, flush: true);
@@ -508,7 +525,7 @@ class DataBackupService {
     String pin,
   ) async {
     final normalizedPin = pin.trim();
-    if (normalizedPin.length < _pinMinLength) {
+    if (normalizedPin.length < _legacyPinMinLength) {
       throw const FormatException('PIN must be at least 4 digits.');
     }
 
@@ -552,8 +569,31 @@ class DataBackupService {
   }
 
   static Future<String> _hashPin(String pin, List<int> salt) async {
+    final derived = await _deriveAesKey(pin, salt);
+    final bytes = await derived.extractBytes();
+    return '$_pinHashPrefix${base64Encode(bytes)}';
+  }
+
+  static bool _isPbkdf2PinHash(String hash) {
+    return hash.startsWith(_pinHashPrefix);
+  }
+
+  static Future<String> _hashPinLegacySha256(String pin, List<int> salt) async {
     final hash = await Sha256().hash([...salt, ...utf8.encode(pin)]);
     return base64Encode(hash.bytes);
+  }
+
+  static bool _constantTimeEquals(String a, String b) {
+    final aBytes = utf8.encode(a);
+    final bBytes = utf8.encode(b);
+    var diff = aBytes.length ^ bBytes.length;
+    final maxLen = max(aBytes.length, bBytes.length);
+    for (var i = 0; i < maxLen; i++) {
+      final av = i < aBytes.length ? aBytes[i] : 0;
+      final bv = i < bBytes.length ? bBytes[i] : 0;
+      diff |= av ^ bv;
+    }
+    return diff == 0;
   }
 
   static List<int> _randomBytes(int length) {
@@ -599,8 +639,8 @@ class DataBackupService {
       if (!await sourceFile.exists()) continue;
 
       final relativePath = p.join(
-        _safePath(material.courseId),
-        '${i}_${_safePath(material.fileName)}',
+        _safePathSegment(material.courseId),
+        '${i}_${_safePathSegment(material.fileName)}',
       );
       final sourceBytes = await sourceFile.length();
       if (sourceBytes > SafetyLimits.maxBackupMaterialFileBytes) {
@@ -830,10 +870,22 @@ class DataBackupService {
     return normalized.substring(0, maxChars);
   }
 
-  static String _safePath(String raw) {
+  static String _safePathSegment(String raw) {
     final out = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
-    if (out.isEmpty) return 'item';
+    if (out.isEmpty || out == '.' || out == '..') return 'item';
     return out;
+  }
+
+  static String _safeRelativePath(String raw) {
+    final normalized = raw.replaceAll('\\', '/');
+    final parts = normalized
+        .split('/')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .map(_safePathSegment)
+        .toList();
+    if (parts.isEmpty) return 'item';
+    return p.joinAll(parts);
   }
 
   static String _two(int x) => x.toString().padLeft(2, '0');

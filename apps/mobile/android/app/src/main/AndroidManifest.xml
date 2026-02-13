@@ -7,7 +7,10 @@
     <application
         android:label="CampusMate"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -41,7 +44,8 @@
 
         <receiver
             android:name=".TodayWidgetProvider"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.BIND_APPWIDGET">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

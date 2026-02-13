@@ -16,6 +16,8 @@ class _IcsSettingsScreenState extends State<IcsSettingsScreen> {
   final _controller = TextEditingController();
   bool _loaded = false;
 
+  String _t(String ko, String en) => context.tr(ko, en);
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +37,34 @@ class _IcsSettingsScreenState extends State<IcsSettingsScreen> {
     if (url.isEmpty) {
       await prefs.remove(_prefKeyIcsUrl);
     } else {
-      await prefs.setString(_prefKeyIcsUrl, url);
+      if (url.length > 2048) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_t('URL이 너무 깁니다.', 'URL is too long.'))),
+        );
+        return;
+      }
+      final uri = Uri.tryParse(url);
+      final isHttps =
+          uri != null &&
+          uri.scheme.toLowerCase() == 'https' &&
+          uri.host.isNotEmpty;
+      if (!isHttps) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _t(
+                'HTTPS ICS URL만 사용할 수 있습니다.',
+                'Only HTTPS ICS URLs are allowed.',
+              ),
+            ),
+          ),
+        );
+        return;
+      }
+      final normalized = uri.replace(fragment: '').toString();
+      await prefs.setString(_prefKeyIcsUrl, normalized);
     }
     if (!mounted) return;
     Navigator.of(context).pop(true);

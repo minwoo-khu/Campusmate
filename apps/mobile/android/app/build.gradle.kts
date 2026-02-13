@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import org.gradle.api.GradleException
 
 plugins {
     id("com.android.application")
@@ -69,10 +70,17 @@ android {
 
     buildTypes {
         release {
+            val isReleaseTaskRequested = gradle.startParameter.taskNames.any {
+                it.contains("release", ignoreCase = true)
+            }
+            if (!hasReleaseSigning && isReleaseTaskRequested) {
+                throw GradleException(
+                    "Release signing is not fully configured. Configure key.properties before building release artifacts.",
+                )
+            }
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
-                logger.warn("Release signing is not fully configured. Using debug signing.")
                 signingConfigs.getByName("debug")
             }
         }
