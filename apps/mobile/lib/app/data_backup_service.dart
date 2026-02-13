@@ -254,8 +254,31 @@ class DataBackupService {
         m['name']?.toString() ?? '',
         SafetyLimits.maxCourseNameChars,
       );
+      final memo = _clampText(
+        m['memo']?.toString() ?? '',
+        SafetyLimits.maxCourseMemoChars,
+      );
       if (id.isEmpty || name.isEmpty) continue;
-      await courseBox.add(Course(id: id, name: name));
+
+      final tags = <String>[];
+      final seenTagKeys = <String>{};
+      final tagsRaw = m['tags'];
+      if (tagsRaw is List) {
+        for (final rawTag in tagsRaw) {
+          var tag = rawTag?.toString().trim() ?? '';
+          if (tag.isEmpty) continue;
+          if (tag.length > SafetyLimits.maxCourseTagChars) {
+            tag = tag.substring(0, SafetyLimits.maxCourseTagChars).trim();
+          }
+          if (tag.isEmpty) continue;
+          final key = tag.toLowerCase();
+          if (!seenTagKeys.add(key)) continue;
+          tags.add(tag);
+          if (tags.length >= SafetyLimits.maxCourseTagsPerCourse) break;
+        }
+      }
+
+      await courseBox.add(Course(id: id, name: name, memo: memo, tags: tags));
     }
 
     final todosRaw = _asList(payload['todos']);
@@ -712,7 +735,8 @@ class DataBackupService {
           },
       ],
       'courses': [
-        for (final c in courseBox.values) {'id': c.id, 'name': c.name},
+        for (final c in courseBox.values)
+          {'id': c.id, 'name': c.name, 'memo': c.memo, 'tags': c.tags},
       ],
       'courseMaterials': materials,
       'materialFiles': materialFiles,

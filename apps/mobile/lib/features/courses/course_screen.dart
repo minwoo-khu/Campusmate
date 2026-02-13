@@ -52,6 +52,13 @@ class _CourseScreenState extends State<CourseScreen> {
     required Box<String> pageMemoBox,
   }) {
     final parts = <String>[course.name];
+    final courseMemo = course.memo.trim();
+    if (courseMemo.isNotEmpty) {
+      parts.add(courseMemo);
+    }
+    if (course.tags.isNotEmpty) {
+      parts.addAll(course.tags);
+    }
 
     final courseMaterials = materials.where((m) => m.courseId == course.id);
     for (final material in courseMaterials) {
@@ -163,6 +170,9 @@ class _CourseScreenState extends State<CourseScreen> {
     Box<String> noteBox,
     Box<String> pageMemoBox,
   ) {
+    final courseMemo = course.memo.trim();
+    if (courseMemo.isNotEmpty) return courseMemo;
+
     final courseMaterials =
         materials.where((m) => m.courseId == course.id).toList()
           ..sort((a, b) => b.addedAt.compareTo(a.addedAt));
@@ -239,7 +249,12 @@ class _CourseScreenState extends State<CourseScreen> {
 
     if (ok != true) return;
 
-    final backup = Course(id: course.id, name: course.name);
+    final backup = Course(
+      id: course.id,
+      name: course.name,
+      memo: course.memo,
+      tags: List<String>.from(course.tags),
+    );
     await course.delete();
     await ChangeHistoryService.log('Course deleted', detail: backup.name);
 
@@ -461,6 +476,38 @@ class _CourseScreenState extends State<CourseScreen> {
                                       color: cm.textPrimary,
                                     ),
                                   ),
+                                  if (course.tags.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      children: course.tags.take(4).map((tag) {
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: cm.inputBg,
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
+                                            border: Border.all(
+                                              color: cm.cardBorder,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '#$tag',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: cm.textSecondary,
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
                                   const SizedBox(height: 8),
                                   Text(
                                     _t(
@@ -634,6 +681,67 @@ class _CourseScreenState extends State<CourseScreen> {
                                                       color: cm.textTertiary,
                                                     ),
                                                   ),
+                                                  if (course
+                                                      .tags
+                                                      .isNotEmpty) ...[
+                                                    const SizedBox(height: 8),
+                                                    Wrap(
+                                                      spacing: 6,
+                                                      runSpacing: 6,
+                                                      children: course.tags.take(6).map((
+                                                        tag,
+                                                      ) {
+                                                        return Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 8,
+                                                                vertical: 3,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color: cm.inputBg,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  999,
+                                                                ),
+                                                            border: Border.all(
+                                                              color:
+                                                                  cm.cardBorder,
+                                                            ),
+                                                          ),
+                                                          child: Text(
+                                                            '#$tag',
+                                                            style: TextStyle(
+                                                              fontSize: 11,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color: cm
+                                                                  .textSecondary,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                    ),
+                                                  ],
+                                                  if (course.memo
+                                                      .trim()
+                                                      .isNotEmpty) ...[
+                                                    const SizedBox(height: 8),
+                                                    Text(
+                                                      _trimPreview(
+                                                        course.memo.trim(),
+                                                        max: 100,
+                                                      ),
+                                                      maxLines: 2,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: cm.textTertiary,
+                                                        height: 1.3,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ],
                                               ),
                                             ),

@@ -14,28 +14,64 @@ class CourseEditScreen extends StatefulWidget {
 }
 
 class _CourseEditScreenState extends State<CourseEditScreen> {
-  late final TextEditingController _controller;
+  late final TextEditingController _nameController;
+  late final TextEditingController _memoController;
+  late final TextEditingController _tagsController;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.course.name);
+    _nameController = TextEditingController(text: widget.course.name);
+    _memoController = TextEditingController(text: widget.course.memo);
+    _tagsController = TextEditingController(
+      text: widget.course.tags.join(', '),
+    );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _nameController.dispose();
+    _memoController.dispose();
+    _tagsController.dispose();
     super.dispose();
   }
 
+  List<String> _sanitizeTags(String raw) {
+    final seen = <String>{};
+    final out = <String>[];
+
+    final tokens = raw.split(RegExp(r'[,\n]'));
+    for (final token in tokens) {
+      var tag = token.trim();
+      if (tag.isEmpty) continue;
+      if (tag.length > SafetyLimits.maxCourseTagChars) {
+        tag = tag.substring(0, SafetyLimits.maxCourseTagChars).trim();
+      }
+      if (tag.isEmpty) continue;
+      final key = tag.toLowerCase();
+      if (!seen.add(key)) continue;
+      out.add(tag);
+      if (out.length >= SafetyLimits.maxCourseTagsPerCourse) break;
+    }
+
+    return out;
+  }
+
   Future<void> _save() async {
-    var name = _controller.text.trim();
+    var name = _nameController.text.trim();
     if (name.isEmpty) return;
     if (name.length > SafetyLimits.maxCourseNameChars) {
       name = name.substring(0, SafetyLimits.maxCourseNameChars);
     }
+    var memo = _memoController.text.trim();
+    if (memo.length > SafetyLimits.maxCourseMemoChars) {
+      memo = memo.substring(0, SafetyLimits.maxCourseMemoChars);
+    }
+    final tags = _sanitizeTags(_tagsController.text);
 
     widget.course.name = name;
+    widget.course.memo = memo;
+    widget.course.tags = tags;
     await widget.course.save();
     await ChangeHistoryService.log('Course updated', detail: name);
 
@@ -51,15 +87,46 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            TextField(
-              controller: _controller,
-              maxLength: SafetyLimits.maxCourseNameChars,
-              decoration: InputDecoration(
-                labelText: context.tr('강의명', 'Course name'),
-                border: const OutlineInputBorder(),
+            Expanded(
+              child: ListView(
+                children: [
+                  TextField(
+                    controller: _nameController,
+                    maxLength: SafetyLimits.maxCourseNameChars,
+                    decoration: InputDecoration(
+                      labelText: context.tr('강의명', 'Course name'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _tagsController,
+                    maxLength:
+                        SafetyLimits.maxCourseTagsPerCourse *
+                        SafetyLimits.maxCourseTagChars,
+                    decoration: InputDecoration(
+                      labelText: context.tr('태그', 'Tags'),
+                      hintText: context.tr(
+                        '쉼표로 구분 (예: 전공, 프로젝트)',
+                        'Comma separated (ex: major, project)',
+                      ),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _memoController,
+                    maxLength: SafetyLimits.maxCourseMemoChars,
+                    minLines: 3,
+                    maxLines: 6,
+                    decoration: InputDecoration(
+                      labelText: context.tr('강의 메모', 'Course memo'),
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Spacer(),
             SizedBox(
               width: double.infinity,
               child: FilledButton(

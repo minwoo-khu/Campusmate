@@ -5,6 +5,9 @@ class SafetyLimits {
   static const int maxActiveTodosPerDay = 120;
   static const int maxTodoTitleChars = 180;
   static const int maxCourseNameChars = 80;
+  static const int maxCourseMemoChars = 1200;
+  static const int maxCourseTagChars = 32;
+  static const int maxCourseTagsPerCourse = 12;
   static const int maxCourses = 500;
   static const int maxMaterialsPerCourse = 300;
 
