@@ -142,6 +142,7 @@ class _RootShellState extends State<RootShell> {
       await prefs.setInt(_prefKeyLastTab, resolvedCurrentTab);
     }
 
+    if (!mounted) return;
     setState(() {
       _startTabIndex = resolvedStartTab;
       _currentIndex = resolvedCurrentTab;
@@ -163,6 +164,7 @@ class _RootShellState extends State<RootShell> {
   }
 
   void _setCurrentTab(int index) {
+    if (!mounted) return;
     final next = index.clamp(_homeTab, _coursesTab);
     if (_currentIndex == next) return;
 
@@ -177,9 +179,11 @@ class _RootShellState extends State<RootShell> {
       ),
     );
 
+    if (!mounted) return;
     if (selected != null) {
       await _setStartTab(selected);
       final tab = selected.clamp(_homeTab, _coursesTab);
+      if (!mounted) return;
       setState(() {
         _startTabIndex = tab;
         _currentIndex = tab;

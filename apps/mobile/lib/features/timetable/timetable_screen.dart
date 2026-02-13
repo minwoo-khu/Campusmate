@@ -32,8 +32,16 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
   String _t(String ko, String en) => context.tr(ko, en);
 
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _loadSavedPath() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _imagePath = prefs.getString(_prefKeyTimetablePath);
       _loaded = true;
@@ -76,7 +84,18 @@ class _TimetableScreenState extends State<TimetableScreen> {
     if (pickedPath == null) return;
 
     final sourceFile = File(pickedPath);
-    final sourceBytes = await sourceFile.length();
+    int sourceBytes;
+    try {
+      sourceBytes = await sourceFile.length();
+    } catch (_) {
+      _showError(
+        _t(
+          '이미지 파일을 읽을 수 없습니다. 다시 시도해주세요.',
+          'Failed to read the image file. Please try again.',
+        ),
+      );
+      return;
+    }
     if (sourceBytes > SafetyLimits.maxTimetableImageBytes) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -92,17 +111,21 @@ class _TimetableScreenState extends State<TimetableScreen> {
       return;
     }
 
-    final appDir = await getApplicationDocumentsDirectory();
-
     final ext = p.extension(pickedPath).toLowerCase();
     final safeExt = (ext == '.png' || ext == '.jpg' || ext == '.jpeg')
         ? ext
         : '.png';
-
-    final targetPath = p.join(appDir.path, 'timetable$safeExt');
-    await sourceFile.copy(targetPath);
-
-    await _savePath(targetPath);
+    String targetPath;
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      targetPath = p.join(appDir.path, 'timetable$safeExt');
+      await sourceFile.copy(targetPath);
+      await _savePath(targetPath);
+    } catch (_) {
+      _showError(_t('시간표 이미지 저장에 실패했습니다.', 'Failed to save timetable image.'));
+      return;
+    }
+    if (!mounted) return;
     setState(() => _imagePath = targetPath);
 
     if (!mounted) return;
@@ -112,15 +135,22 @@ class _TimetableScreenState extends State<TimetableScreen> {
   }
 
   Future<void> _removeImage() async {
-    final path = _imagePath;
-    if (path != null && !kIsWeb) {
-      final file = File(path);
-      if (await file.exists()) {
-        await file.delete();
+    try {
+      final path = _imagePath;
+      if (path != null && !kIsWeb) {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+        }
       }
+      await _savePath(null);
+    } catch (_) {
+      _showError(
+        _t('시간표 이미지 삭제에 실패했습니다.', 'Failed to remove timetable image.'),
+      );
+      return;
     }
-
-    await _savePath(null);
+    if (!mounted) return;
     setState(() => _imagePath = null);
 
     if (!mounted) return;

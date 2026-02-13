@@ -22,6 +22,31 @@ class CourseDetailScreen extends StatelessWidget {
     required this.courseName,
   });
 
+  void _showError(BuildContext context, String message) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<bool> _hasPdfSignature(File file) async {
+    RandomAccessFile? raf;
+    try {
+      raf = await file.open();
+      final header = await raf.read(5);
+      return header.length == 5 &&
+          header[0] == 0x25 &&
+          header[1] == 0x50 &&
+          header[2] == 0x44 &&
+          header[3] == 0x46 &&
+          header[4] == 0x2D;
+    } catch (_) {
+      return false;
+    } finally {
+      await raf?.close();
+    }
+  }
+
   Future<void> _pickAndSavePdf(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -36,7 +61,20 @@ class CourseDetailScreen extends StatelessWidget {
     if (pickedPath == null) return;
 
     final sourceFile = File(pickedPath);
-    final sourceBytes = await sourceFile.length();
+    int sourceBytes;
+    try {
+      sourceBytes = await sourceFile.length();
+    } catch (_) {
+      if (!context.mounted) return;
+      _showError(
+        context,
+        context.tr(
+          'PDF 파일을 읽을 수 없습니다. 다시 시도해주세요.',
+          'Failed to read PDF file. Please try again.',
+        ),
+      );
+      return;
+    }
     if (sourceBytes > SafetyLimits.maxCoursePdfBytes) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -48,6 +86,15 @@ class CourseDetailScreen extends StatelessWidget {
             ),
           ),
         ),
+      );
+      return;
+    }
+    final hasPdfSignature = await _hasPdfSignature(sourceFile);
+    if (!hasPdfSignature) {
+      if (!context.mounted) return;
+      _showError(
+        context,
+        context.tr('올바른 PDF 파일이 아닙니다.', 'Invalid PDF file format.'),
       );
       return;
     }
@@ -69,26 +116,54 @@ class CourseDetailScreen extends StatelessWidget {
       return;
     }
 
-    final appDir = await getApplicationDocumentsDirectory();
-    final folder = Directory(p.join(appDir.path, 'course_materials', courseId));
-    if (!await folder.exists()) {
-      await folder.create(recursive: true);
+    final fileName = p.basename(pickedPath);
+    String targetFile;
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final folder = Directory(
+        p.join(appDir.path, 'course_materials', courseId),
+      );
+      if (!await folder.exists()) {
+        await folder.create(recursive: true);
+      }
+
+      final targetPath = p.join(folder.path, fileName);
+      targetFile = await _uniquePath(targetPath);
+      await sourceFile.copy(targetFile);
+    } catch (_) {
+      if (!context.mounted) return;
+      _showError(
+        context,
+        context.tr('PDF 저장 중 오류가 발생했습니다.', 'Failed to save the PDF file.'),
+      );
+      return;
     }
 
-    final fileName = p.basename(pickedPath);
-    final targetPath = p.join(folder.path, fileName);
-    final targetFile = await _uniquePath(targetPath);
-
-    await sourceFile.copy(targetFile);
-
-    await box.add(
-      CourseMaterial(
-        courseId: courseId,
-        fileName: p.basename(targetFile),
-        localPath: targetFile,
-        addedAt: DateTime.now(),
-      ),
-    );
+    try {
+      await box.add(
+        CourseMaterial(
+          courseId: courseId,
+          fileName: p.basename(targetFile),
+          localPath: targetFile,
+          addedAt: DateTime.now(),
+        ),
+      );
+    } catch (_) {
+      try {
+        await File(targetFile).delete();
+      } catch (_) {
+        // ignore cleanup errors
+      }
+      if (!context.mounted) return;
+      _showError(
+        context,
+        context.tr(
+          'PDF 등록 중 오류가 발생했습니다.',
+          'Failed to register the uploaded PDF.',
+        ),
+      );
+      return;
+    }
 
     await ChangeHistoryService.log(
       'PDF uploaded',
@@ -150,15 +225,19 @@ class CourseDetailScreen extends StatelessWidget {
     List<int>? bytes;
     var undoAvailable = true;
     final f = File(material.localPath);
-    if (await f.exists()) {
-      final fileBytes = await f.length();
-      if (fileBytes <= SafetyLimits.maxUndoPdfBytes) {
-        bytes = await f.readAsBytes();
+    try {
+      if (await f.exists()) {
+        final fileBytes = await f.length();
+        if (fileBytes <= SafetyLimits.maxUndoPdfBytes) {
+          bytes = await f.readAsBytes();
+        } else {
+          undoAvailable = false;
+        }
+        await f.delete();
       } else {
         undoAvailable = false;
       }
-      await f.delete();
-    } else {
+    } catch (_) {
       undoAvailable = false;
     }
 
@@ -185,19 +264,30 @@ class CourseDetailScreen extends StatelessWidget {
             ? SnackBarAction(
                 label: context.tr('Undo', 'Undo'),
                 onPressed: () async {
-                  if (bytes != null) {
-                    final restoreFile = File(backup.localPath);
-                    await restoreFile.parent.create(recursive: true);
-                    await restoreFile.writeAsBytes(bytes);
-                  }
+                  try {
+                    if (bytes != null) {
+                      final restoreFile = File(backup.localPath);
+                      await restoreFile.parent.create(recursive: true);
+                      await restoreFile.writeAsBytes(bytes);
+                    }
 
-                  await Hive.box<CourseMaterial>(
-                    'course_materials',
-                  ).add(backup);
-                  await ChangeHistoryService.log(
-                    'PDF restored',
-                    detail: backup.fileName,
-                  );
+                    await Hive.box<CourseMaterial>(
+                      'course_materials',
+                    ).add(backup);
+                    await ChangeHistoryService.log(
+                      'PDF restored',
+                      detail: backup.fileName,
+                    );
+                  } catch (_) {
+                    if (!context.mounted) return;
+                    _showError(
+                      context,
+                      context.tr(
+                        'PDF 복원 중 오류가 발생했습니다.',
+                        'Failed to restore the deleted PDF.',
+                      ),
+                    );
+                  }
                 },
               )
             : null,

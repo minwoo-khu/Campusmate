@@ -94,6 +94,7 @@ class _CampusMateAppState extends State<CampusMateApp>
   Future<void> _loadThemeMode() async {
     final prefs = await SharedPreferences.getInstance();
     final value = prefs.getString(_prefKeyThemeMode) ?? 'system';
+    if (!mounted) return;
     setState(() => _themeMode = _parseThemeMode(value));
   }
 
@@ -105,12 +106,14 @@ class _CampusMateAppState extends State<CampusMateApp>
     final normalized = CampusMateTheme.isValidPaletteKey(value)
         ? value
         : CampusMateTheme.defaultPaletteKey;
+    if (!mounted) return;
     setState(() => _themePresetKey = normalized);
   }
 
   Future<void> _loadLocaleCode() async {
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString(_prefKeyLocaleCode) ?? 'ko';
+    if (!mounted) return;
     setState(() => _locale = _parseLocale(code));
   }
 

@@ -24,6 +24,7 @@ class _IcsSettingsScreenState extends State<IcsSettingsScreen> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     _controller.text = prefs.getString(_prefKeyIcsUrl) ?? '';
     setState(() => _loaded = true);
   }
