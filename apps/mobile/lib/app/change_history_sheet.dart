@@ -6,11 +6,29 @@ import 'theme.dart';
 
 Future<void> showChangeHistorySheet(BuildContext context) {
   final entries = ChangeHistoryService.recent(limit: 30);
+  String tr(String ko, String en) => context.tr(ko, en);
+
+  if (entries.isEmpty) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(tr('최근 변경', 'Recent changes')),
+        content: Text(tr('최근 변경 내역이 없습니다.', 'No recent changes yet.')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(tr('확인', 'OK')),
+          ),
+        ],
+      ),
+    );
+  }
 
   return showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
+    useSafeArea: true,
     builder: (sheetContext) {
       final cm = sheetContext.cmColors;
       String tr(String ko, String en) => sheetContext.tr(ko, en);
@@ -54,13 +72,6 @@ Future<void> showChangeHistorySheet(BuildContext context) {
           default:
             return action;
         }
-      }
-
-      if (entries.isEmpty) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Text(tr('최근 변경 내역이 없습니다.', 'No recent changes yet.')),
-        );
       }
 
       String two(int x) => x.toString().padLeft(2, '0');
