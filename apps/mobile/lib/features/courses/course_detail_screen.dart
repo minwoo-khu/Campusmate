@@ -116,7 +116,7 @@ class CourseDetailScreen extends StatelessWidget {
       return;
     }
 
-    final fileName = p.basename(pickedPath);
+    final fileName = _sanitizeUploadFileName(p.basename(pickedPath));
     String targetFile;
     try {
       final appDir = await getApplicationDocumentsDirectory();
@@ -195,7 +195,32 @@ class CourseDetailScreen extends StatelessWidget {
   static String _safeFolderName(String raw) {
     final out = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
     if (out.isEmpty || out == '.' || out == '..') return 'course';
-    return out;
+    const maxFolderChars = 80;
+    if (out.length <= maxFolderChars) return out;
+    return out.substring(0, maxFolderChars);
+  }
+
+  static String _sanitizeUploadFileName(String raw) {
+    final cleaned = raw
+        .replaceAll(RegExp(r'[\\/:*?"<>|\u0000-\u001F]'), '_')
+        .trim();
+    if (cleaned.isEmpty || cleaned == '.' || cleaned == '..') {
+      return 'document.pdf';
+    }
+
+    const maxChars = 120;
+    if (cleaned.length <= maxChars) return cleaned;
+
+    final ext = p.extension(cleaned);
+    final base = p.basenameWithoutExtension(cleaned);
+    final baseLimit = maxChars - ext.length;
+    if (baseLimit <= 1 || base.isEmpty) {
+      return cleaned.substring(0, maxChars);
+    }
+    final safeBase = base.length <= baseLimit
+        ? base
+        : base.substring(0, baseLimit);
+    return '$safeBase$ext';
   }
 
   Future<void> _deleteMaterialWithUndo(

@@ -866,7 +866,9 @@ class DataBackupService {
   static String _safePathSegment(String raw) {
     final out = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
     if (out.isEmpty || out == '.' || out == '..') return 'item';
-    return out;
+    const maxSegmentChars = 80;
+    if (out.length <= maxSegmentChars) return out;
+    return out.substring(0, maxSegmentChars);
   }
 
   static String _safeRelativePath(String raw) {
