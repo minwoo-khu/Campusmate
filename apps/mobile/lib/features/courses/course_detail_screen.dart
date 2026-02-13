@@ -60,6 +60,7 @@ class CourseDetailScreen extends StatelessWidget {
     if (pickedPath == null) return;
 
     final sourceFile = File(pickedPath);
+    final pickedFile = result.files.single;
     int sourceBytes;
     try {
       sourceBytes = await sourceFile.length();
@@ -111,7 +112,9 @@ class CourseDetailScreen extends StatelessWidget {
       return;
     }
 
-    final fileName = _sanitizeUploadFileName(p.basename(pickedPath));
+    final fileName = _sanitizeUploadFileName(
+      _resolvePickedFileName(pickedFile.name, pickedPath),
+    );
     String targetFile;
     try {
       final appDir = await getApplicationDocumentsDirectory();
@@ -217,6 +220,25 @@ class CourseDetailScreen extends StatelessWidget {
         ? base
         : base.substring(0, baseLimit);
     return '$safeBase$ext';
+  }
+
+  static String _resolvePickedFileName(String pickerName, String pickedPath) {
+    var candidate = pickerName.trim();
+    if (candidate.isEmpty) {
+      candidate = p.basename(pickedPath);
+    } else {
+      candidate = p.basename(candidate);
+    }
+
+    if (candidate.contains('%')) {
+      try {
+        candidate = Uri.decodeComponent(candidate);
+      } catch (_) {
+        // keep the original candidate when decode fails
+      }
+    }
+
+    return candidate;
   }
 
   Future<void> _deleteMaterialWithUndo(
