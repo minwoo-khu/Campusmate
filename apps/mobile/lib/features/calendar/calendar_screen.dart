@@ -62,6 +62,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   String _t(String ko, String en) => context.tr(ko, en);
 
+  String _weekdayShortLabel(int weekday) {
+    switch (weekday) {
+      case DateTime.sunday:
+        return _t('일', 'Sun');
+      case DateTime.monday:
+        return _t('월', 'Mon');
+      case DateTime.tuesday:
+        return _t('화', 'Tue');
+      case DateTime.wednesday:
+        return _t('수', 'Wed');
+      case DateTime.thursday:
+        return _t('목', 'Thu');
+      case DateTime.friday:
+        return _t('금', 'Fri');
+      case DateTime.saturday:
+        return _t('토', 'Sat');
+      default:
+        return '';
+    }
+  }
+
   int _dayKey(DateTime day) => day.year * 10000 + day.month * 100 + day.day;
 
   _DayItems _buildDayItems(Box<TodoItem> box) {
@@ -772,6 +793,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           },
                           eventLoader: (day) =>
                               _markerItemsForDay(dayItems, day),
+                          calendarBuilders: CalendarBuilders<_CalItem>(
+                            dowBuilder: (context, day) {
+                              final isSunday = day.weekday == DateTime.sunday;
+                              return Center(
+                                child: Text(
+                                  _weekdayShortLabel(day.weekday),
+                                  style: TextStyle(
+                                    color: isSunday
+                                        ? const Color(0xFFDC2626)
+                                        : cm.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                           calendarStyle: CalendarStyle(
                             defaultTextStyle: TextStyle(color: cm.textPrimary),
                             weekendTextStyle: TextStyle(color: cm.textPrimary),
