@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import 'center_notice.dart';
 import 'crash_reporting_service.dart';
 import 'data_backup_service.dart';
 import 'l10n.dart';
@@ -34,6 +35,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   String _t(String ko, String en) => context.tr(ko, en);
+
+  void _showNotice(String message, {bool error = false}) {
+    if (!mounted) return;
+    CenterNotice.show(context, message: message, error: error);
+  }
 
   ButtonStyle _filledStyle(BuildContext context) {
     final cm = context.cmColors;
@@ -198,9 +204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final ok = await DataBackupService.verifyBackupPin(currentPin);
       if (!ok) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'))),
-        );
+        _showNotice(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'), error: true);
         return;
       }
     }
@@ -223,9 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (newPin != confirmPin) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('PIN이 일치하지 않습니다.', 'PIN does not match.'))),
-      );
+      _showNotice(_t('PIN이 일치하지 않습니다.', 'PIN does not match.'), error: true);
       return;
     }
 
@@ -233,17 +235,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await DataBackupService.setBackupPin(newPin);
       if (!mounted) return;
       setState(() => _hasBackupPin = true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_t('백업 PIN이 설정되었습니다.', 'Backup PIN has been set.')),
-        ),
-      );
+      _showNotice(_t('백업 PIN이 설정되었습니다.', 'Backup PIN has been set.'));
     } on FormatException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_t('설정 실패: ${e.message}', 'Failed: ${e.message}')),
-        ),
+      _showNotice(
+        _t('설정 실패: ${e.message}', 'Failed: ${e.message}'),
+        error: true,
       );
     }
   }
@@ -264,20 +261,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await DataBackupService.verifyBackupPin(pin);
     if (!ok) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'))),
-      );
+      _showNotice(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'), error: true);
       return;
     }
 
     await DataBackupService.clearBackupPin();
     if (!mounted) return;
     setState(() => _hasBackupPin = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_t('백업 PIN이 해제되었습니다.', 'Backup PIN has been disabled.')),
-      ),
-    );
+    _showNotice(_t('백업 PIN이 해제되었습니다.', 'Backup PIN has been disabled.'));
   }
 
   Future<String?> _resolvePinForExport() async {
@@ -295,9 +286,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ok = await DataBackupService.verifyBackupPin(pin);
     if (!ok) {
       if (!mounted) return null;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'))),
-      );
+      _showNotice(_t('PIN이 올바르지 않습니다.', 'Incorrect PIN.'), error: true);
       return null;
     }
 
@@ -334,35 +323,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.encrypted
-                ? _t(
-                    '암호화 백업 완료 (${result.summary.todos}개 할 일)',
-                    'Encrypted backup exported (${result.summary.todos} todos)',
-                  )
-                : _t(
-                    '백업 저장 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
-                    'Backup exported (${result.summary.todos} todos, ${result.summary.courses} courses)',
-                  ),
-          ),
-        ),
+      _showNotice(
+        result.encrypted
+            ? _t(
+                '암호화 백업 완료 (${result.summary.todos}개 할 일)',
+                'Encrypted backup exported (${result.summary.todos} todos)',
+              )
+            : _t(
+                '백업 저장 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
+                'Backup exported (${result.summary.todos} todos, ${result.summary.courses} courses)',
+              ),
       );
     } on FormatException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t('백업 실패: ${e.message}', 'Backup failed: ${e.message}'),
-          ),
-        ),
+      _showNotice(
+        _t('백업 실패: ${e.message}', 'Backup failed: ${e.message}'),
+        error: true,
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('백업 중 오류가 발생했습니다.', 'Backup failed.'))),
-      );
+      _showNotice(_t('백업 중 오류가 발생했습니다.', 'Backup failed.'), error: true);
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -449,35 +429,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _startTab = result.startTab);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            result.encrypted
-                ? _t(
-                    '암호화 백업 복원 완료 (${result.summary.todos}개 할 일)',
-                    'Encrypted backup restored (${result.summary.todos} todos)',
-                  )
-                : _t(
-                    '복원 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
-                    'Restore completed (${result.summary.todos} todos, ${result.summary.courses} courses)',
-                  ),
-          ),
-        ),
+      _showNotice(
+        result.encrypted
+            ? _t(
+                '암호화 백업 복원 완료 (${result.summary.todos}개 할 일)',
+                'Encrypted backup restored (${result.summary.todos} todos)',
+              )
+            : _t(
+                '복원 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
+                'Restore completed (${result.summary.todos} todos, ${result.summary.courses} courses)',
+              ),
       );
     } on FormatException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t('복원 실패: ${e.message}', 'Restore failed: ${e.message}'),
-          ),
-        ),
+      _showNotice(
+        _t('복원 실패: ${e.message}', 'Restore failed: ${e.message}'),
+        error: true,
       );
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_t('복원 중 오류가 발생했습니다.', 'Restore failed.'))),
-      );
+      _showNotice(_t('복원 중 오류가 발생했습니다.', 'Restore failed.'), error: true);
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -509,12 +480,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await NotificationService.I.requestPermissions();
       await _refreshNotificationDiagnostics();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t('알림 권한 요청을 실행했습니다.', 'Notification permission requested.'),
-          ),
-        ),
+      _showNotice(
+        _t('알림 권한 요청을 실행했습니다.', 'Notification permission requested.'),
       );
     } finally {
       if (mounted) {
@@ -536,9 +503,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '정확 알람 권한이 아직 허용되지 않았습니다.',
               'Exact alarm permission is still denied.',
             );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      _showNotice(message, error: canExact != true);
     } finally {
       if (mounted) {
         setState(() => _notifBusy = false);
@@ -552,14 +517,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await NotificationService.I.scheduleDebugNotification();
       await _refreshNotificationDiagnostics();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              '15초 후 테스트 알림을 예약했습니다.',
-              'Test notification scheduled for 15 seconds later.',
-            ),
-          ),
+      _showNotice(
+        _t(
+          '15초 후 테스트 알림을 예약했습니다.',
+          'Test notification scheduled for 15 seconds later.',
         ),
       );
     } finally {
@@ -575,14 +536,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await CrashReportingService.I.captureTestEvent();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              '크래시 리포팅 테스트 이벤트를 전송했습니다.',
-              'Crash reporting smoke test event sent.',
-            ),
-          ),
+      _showNotice(
+        _t(
+          '크래시 리포팅 테스트 이벤트를 전송했습니다.',
+          'Crash reporting smoke test event sent.',
         ),
       );
     } finally {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'center_notice.dart';
 import 'l10n.dart';
 
 class IcsSettingsScreen extends StatefulWidget {
@@ -39,8 +40,10 @@ class _IcsSettingsScreenState extends State<IcsSettingsScreen> {
     } else {
       if (url.length > 2048) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_t('URL이 너무 깁니다.', 'URL is too long.'))),
+        CenterNotice.show(
+          context,
+          message: _t('URL이 너무 깁니다.', 'URL is too long.'),
+          error: true,
         );
         return;
       }
@@ -51,15 +54,13 @@ class _IcsSettingsScreenState extends State<IcsSettingsScreen> {
           uri.host.isNotEmpty;
       if (!isHttps) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                'HTTPS ICS URL만 사용할 수 있습니다.',
-                'Only HTTPS ICS URLs are allowed.',
-              ),
-            ),
+        CenterNotice.show(
+          context,
+          message: _t(
+            'HTTPS ICS URL만 사용할 수 있습니다.',
+            'Only HTTPS ICS URLs are allowed.',
           ),
+          error: true,
         );
         return;
       }

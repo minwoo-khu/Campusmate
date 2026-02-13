@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../app/app_link.dart';
+import '../../app/center_notice.dart';
 import '../../app/home_widget_service.dart';
 import '../../app/ics_settings_screen.dart';
 import '../../app/l10n.dart';
@@ -144,15 +145,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _showDailyLimitMessage(TodoDailyLimitExceededException e) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _t(
-            '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
-            'Daily todo limit reached (${e.limit}).',
-          ),
-        ),
+    CenterNotice.show(
+      context,
+      message: _t(
+        '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
+        'Daily todo limit reached (${e.limit}).',
       ),
+      error: true,
     );
   }
 

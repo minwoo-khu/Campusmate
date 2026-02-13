@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
+import '../../app/center_notice.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../app/change_history_service.dart';
@@ -35,15 +36,13 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
     final box = Hive.box<Course>('courses');
     if (box.length >= SafetyLimits.maxCourses) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr(
-              '강의 한도(${SafetyLimits.maxCourses}개)에 도달했습니다.',
-              'Course limit reached (${SafetyLimits.maxCourses}).',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: context.tr(
+          '강의 한도(${SafetyLimits.maxCourses}개)에 도달했습니다.',
+          'Course limit reached (${SafetyLimits.maxCourses}).',
         ),
+        error: true,
       );
       return;
     }

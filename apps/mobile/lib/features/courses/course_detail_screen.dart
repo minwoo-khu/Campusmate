@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
 import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
@@ -24,9 +25,7 @@ class CourseDetailScreen extends StatelessWidget {
 
   void _showError(BuildContext context, String message) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    CenterNotice.show(context, message: message, error: true);
   }
 
   Future<bool> _hasPdfSignature(File file) async {
@@ -77,15 +76,13 @@ class CourseDetailScreen extends StatelessWidget {
     }
     if (sourceBytes > SafetyLimits.maxCoursePdfBytes) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr(
-              'PDF ?ш린 ?쒕룄(${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB)瑜?珥덇낵?덉뒿?덈떎.',
-              'PDF is too large (limit ${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: context.tr(
+          'PDF 용량 한도(${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB)를 초과했습니다.',
+          'PDF is too large (limit ${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
         ),
+        error: true,
       );
       return;
     }
@@ -103,15 +100,13 @@ class CourseDetailScreen extends StatelessWidget {
     final currentCount = box.values.where((m) => m.courseId == courseId).length;
     if (currentCount >= SafetyLimits.maxMaterialsPerCourse) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr(
-              '媛뺤쓽蹂?PDF ?쒕룄(${SafetyLimits.maxMaterialsPerCourse}媛????꾨떖?덉뒿?덈떎.',
-              'PDF limit reached for this course (${SafetyLimits.maxMaterialsPerCourse}).',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: context.tr(
+          '강의별 PDF 한도(${SafetyLimits.maxMaterialsPerCourse}개)에 도달했습니다.',
+          'PDF limit reached for this course (${SafetyLimits.maxMaterialsPerCourse}).',
         ),
+        error: true,
       );
       return;
     }
@@ -172,8 +167,9 @@ class CourseDetailScreen extends StatelessWidget {
     );
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('PDF瑜??낅줈?쒗뻽?듬땲??', 'PDF uploaded.'))),
+    CenterNotice.show(
+      context,
+      message: context.tr('PDF를 업로드했습니다.', 'PDF uploaded.'),
     );
   }
 
@@ -278,52 +274,54 @@ class CourseDetailScreen extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          undoAvailable
-              ? context.tr(
-                  'Deleted "${backup.fileName}"',
-                  'Deleted "${backup.fileName}"',
-                )
-              : context.tr(
-                  'Deleted "${backup.fileName}" (undo disabled for large file)',
-                  'Deleted "${backup.fileName}" (undo disabled for large file)',
-                ),
+    if (!undoAvailable) {
+      CenterNotice.show(
+        context,
+        message: context.tr(
+          '"${backup.fileName}" 삭제됨 (용량이 커서 복원 불가)',
+          'Deleted "${backup.fileName}" (undo disabled for large file)',
         ),
-        action: undoAvailable
-            ? SnackBarAction(
-                label: context.tr('Undo', 'Undo'),
-                onPressed: () async {
-                  try {
-                    if (bytes != null) {
-                      final restoreFile = File(backup.localPath);
-                      await restoreFile.parent.create(recursive: true);
-                      await restoreFile.writeAsBytes(bytes);
-                    }
+      );
+      return;
+    }
 
-                    await Hive.box<CourseMaterial>(
-                      'course_materials',
-                    ).add(backup);
-                    await ChangeHistoryService.log(
-                      'PDF restored',
-                      detail: backup.fileName,
-                    );
-                  } catch (_) {
-                    if (!context.mounted) return;
-                    _showError(
-                      context,
-                      context.tr(
-                        'PDF 복원 중 오류가 발생했습니다.',
-                        'Failed to restore the deleted PDF.',
-                      ),
-                    );
-                  }
-                },
-              )
-            : null,
+    await CenterNotice.showActionDialog(
+      context,
+      title: context.tr('PDF 삭제됨', 'PDF deleted'),
+      message: context.tr(
+        '"${backup.fileName}"을(를) 삭제했습니다.',
+        'Deleted "${backup.fileName}".',
       ),
+      actionLabel: context.tr('실행 취소', 'Undo'),
+      onAction: () async {
+        try {
+          if (bytes != null) {
+            final restoreFile = File(backup.localPath);
+            await restoreFile.parent.create(recursive: true);
+            await restoreFile.writeAsBytes(bytes);
+          }
+
+          await Hive.box<CourseMaterial>('course_materials').add(backup);
+          await ChangeHistoryService.log(
+            'PDF restored',
+            detail: backup.fileName,
+          );
+          if (!context.mounted) return;
+          CenterNotice.show(
+            context,
+            message: context.tr('PDF를 복원했습니다.', 'PDF restored.'),
+          );
+        } catch (_) {
+          if (!context.mounted) return;
+          _showError(
+            context,
+            context.tr(
+              'PDF 복원 중 오류가 발생했습니다.',
+              'Failed to restore the deleted PDF.',
+            ),
+          );
+        }
+      },
     );
   }
 

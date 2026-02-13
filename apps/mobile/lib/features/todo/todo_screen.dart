@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../app/app_link.dart';
+import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
 import '../../app/change_history_sheet.dart';
 import '../../app/l10n.dart';
@@ -122,15 +123,13 @@ class _TodoScreenState extends State<TodoScreen> {
 
   void _showDailyLimitMessage(TodoDailyLimitExceededException e) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _t(
-            '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
-            'Daily todo limit reached (${e.limit}).',
-          ),
-        ),
+    CenterNotice.show(
+      context,
+      message: _t(
+        '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
+        'Daily todo limit reached (${e.limit}).',
       ),
+      error: true,
     );
   }
 
@@ -307,25 +306,27 @@ class _TodoScreenState extends State<TodoScreen> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_t('"${backup.title}" 삭제됨', 'Deleted "${backup.title}"')),
-        action: SnackBarAction(
-          label: _t('실행 취소', 'Undo'),
-          onPressed: () async {
-            try {
-              await todoRepo.add(backup, logAction: false);
-              await ChangeHistoryService.log(
-                'Todo restored',
-                detail: backup.title,
-              );
-            } on TodoDailyLimitExceededException catch (e) {
-              _showDailyLimitMessage(e);
-            }
-          },
-        ),
+    await CenterNotice.showActionDialog(
+      context,
+      title: _t('할 일 삭제됨', 'Todo deleted'),
+      message: _t(
+        '"${backup.title}"을(를) 삭제했습니다.',
+        'Deleted "${backup.title}".',
       ),
+      actionLabel: _t('실행 취소', 'Undo'),
+      onAction: () async {
+        try {
+          await todoRepo.add(backup, logAction: false);
+          await ChangeHistoryService.log('Todo restored', detail: backup.title);
+          if (!mounted) return;
+          CenterNotice.show(
+            context,
+            message: _t('"${backup.title}" 복원됨', 'Restored "${backup.title}"'),
+          );
+        } on TodoDailyLimitExceededException catch (e) {
+          _showDailyLimitMessage(e);
+        }
+      },
     );
   }
 
@@ -352,15 +353,13 @@ class _TodoScreenState extends State<TodoScreen> {
 
     if (due != null && remind != null && remind.isAfter(due)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                '리마인더는 마감 이후로 설정할 수 없습니다.',
-                'Reminder cannot be later than due time.',
-              ),
-            ),
+        CenterNotice.show(
+          context,
+          message: _t(
+            '리마인더는 마감 이후로 설정할 수 없습니다.',
+            'Reminder cannot be later than due time.',
           ),
+          error: true,
         );
       }
       return;
@@ -422,15 +421,13 @@ class _TodoScreenState extends State<TodoScreen> {
 
     if (_quickDueAt != null && picked.isAfter(_quickDueAt!)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                '리마인더는 마감 이후로 설정할 수 없습니다.',
-                'Reminder cannot be later than due time.',
-              ),
-            ),
+        CenterNotice.show(
+          context,
+          message: _t(
+            '리마인더는 마감 이후로 설정할 수 없습니다.',
+            'Reminder cannot be later than due time.',
           ),
+          error: true,
         );
       }
       return;
@@ -447,15 +444,13 @@ class _TodoScreenState extends State<TodoScreen> {
 
     final due = item.dueAt;
     if (due != null && picked.isAfter(due)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              '리마인더는 마감 이후로 설정할 수 없습니다.',
-              'Reminder cannot be later than due time.',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: _t(
+          '리마인더는 마감 이후로 설정할 수 없습니다.',
+          'Reminder cannot be later than due time.',
         ),
+        error: true,
       );
       return;
     }
@@ -491,14 +486,11 @@ class _TodoScreenState extends State<TodoScreen> {
     );
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _t(
-            '"${item.title}" 리마인더를 $label 미뤘습니다.',
-            'Snoozed "${item.title}" by $label.',
-          ),
-        ),
+    CenterNotice.show(
+      context,
+      message: _t(
+        '"${item.title}" 리마인더를 $label 미뤘습니다.',
+        'Snoozed "${item.title}" by $label.',
       ),
     );
   }

@@ -10,6 +10,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
 import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
@@ -41,9 +42,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    CenterNotice.show(context, message: message, error: true);
   }
 
   Future<void> _loadSavedPath() async {
@@ -328,14 +327,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
       if (!mounted) return;
 
       if (candidates.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                '강의명을 자동으로 찾지 못했어요. 필요하면 강의 탭에서 직접 추가해 주세요.',
-                'No course names detected. Please add manually if needed.',
-              ),
-            ),
+        CenterNotice.show(
+          context,
+          message: _t(
+            '강의명을 자동으로 찾지 못했어요. 필요하면 강의 탭에서 직접 추가해 주세요.',
+            'No course names detected. Please add manually if needed.',
           ),
         );
         return;
@@ -349,14 +345,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
           .toList();
 
       if (newCandidates.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                '이미 등록된 강의만 인식되었어요.',
-                'Detected courses are already registered.',
-              ),
-            ),
+        CenterNotice.show(
+          context,
+          message: _t(
+            '이미 등록된 강의만 인식되었어요.',
+            'Detected courses are already registered.',
           ),
         );
         return;
@@ -396,27 +389,21 @@ class _TimetableScreenState extends State<TimetableScreen> {
           detail: detail,
         );
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                '시간표에서 강의 ${toAdd.length}개를 추가했어요.',
-                'Added ${toAdd.length} courses from timetable.',
-              ),
-            ),
+        CenterNotice.show(
+          context,
+          message: _t(
+            '시간표에서 강의 ${toAdd.length}개를 추가했어요.',
+            'Added ${toAdd.length} courses from timetable.',
           ),
         );
       }
 
       if (selected.length > toAdd.length && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _t(
-                '강의 한도(${SafetyLimits.maxCourses}개)로 일부만 추가했어요.',
-                'Only some courses were added due to course limit.',
-              ),
-            ),
+        CenterNotice.show(
+          context,
+          message: _t(
+            '강의 한도(${SafetyLimits.maxCourses}개)로 일부만 추가했어요.',
+            'Only some courses were added due to course limit.',
           ),
         );
       }
@@ -437,14 +424,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
   Future<void> _pickAndSaveImage() async {
     if (kIsWeb) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              '웹에서는 파일 저장 경로가 제한됩니다. 모바일에서 사용해 주세요.',
-              'File save path is limited on web. Please use mobile.',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: _t(
+          '웹에서는 파일 저장 경로가 제한됩니다. 모바일에서 사용해 주세요.',
+          'File save path is limited on web. Please use mobile.',
         ),
       );
       return;
@@ -476,15 +460,13 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
     if (sourceBytes > SafetyLimits.maxTimetableImageBytes) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _t(
-              '시간표 이미지 크기 한도(${(SafetyLimits.maxTimetableImageBytes / (1024 * 1024)).toStringAsFixed(0)}MB)를 초과했습니다.',
-              'Timetable image is too large (limit ${(SafetyLimits.maxTimetableImageBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: _t(
+          '시간표 이미지 크기 한도(${(SafetyLimits.maxTimetableImageBytes / (1024 * 1024)).toStringAsFixed(0)}MB)를 초과했습니다.',
+          'Timetable image is too large (limit ${(SafetyLimits.maxTimetableImageBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
         ),
+        error: true,
       );
       return;
     }
@@ -509,8 +491,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
     setState(() => _imagePath = targetPath);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_t('시간표 이미지를 저장했습니다.', 'Timetable image saved.'))),
+    CenterNotice.show(
+      context,
+      message: _t('시간표 이미지를 저장했습니다.', 'Timetable image saved.'),
     );
 
     unawaited(_recognizeAndImportCourses(targetPath));
@@ -537,10 +520,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
     setState(() => _imagePath = null);
 
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_t('시간표 이미지를 삭제했습니다.', 'Timetable image removed.')),
-      ),
+    CenterNotice.show(
+      context,
+      message: _t('시간표 이미지를 삭제했습니다.', 'Timetable image removed.'),
     );
   }
 

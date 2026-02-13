@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/center_notice.dart';
 import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
@@ -126,15 +127,13 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
     if (!mounted) return;
 
     if (_dueAt != null && candidate.isAfter(_dueAt!)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr(
-              '리마인더는 마감 이전이어야 합니다.',
-              'Reminder must be before due time.',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: context.tr(
+          '리마인더는 마감 이전이어야 합니다.',
+          'Reminder must be before due time.',
         ),
+        error: true,
       );
       return;
     }
@@ -177,15 +176,13 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
       await todoRepo.add(item);
     } on TodoDailyLimitExceededException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            context.tr(
-              '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
-              'Daily todo limit reached (${e.limit}).',
-            ),
-          ),
+      CenterNotice.show(
+        context,
+        message: context.tr(
+          '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
+          'Daily todo limit reached (${e.limit}).',
         ),
+        error: true,
       );
       return;
     }

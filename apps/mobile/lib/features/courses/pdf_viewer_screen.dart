@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:pdfx/pdfx.dart';
 
+import '../../app/center_notice.dart';
 import '../../app/safety_limits.dart';
 
 class PdfViewerScreen extends StatefulWidget {
@@ -113,9 +114,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    CenterNotice.show(context, message: message);
   }
 
   void _refreshMemoCache() {

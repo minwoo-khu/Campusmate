@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
 import '../../app/change_history_sheet.dart';
 import '../../app/l10n.dart';
@@ -244,21 +245,20 @@ class _CourseScreenState extends State<CourseScreen> {
 
     if (!context.mounted) return;
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_t('"${backup.name}" 삭제됨', 'Deleted "${backup.name}"')),
-        action: SnackBarAction(
-          label: _t('실행 취소', 'Undo'),
-          onPressed: () async {
-            await Hive.box<Course>('courses').add(backup);
-            await ChangeHistoryService.log(
-              'Course restored',
-              detail: backup.name,
-            );
-          },
-        ),
-      ),
+    await CenterNotice.showActionDialog(
+      context,
+      title: _t('강의 삭제됨', 'Course deleted'),
+      message: _t('"${backup.name}"을(를) 삭제했습니다.', 'Deleted "${backup.name}".'),
+      actionLabel: _t('실행 취소', 'Undo'),
+      onAction: () async {
+        await Hive.box<Course>('courses').add(backup);
+        await ChangeHistoryService.log('Course restored', detail: backup.name);
+        if (!context.mounted) return;
+        CenterNotice.show(
+          context,
+          message: _t('"${backup.name}" 복원됨', 'Restored "${backup.name}"'),
+        );
+      },
     );
   }
 
