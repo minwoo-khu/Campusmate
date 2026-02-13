@@ -600,6 +600,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         appState?.themePresetKey ?? CampusMateTheme.defaultPaletteKey;
     final currentLocaleCode = appState?.localeCode ?? 'ko';
     final cm = context.cmColors;
+    final paletteFirstRowKeys = _paletteKeys
+        .where((key) => key != 'powder_mint' && key != 'periwinkle_lavender')
+        .toList();
+    final paletteSecondRowKeys = [
+      if (_paletteKeys.contains('powder_mint')) 'powder_mint',
+      if (_paletteKeys.contains('periwinkle_lavender')) 'periwinkle_lavender',
+    ];
+
+    Widget paletteChip(String key) {
+      return ChoiceChip(
+        showCheckmark: false,
+        label: Text(_paletteLabel(key)),
+        selected: currentPaletteKey == key,
+        onSelected: (_) async {
+          await appState?.setThemePresetKey(key);
+          if (mounted) setState(() {});
+        },
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text(_t('설정', 'Settings'))),
@@ -658,17 +677,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: _paletteKeys.map((key) {
-                        return ChoiceChip(
-                          label: Text(_paletteLabel(key)),
-                          selected: currentPaletteKey == key,
-                          onSelected: (_) async {
-                            await appState?.setThemePresetKey(key);
-                            if (mounted) setState(() {});
-                          },
-                        );
-                      }).toList(),
+                      children: paletteFirstRowKeys.map(paletteChip).toList(),
                     ),
+                    if (paletteSecondRowKeys.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: paletteSecondRowKeys
+                            .map(paletteChip)
+                            .toList(),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     _SectionTitle(
                       title: _t('언어', 'Language'),
