@@ -825,6 +825,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           lastDay: rangeLastDay,
                           focusedDay: _focusedDay,
                           headerVisible: false,
+                          sixWeekMonthsEnforced: true,
                           availableGestures: AvailableGestures.horizontalSwipe,
                           selectedDayPredicate: (day) =>
                               isSameDay(day, _selectedDay),
