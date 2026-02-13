@@ -82,8 +82,6 @@ class NotificationService {
       },
     );
 
-    await requestPermissions();
-
     _inited = true;
   }
 
@@ -170,6 +168,8 @@ class NotificationService {
     required String title,
     required DateTime remindAt,
   }) async {
+    await requestPermissions();
+
     final now = DateTime.now();
     final effectiveRemindAt = remindAt.isAfter(now)
         ? remindAt

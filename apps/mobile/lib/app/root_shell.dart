@@ -12,7 +12,6 @@ import 'ad_service.dart';
 import 'app_link.dart';
 import 'home_screen.dart';
 import 'l10n.dart';
-import 'notification_service.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
 
@@ -49,9 +48,6 @@ class _RootShellState extends State<RootShell> {
     _todoLink.addListener(_onTodoDeepLink);
     _loadStartTab();
     _loadBannerAd();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      NotificationService.I.requestPermissions();
-    });
   }
 
   @override

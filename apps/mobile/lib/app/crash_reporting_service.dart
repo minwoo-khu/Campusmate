@@ -22,11 +22,7 @@ class CrashReportingService {
   Future<void> runAppWithReporting(Widget app) async {
     if (!isEnabled) {
       _bindFallbackErrorHooks();
-      runZonedGuarded(() => runApp(app), (error, stackTrace) {
-        if (kDebugMode) {
-          debugPrint('uncaught zone error: $error');
-        }
-      });
+      runApp(app);
       return;
     }
 
@@ -57,6 +53,18 @@ class CrashReportingService {
       if (kDebugMode) {
         debugPrint('flutter error: ${details.exceptionAsString()}');
       }
+    };
+
+    final dispatcher = WidgetsBinding.instance.platformDispatcher;
+    final previousOnError = dispatcher.onError;
+    dispatcher.onError = (error, stackTrace) {
+      if (previousOnError != null && previousOnError(error, stackTrace)) {
+        return true;
+      }
+      if (kDebugMode) {
+        debugPrint('uncaught async error: $error');
+      }
+      return false;
     };
   }
 }
