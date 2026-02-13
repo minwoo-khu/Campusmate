@@ -544,25 +544,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _scheduleNotificationSelfTest() async {
-    setState(() => _notifBusy = true);
-    try {
-      await NotificationService.I.scheduleDebugNotification();
-      await _refreshNotificationDiagnostics();
-      if (!mounted) return;
-      _showNotice(
-        _t(
-          '15초 후 테스트 알림을 예약했습니다.',
-          'Test notification scheduled for 15 seconds later.',
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _notifBusy = false);
-      }
-    }
-  }
-
   Future<void> _sendCrashReportingSmokeTest() async {
     if (!CrashReportingService.I.isEnabled) return;
     setState(() => _crashBusy = true);
@@ -831,8 +812,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _SectionTitle(
                       title: _t('알림 점검', 'Notification health'),
                       subtitle: _t(
-                        '권한/정확 알람/테스트 알림을 확인합니다',
-                        'Check permission, exact alarm, and self-test',
+                        '권한과 정확 알람 상태를 확인합니다',
+                        'Check permission and exact alarm status',
                       ),
                     ),
                     Container(
@@ -888,18 +869,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Expanded(
-                                child: FilledButton(
-                                  style: _filledStyle(context),
-                                  onPressed: _notifBusy
-                                      ? null
-                                      : _scheduleNotificationSelfTest,
-                                  child: Text(
-                                    _t('15초 테스트 알림', '15s test notification'),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
+                              const Spacer(),
                               OutlinedButton(
                                 style: _outlinedStyle(context),
                                 onPressed: _notifBusy
