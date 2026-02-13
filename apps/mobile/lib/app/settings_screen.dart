@@ -879,10 +879,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                             ],
                           ),
-                          if (_notifBusy) ...[
-                            const SizedBox(height: 10),
-                            const LinearProgressIndicator(minHeight: 2),
-                          ],
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 2,
+                            child: AnimatedOpacity(
+                              opacity: _notifBusy ? 1 : 0,
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOut,
+                              child: const LinearProgressIndicator(
+                                minHeight: 2,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -930,10 +938,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 : _sendCrashReportingSmokeTest,
                             child: Text(_t('테스트 이벤트 전송', 'Send test event')),
                           ),
-                          if (_crashBusy) ...[
-                            const SizedBox(height: 10),
-                            const LinearProgressIndicator(minHeight: 2),
-                          ],
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 2,
+                            child: AnimatedOpacity(
+                              opacity: _crashBusy ? 1 : 0,
+                              duration: const Duration(milliseconds: 180),
+                              curve: Curves.easeOut,
+                              child: const LinearProgressIndicator(
+                                minHeight: 2,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
