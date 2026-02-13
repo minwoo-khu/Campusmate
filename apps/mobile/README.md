@@ -22,6 +22,25 @@ Enable with dart-defines:
 flutter run --dart-define=ENABLE_SENTRY=true --dart-define=SENTRY_DSN=<your_dsn>
 ```
 
+## Ads (AdMob)
+
+Ads are enabled on Android builds by default.
+
+- Debug builds use Google's test banner unit automatically.
+- Release builds require a real banner unit id (`ADMOB_BANNER_UNIT_ID_ANDROID`).
+
+Set AdMob app id in `android/local.properties`:
+
+```properties
+ADMOB_APP_ID=ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy
+```
+
+Run with a real banner unit id:
+
+```powershell
+flutter run --dart-define=ADMOB_BANNER_UNIT_ID_ANDROID=ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz
+```
+
 ## Pre-release Verification
 
 ```powershell

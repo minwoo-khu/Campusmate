@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/calendar/calendar_screen.dart';
 import '../features/courses/course_screen.dart';
 import '../features/timetable/timetable_screen.dart';
 import '../features/todo/todo_screen.dart';
+import 'ad_service.dart';
 import 'app_link.dart';
 import 'home_screen.dart';
 import 'l10n.dart';
@@ -35,12 +37,15 @@ class _RootShellState extends State<RootShell> {
   bool _loaded = false;
 
   final ValueNotifier<String?> _todoLink = AppLink.todoToOpen;
+  BannerAd? _bannerAd;
+  bool _bannerReady = false;
 
   @override
   void initState() {
     super.initState();
     _todoLink.addListener(_onTodoDeepLink);
     _loadStartTab();
+    _loadBannerAd();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService.I.requestPermissions();
     });
@@ -48,8 +53,41 @@ class _RootShellState extends State<RootShell> {
 
   @override
   void dispose() {
+    _bannerAd?.dispose();
     _todoLink.removeListener(_onTodoDeepLink);
     super.dispose();
+  }
+
+  Future<void> _loadBannerAd() async {
+    await AdService.I.init();
+    if (!mounted || !AdService.I.canLoadBanner) return;
+
+    late final BannerAd ad;
+    ad = AdService.I.createBannerAd(
+      onLoaded: () {
+        if (!mounted) {
+          ad.dispose();
+          return;
+        }
+        final prev = _bannerAd;
+        setState(() {
+          _bannerAd = ad;
+          _bannerReady = true;
+        });
+        if (!identical(prev, ad)) {
+          prev?.dispose();
+        }
+      },
+      onFailedToLoad: (_) {
+        ad.dispose();
+        if (!mounted) return;
+        setState(() {
+          _bannerAd = null;
+          _bannerReady = false;
+        });
+      },
+    );
+    ad.load();
   }
 
   void _dismissKeyboard() {
@@ -149,77 +187,97 @@ class _RootShellState extends State<RootShell> {
         onTap: _dismissKeyboard,
         child: IndexedStack(index: _currentIndex, children: tabs),
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: cm.navBarBg,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: cm.navBarShadow,
-                blurRadius: 20,
-                offset: const Offset(0, 6),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_bannerReady && _bannerAd != null)
+            SafeArea(
+              top: false,
+              bottom: false,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                alignment: Alignment.center,
+                child: SizedBox(
+                  width: _bannerAd!.size.width.toDouble(),
+                  height: _bannerAd!.size.height.toDouble(),
+                  child: AdWidget(ad: _bannerAd!),
+                ),
               ),
-            ],
+            ),
+          SafeArea(
+            top: false,
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: cm.navBarBg,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: cm.navBarShadow,
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.home_outlined,
+                      activeIcon: Icons.home,
+                      label: context.tr('홈', 'Home'),
+                      selected: _currentIndex == _homeTab,
+                      onTap: () => setState(() => _currentIndex = _homeTab),
+                      onLongPress: _openSettings,
+                    ),
+                  ),
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.check_circle_outline,
+                      activeIcon: Icons.check_circle,
+                      label: context.tr('할 일', 'Todo'),
+                      selected: _currentIndex == _todoTab,
+                      onTap: () => setState(() => _currentIndex = _todoTab),
+                      onLongPress: _openSettings,
+                    ),
+                  ),
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.calendar_month_outlined,
+                      activeIcon: Icons.calendar_month,
+                      label: context.tr('캘린더', 'Calendar'),
+                      selected: _currentIndex == _calendarTab,
+                      onTap: () => setState(() => _currentIndex = _calendarTab),
+                      onLongPress: _openSettings,
+                    ),
+                  ),
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.image_outlined,
+                      activeIcon: Icons.image,
+                      label: context.tr('시간표', 'Timetable'),
+                      selected: _currentIndex == _timetableTab,
+                      onTap: () =>
+                          setState(() => _currentIndex = _timetableTab),
+                      onLongPress: _openSettings,
+                    ),
+                  ),
+                  Expanded(
+                    child: _NavItem(
+                      icon: Icons.menu_book_outlined,
+                      activeIcon: Icons.menu_book,
+                      label: context.tr('강의', 'Courses'),
+                      selected: _currentIndex == _coursesTab,
+                      onTap: () => setState(() => _currentIndex = _coursesTab),
+                      onLongPress: _openSettings,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: _NavItem(
-                  icon: Icons.home_outlined,
-                  activeIcon: Icons.home,
-                  label: context.tr('홈', 'Home'),
-                  selected: _currentIndex == _homeTab,
-                  onTap: () => setState(() => _currentIndex = _homeTab),
-                  onLongPress: _openSettings,
-                ),
-              ),
-              Expanded(
-                child: _NavItem(
-                  icon: Icons.check_circle_outline,
-                  activeIcon: Icons.check_circle,
-                  label: context.tr('할 일', 'Todo'),
-                  selected: _currentIndex == _todoTab,
-                  onTap: () => setState(() => _currentIndex = _todoTab),
-                  onLongPress: _openSettings,
-                ),
-              ),
-              Expanded(
-                child: _NavItem(
-                  icon: Icons.calendar_month_outlined,
-                  activeIcon: Icons.calendar_month,
-                  label: context.tr('캘린더', 'Calendar'),
-                  selected: _currentIndex == _calendarTab,
-                  onTap: () => setState(() => _currentIndex = _calendarTab),
-                  onLongPress: _openSettings,
-                ),
-              ),
-              Expanded(
-                child: _NavItem(
-                  icon: Icons.image_outlined,
-                  activeIcon: Icons.image,
-                  label: context.tr('시간표', 'Timetable'),
-                  selected: _currentIndex == _timetableTab,
-                  onTap: () => setState(() => _currentIndex = _timetableTab),
-                  onLongPress: _openSettings,
-                ),
-              ),
-              Expanded(
-                child: _NavItem(
-                  icon: Icons.menu_book_outlined,
-                  activeIcon: Icons.menu_book,
-                  label: context.tr('강의', 'Courses'),
-                  selected: _currentIndex == _coursesTab,
-                  onTap: () => setState(() => _currentIndex = _coursesTab),
-                  onLongPress: _openSettings,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }

@@ -1,6 +1,6 @@
 # Google Play Data Safety 작성 초안
 
-최종 업데이트: 2026-02-12
+최종 업데이트: 2026-02-13
 
 ## 앱 개요
 - 앱명: CampusMate
@@ -18,8 +18,13 @@
 - 앱 핵심 기능 제공(일정 관리, 리마인더, 백업/복원)
 
 ## 전송/보안 관련 메모
-- 광고 SDK/추적 SDK 없음
+- Google Mobile Ads SDK(AdMob) 포함
 - 백업 PIN 사용 시 백업 파일 암호화 지원
+
+## 광고 SDK(AdMob) 사용 시 검토 항목
+- 광고 노출 시 광고 식별자/기기 정보 등 광고 SDK 처리 데이터 범위를 Play Data safety에 반영
+- Play Console `App content > Ads` 항목을 `Contains ads`로 설정
+- 개인정보처리방침에 광고 SDK 사용 및 데이터 처리 가능성 명시
 
 ## 크래시 리포팅(Sentry) 사용 시 검토 항목
 - 기본값은 비활성화이며 `ENABLE_SENTRY=true` 및 `SENTRY_DSN` 설정 시에만 활성화

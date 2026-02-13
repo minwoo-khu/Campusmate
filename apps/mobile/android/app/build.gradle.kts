@@ -18,11 +18,23 @@ android {
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
+    val localProperties = Properties()
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localProperties.load(FileInputStream(localPropertiesFile))
+    }
     val hasReleaseSigning =
         keystoreProperties.getProperty("storeFile")?.isNotBlank() == true &&
         keystoreProperties.getProperty("storePassword")?.isNotBlank() == true &&
         keystoreProperties.getProperty("keyAlias")?.isNotBlank() == true &&
         keystoreProperties.getProperty("keyPassword")?.isNotBlank() == true
+    val admobAppIdFromGradle = (project.findProperty("ADMOB_APP_ID") as String?)?.trim()
+    val admobAppIdFromLocal = localProperties.getProperty("ADMOB_APP_ID")?.trim()
+    val admobAppId = when {
+        !admobAppIdFromGradle.isNullOrBlank() -> admobAppIdFromGradle
+        !admobAppIdFromLocal.isNullOrBlank() -> admobAppIdFromLocal
+        else -> "ca-app-pub-3940256099942544~3347511713"
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -40,6 +52,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
     }
 
     signingConfigs {

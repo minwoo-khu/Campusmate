@@ -1,6 +1,6 @@
 # Privacy Policy (Draft)
 
-Last updated: 2026-02-12
+Last updated: 2026-02-13
 
 CampusMate ("the App") minimizes personal data collection and is designed as a local-first productivity app.
 
@@ -22,10 +22,11 @@ CampusMate ("the App") minimizes personal data collection and is designed as a l
 
 ## 5. Third-party services
 - The app uses Flutter and platform APIs.
+- The app includes Google Mobile Ads SDK (AdMob) and may show ads.
+- Ad requests may involve advertising identifiers and device/app diagnostics provided by ad network SDKs.
 - Optional crash reporting via Sentry can be enabled only when the app is built with `ENABLE_SENTRY=true` and a valid `SENTRY_DSN`.
 - If Sentry is enabled, technical diagnostics (for example: crash stack trace, device/OS/app version) may be sent to Sentry to monitor app stability.
 - If Sentry is not enabled, no crash-reporting data is sent to Sentry.
-- No ad SDK or user-tracking SDK is included by default.
 
 ## 6. Permissions
 - Notifications: Todo reminder alerts

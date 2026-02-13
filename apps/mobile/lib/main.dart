@@ -8,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app/ad_service.dart';
 import 'app/app_link.dart';
 import 'app/change_history_service.dart';
 import 'app/crash_reporting_service.dart';
@@ -39,6 +40,7 @@ Future<void> main() async {
   await Hive.openBox<int>('notif');
   await NotificationService.I.init();
   await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
+  await AdService.I.init();
 
   await CrashReportingService.I.runAppWithReporting(const CampusMateApp());
 }
