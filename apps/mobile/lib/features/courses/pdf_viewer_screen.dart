@@ -29,8 +29,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   late final Box<String> _pageMemoBox;
   late final bool _fileExists;
 
-  int _currentPage = 1;
-  int _pageCount = 0;
+  final ValueNotifier<int> _currentPageListenable = ValueNotifier<int>(1);
+  final ValueNotifier<int> _pageCountListenable = ValueNotifier<int>(0);
 
   Map<int, _PageMemoData> _pageMemos = const {};
   bool _hasOverallNote = false;
@@ -64,6 +64,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   @override
   void dispose() {
     _controller?.dispose();
+    _currentPageListenable.dispose();
+    _pageCountListenable.dispose();
     super.dispose();
   }
 
@@ -474,6 +476,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     }
   }
 
+  void _goToPage(int page) {
+    final controller = _controller;
+    if (controller == null || page <= 0) return;
+    controller.animateToPage(
+      pageNumber: page,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   void _openPageMemoList() {
     final memos = _pageMemos;
     final pagesAll = memos.keys.toList()..sort();
@@ -611,20 +623,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                   ),
                                   onTap: () {
                                     Navigator.of(context).pop();
-                                    _controller?.jumpToPage(page);
-                                    if (!mounted || page == _currentPage) {
-                                      return;
-                                    }
-                                    setState(() => _currentPage = page);
+                                    _goToPage(page);
                                   },
                                   trailing: IconButton(
                                     icon: const Icon(Icons.edit_outlined),
                                     onPressed: () async {
                                       Navigator.of(context).pop();
-                                      _controller?.jumpToPage(page);
-                                      if (mounted && page != _currentPage) {
-                                        setState(() => _currentPage = page);
-                                      }
+                                      _goToPage(page);
                                       await _editPageMemo(page);
                                     },
                                   ),
@@ -655,8 +660,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final hasPageMemo = _pageMemos.containsKey(_currentPage);
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.fileName),
@@ -677,38 +680,62 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _editPageMemo(_currentPage),
-        icon: Icon(hasPageMemo ? Icons.edit_note : Icons.note_add_outlined),
-        label: Text('p.$_currentPage memo'),
+      floatingActionButton: ValueListenableBuilder<int>(
+        valueListenable: _currentPageListenable,
+        builder: (context, page, _) {
+          final hasPageMemo = _pageMemos.containsKey(page);
+          return FloatingActionButton.extended(
+            onPressed: () => _editPageMemo(page),
+            icon: Icon(hasPageMemo ? Icons.edit_note : Icons.note_add_outlined),
+            label: Text('p.$page memo'),
+          );
+        },
       ),
       body: Column(
         children: [
-          if (_pageCount > 0)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  Text('$_currentPage / $_pageCount'),
-                  const Spacer(),
-                  if (hasPageMemo) const Text('Memo exists'),
-                ],
-              ),
-            ),
+          ValueListenableBuilder<int>(
+            valueListenable: _pageCountListenable,
+            builder: (context, pageCount, _) {
+              if (pageCount <= 0) return const SizedBox.shrink();
+              return ValueListenableBuilder<int>(
+                valueListenable: _currentPageListenable,
+                builder: (context, page, _) {
+                  final hasPageMemo = _pageMemos.containsKey(page);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Text('$page / $pageCount'),
+                        const Spacer(),
+                        if (hasPageMemo) const Text('Memo exists'),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
           Expanded(
             child: RepaintBoundary(
               child: PdfViewPinch(
                 controller: controller,
+                padding: 6,
+                maxScale: 8,
+                backgroundDecoration: const BoxDecoration(color: Colors.white),
                 onDocumentLoaded: (document) {
-                  if (!mounted || _pageCount == document.pagesCount) return;
-                  setState(() => _pageCount = document.pagesCount);
+                  final pagesCount = document.pagesCount;
+                  if (_pageCountListenable.value == pagesCount) return;
+                  _pageCountListenable.value = pagesCount;
                 },
                 onDocumentError: (_) {
                   _showMessage('Failed to open this PDF file.');
                 },
                 onPageChanged: (page) {
-                  if (!mounted || page == _currentPage) return;
-                  setState(() => _currentPage = page);
+                  if (_currentPageListenable.value == page) return;
+                  _currentPageListenable.value = page;
                 },
               ),
             ),
