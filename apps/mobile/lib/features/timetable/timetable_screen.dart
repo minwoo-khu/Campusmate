@@ -544,6 +544,35 @@ class _TimetableScreenState extends State<TimetableScreen> {
     );
   }
 
+  Future<void> _confirmRemoveImage() async {
+    final ok =
+        await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(_t('시간표 이미지 삭제', 'Delete timetable image')),
+            content: Text(
+              _t(
+                '시간표 이미지를 삭제할까요?\n삭제하면 다시 업로드해야 합니다.',
+                'Delete the timetable image?\nYou will need to upload it again.',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(_t('취소', 'Cancel')),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(_t('삭제', 'Delete')),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok) return;
+    await _removeImage();
+  }
+
   Widget _buildPlaceholder() {
     final cm = context.cmColors;
 
@@ -697,7 +726,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: _recognizingCourses ? null : _removeImage,
+                    onPressed: _recognizingCourses ? null : _confirmRemoveImage,
                     icon: const Icon(Icons.delete_outline),
                     label: Text(_t('이미지 삭제', 'Delete image')),
                   ),
