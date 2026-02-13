@@ -226,16 +226,16 @@ class CourseDetailScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(context.tr('PDF瑜???젣?좉퉴??', 'Delete PDF?')),
+        title: Text(context.tr('PDF를 삭제할까요?', 'Delete PDF?')),
         content: Text(material.fileName),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(context.tr('痍⑥냼', 'Cancel')),
+            child: Text(context.tr('취소', 'Cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.tr('??젣', 'Delete')),
+            child: Text(context.tr('삭제', 'Delete')),
           ),
         ],
       ),
@@ -346,7 +346,7 @@ class CourseDetailScreen extends StatelessWidget {
             return Center(
               child: Text(
                 context.tr(
-                  '?꾩쭅 PDF媛 ?놁뒿?덈떎. + 踰꾪듉?쇰줈 ?낅줈?쒗븯?몄슂.',
+                  '아직 PDF가 없습니다. + 버튼으로 업로드하세요.',
                   'No PDFs yet. Tap + to upload.',
                 ),
               ),
@@ -366,7 +366,7 @@ class CourseDetailScreen extends StatelessWidget {
               return ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
                 title: Text(material.fileName),
-                subtitle: Text(context.tr('異붽??? $dateStr', 'Added: $dateStr')),
+                subtitle: Text(context.tr('추가일: $dateStr', 'Added: $dateStr')),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _deleteMaterialWithUndo(context, material),
