@@ -18,6 +18,11 @@ android {
     if (keystorePropertiesFile.exists()) {
         keystoreProperties.load(FileInputStream(keystorePropertiesFile))
     }
+    val hasReleaseSigning =
+        keystoreProperties.getProperty("storeFile")?.isNotBlank() == true &&
+        keystoreProperties.getProperty("storePassword")?.isNotBlank() == true &&
+        keystoreProperties.getProperty("keyAlias")?.isNotBlank() == true &&
+        keystoreProperties.getProperty("keyPassword")?.isNotBlank() == true
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -51,9 +56,10 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
+            signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
+                logger.warn("Release signing is not fully configured. Using debug signing.")
                 signingConfigs.getByName("debug")
             }
         }

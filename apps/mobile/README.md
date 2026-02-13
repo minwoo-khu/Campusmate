@@ -1,16 +1,39 @@
-# mobile
+# CampusMate Mobile
 
-A new Flutter project.
+Flutter client for CampusMate.
 
-## Getting Started
+## Release Build
 
-This project is a starting point for a Flutter application.
+1. Copy `android/key.properties.example` to `android/key.properties`
+2. Fill keystore values (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`)
+3. Build release bundle:
 
-A few resources to get you started if this is your first Flutter project:
+```powershell
+flutter build appbundle --release
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Crash Reporting (Sentry)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Crash reporting is optional and disabled by default.
+
+Enable with dart-defines:
+
+```powershell
+flutter run --dart-define=ENABLE_SENTRY=true --dart-define=SENTRY_DSN=<your_dsn>
+```
+
+## Pre-release Verification
+
+```powershell
+flutter analyze
+flutter test
+flutter build appbundle --release
+```
+
+Related docs:
+- `../../docs/play_store_release_checklist.md`
+- `../../docs/android_release_signing_ko.md`
+- `../../docs/crash_reporting_sentry_ko.md`
+- `../../docs/data_safety_draft_ko.md`
+- `../../docs/privacy_policy_ko.md`
+- `../../docs/privacy_policy_en.md`

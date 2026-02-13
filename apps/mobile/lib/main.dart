@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app_link.dart';
 import 'app/change_history_service.dart';
+import 'app/crash_reporting_service.dart';
 import 'app/home_widget_service.dart';
 import 'app/notification_service.dart';
 import 'app/root_shell.dart';
@@ -39,7 +40,7 @@ Future<void> main() async {
   await NotificationService.I.init();
   await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
 
-  runApp(const CampusMateApp());
+  await CrashReportingService.I.runAppWithReporting(const CampusMateApp());
 }
 
 abstract class CampusMateAppController {

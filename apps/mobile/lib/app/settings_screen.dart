@@ -2,8 +2,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import 'crash_reporting_service.dart';
 import 'data_backup_service.dart';
 import 'l10n.dart';
+import 'notification_service.dart';
 import 'theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -19,12 +21,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late int _startTab;
   bool _busy = false;
   bool _hasBackupPin = false;
+  bool _notifBusy = false;
+  bool _crashBusy = false;
+  NotificationDiagnostics? _notifDiagnostics;
 
   @override
   void initState() {
     super.initState();
     _startTab = widget.currentStartTab;
     _loadBackupPinState();
+    _refreshNotificationDiagnostics();
   }
 
   String _t(String ko, String en) => context.tr(ko, en);
@@ -479,6 +485,113 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  String _boolStatus(bool? value) {
+    if (value == null) return _t('알 수 없음', 'Unknown');
+    return value ? _t('허용', 'Allowed') : _t('거부', 'Denied');
+  }
+
+  Future<void> _refreshNotificationDiagnostics() async {
+    setState(() => _notifBusy = true);
+    try {
+      final diagnostics = await NotificationService.I.diagnostics();
+      if (!mounted) return;
+      setState(() => _notifDiagnostics = diagnostics);
+    } finally {
+      if (mounted) {
+        setState(() => _notifBusy = false);
+      }
+    }
+  }
+
+  Future<void> _requestNotificationPermission() async {
+    setState(() => _notifBusy = true);
+    try {
+      await NotificationService.I.requestPermissions();
+      await _refreshNotificationDiagnostics();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t('알림 권한 요청을 실행했습니다.', 'Notification permission requested.'),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _notifBusy = false);
+      }
+    }
+  }
+
+  Future<void> _requestExactAlarmPermission() async {
+    setState(() => _notifBusy = true);
+    try {
+      final canExact = await NotificationService.I
+          .requestExactAlarmPermission();
+      await _refreshNotificationDiagnostics();
+      if (!mounted) return;
+      final message = canExact == true
+          ? _t('정확 알람 권한이 허용되었습니다.', 'Exact alarm permission is allowed.')
+          : _t(
+              '정확 알람 권한이 아직 허용되지 않았습니다.',
+              'Exact alarm permission is still denied.',
+            );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) {
+        setState(() => _notifBusy = false);
+      }
+    }
+  }
+
+  Future<void> _scheduleNotificationSelfTest() async {
+    setState(() => _notifBusy = true);
+    try {
+      await NotificationService.I.scheduleDebugNotification();
+      await _refreshNotificationDiagnostics();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              '15초 후 테스트 알림을 예약했습니다.',
+              'Test notification scheduled for 15 seconds later.',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _notifBusy = false);
+      }
+    }
+  }
+
+  Future<void> _sendCrashReportingSmokeTest() async {
+    if (!CrashReportingService.I.isEnabled) return;
+    setState(() => _crashBusy = true);
+    try {
+      await CrashReportingService.I.captureTestEvent();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              '크래시 리포팅 테스트 이벤트를 전송했습니다.',
+              'Crash reporting smoke test event sent.',
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _crashBusy = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = CampusMateApp.of(context);
@@ -645,6 +758,143 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(
+              title: _t('알림 점검', 'Notification health'),
+              subtitle: _t(
+                '권한/정확 알람/테스트 알림을 확인합니다',
+                'Check permission, exact alarm, and self-test',
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: cm.inputBg,
+                border: Border.all(color: cm.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_t('알림 권한', 'Notification permission')}: ${_boolStatus(_notifDiagnostics?.notificationsEnabled)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_t('정확 알람', 'Exact alarms')}: ${_boolStatus(_notifDiagnostics?.canScheduleExactNotifications)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${_t('대기 알림 수', 'Pending notifications')}: ${_notifDiagnostics?.pendingCount ?? 0}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: _outlinedStyle(context),
+                          onPressed: _notifBusy
+                              ? null
+                              : _requestNotificationPermission,
+                          child: Text(_t('권한 요청', 'Request permission')),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: _outlinedStyle(context),
+                          onPressed: _notifBusy
+                              ? null
+                              : _requestExactAlarmPermission,
+                          child: Text(_t('정확 알람', 'Exact alarm')),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton(
+                          style: _filledStyle(context),
+                          onPressed: _notifBusy
+                              ? null
+                              : _scheduleNotificationSelfTest,
+                          child: Text(
+                            _t('15초 테스트 알림', '15s test notification'),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton(
+                        style: _outlinedStyle(context),
+                        onPressed: _notifBusy
+                            ? null
+                            : _refreshNotificationDiagnostics,
+                        child: Icon(Icons.refresh, color: cm.textSecondary),
+                      ),
+                    ],
+                  ),
+                  if (_notifBusy) ...[
+                    const SizedBox(height: 10),
+                    const LinearProgressIndicator(minHeight: 2),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(
+              title: _t('크래시 리포팅', 'Crash reporting'),
+              subtitle: _t(
+                'Sentry 연동 상태와 테스트 이벤트',
+                'Sentry integration status and test event',
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: cm.inputBg,
+                border: Border.all(color: cm.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    CrashReportingService.I.isEnabled
+                        ? _t('상태: 활성화', 'Status: enabled')
+                        : _t('상태: 비활성화', 'Status: disabled'),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _t(
+                      '활성화 조건: --dart-define=ENABLE_SENTRY=true 와 SENTRY_DSN 설정',
+                      'Enable with --dart-define=ENABLE_SENTRY=true and SENTRY_DSN',
+                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cm.textHint),
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton(
+                    style: _filledStyle(context),
+                    onPressed:
+                        (_crashBusy || !CrashReportingService.I.isEnabled)
+                        ? null
+                        : _sendCrashReportingSmokeTest,
+                    child: Text(_t('테스트 이벤트 전송', 'Send test event')),
+                  ),
+                  if (_crashBusy) ...[
+                    const SizedBox(height: 10),
+                    const LinearProgressIndicator(minHeight: 2),
+                  ],
                 ],
               ),
             ),

@@ -8,6 +8,18 @@ import 'package:timezone/timezone.dart' as tz;
 
 import 'app_link.dart';
 
+class NotificationDiagnostics {
+  final bool? notificationsEnabled;
+  final bool? canScheduleExactNotifications;
+  final int pendingCount;
+
+  const NotificationDiagnostics({
+    required this.notificationsEnabled,
+    required this.canScheduleExactNotifications,
+    required this.pendingCount,
+  });
+}
+
 class NotificationService {
   NotificationService._();
   static final NotificationService I = NotificationService._();
@@ -113,6 +125,37 @@ class NotificationService {
     return granted;
   }
 
+  Future<bool?> requestExactAlarmPermission() async {
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidImpl == null) return null;
+    await androidImpl.requestExactAlarmsPermission();
+    return androidImpl.canScheduleExactNotifications();
+  }
+
+  Future<NotificationDiagnostics> diagnostics() async {
+    bool? notificationsEnabled;
+    bool? canExact;
+
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidImpl != null) {
+      notificationsEnabled = await androidImpl.areNotificationsEnabled();
+      canExact = await androidImpl.canScheduleExactNotifications();
+    }
+
+    final pending = await _plugin.pendingNotificationRequests();
+    return NotificationDiagnostics(
+      notificationsEnabled: notificationsEnabled,
+      canScheduleExactNotifications: canExact,
+      pendingCount: pending.length,
+    );
+  }
+
   Future<void> cancel(int notificationId) async {
     await _plugin.cancel(id: notificationId);
   }
@@ -202,5 +245,48 @@ class NotificationService {
         rethrow;
       }
     }
+  }
+
+  Future<void> scheduleDebugNotification({
+    Duration after = const Duration(seconds: 15),
+  }) async {
+    final now = DateTime.now();
+    final remindAt = now.add(after);
+    final scheduled = tz.TZDateTime.from(remindAt, tz.local);
+    const notificationId = 990001;
+
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        _channelId,
+        _channelName,
+        channelDescription: _channelDesc,
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+      iOS: const DarwinNotificationDetails(),
+    );
+
+    var mode = AndroidScheduleMode.inexactAllowWhileIdle;
+    final androidImpl = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidImpl != null) {
+      final canExact = await androidImpl.canScheduleExactNotifications();
+      if (canExact == true) {
+        mode = AndroidScheduleMode.exactAllowWhileIdle;
+      }
+    }
+
+    await _plugin.zonedSchedule(
+      id: notificationId,
+      title: 'CampusMate',
+      body: 'Notification self-test',
+      scheduledDate: scheduled,
+      notificationDetails: details,
+      payload: jsonEncode({'type': 'debug'}),
+      androidScheduleMode: mode,
+      matchDateTimeComponents: null,
+    );
   }
 }
