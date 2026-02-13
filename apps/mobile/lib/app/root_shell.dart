@@ -12,6 +12,7 @@ import 'ad_service.dart';
 import 'app_link.dart';
 import 'home_screen.dart';
 import 'l10n.dart';
+import 'notification_service.dart';
 import 'settings_screen.dart';
 import 'theme.dart';
 
@@ -27,6 +28,7 @@ class _RootShellState extends State<RootShell> {
   static const _prefKeyLastTab = 'last_tab_index_v1';
   static const _prefKeyStartTabMigratedV2 = 'start_tab_home_migrated_v2';
   static const _prefKeyStartTabExplicit = 'start_tab_explicit_v1';
+  static const _prefKeyNotifPrompted = 'notif_permission_prompted_v1';
 
   static const _homeTab = 0;
   static const _todoTab = 1;
@@ -49,6 +51,7 @@ class _RootShellState extends State<RootShell> {
     _todoLink.addListener(_onTodoDeepLink);
     _loadStartTab();
     _loadBannerAd();
+    _scheduleNotificationPermissionPrompt();
   }
 
   @override
@@ -94,6 +97,25 @@ class _RootShellState extends State<RootShell> {
     final focus = FocusManager.instance.primaryFocus;
     if (focus != null) {
       focus.unfocus();
+    }
+  }
+
+  void _scheduleNotificationPermissionPrompt() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_promptNotificationPermissionIfNeeded());
+    });
+  }
+
+  Future<void> _promptNotificationPermissionIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    final alreadyPrompted = prefs.getBool(_prefKeyNotifPrompted) ?? false;
+    if (alreadyPrompted || !mounted) return;
+
+    try {
+      await NotificationService.I.requestPermissions();
+      await prefs.setBool(_prefKeyNotifPrompted, true);
+    } catch (_) {
+      // Retry on next launch if prompt request failed unexpectedly.
     }
   }
 
