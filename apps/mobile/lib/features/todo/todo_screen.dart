@@ -1027,10 +1027,10 @@ class _TodoScreenState extends State<TodoScreen> {
                       Text(
                         _t('할 일', 'Todo'),
                         style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
                           color: cm.textPrimary,
-                          letterSpacing: -0.8,
+                          letterSpacing: -0.3,
                         ),
                       ),
                       const Spacer(),

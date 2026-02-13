@@ -262,6 +262,44 @@ class _CourseScreenState extends State<CourseScreen> {
     );
   }
 
+  Widget _buildFirstCourseEmptyState(BuildContext context) {
+    final cm = context.cmColors;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(0, 64, 0, 24),
+      children: [
+        Icon(Icons.school_outlined, size: 54, color: cm.checkInactive),
+        const SizedBox(height: 14),
+        Text(
+          _t('아직 등록된 강의가 없어요.', 'No courses yet.'),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: cm.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _t(
+            '첫 강의를 추가하면 PDF/메모를 과목별로 정리할 수 있어요.\n시간표 탭에서 이미지 업로드 후 자동 인식도 가능합니다.',
+            'Add your first course to organize PDFs and notes.\nYou can also import candidates from a timetable image.',
+          ),
+          textAlign: TextAlign.center,
+          style: TextStyle(color: cm.textTertiary, height: 1.4),
+        ),
+        const SizedBox(height: 18),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: FilledButton.icon(
+            onPressed: () => _openAdd(context),
+            icon: const Icon(Icons.add),
+            label: Text(_t('첫 강의 추가', 'Add first course')),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
@@ -314,8 +352,8 @@ class _CourseScreenState extends State<CourseScreen> {
                       Text(
                         _t('내 강의', 'Courses'),
                         style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
                           color: cm.textPrimary,
                         ),
                       ),
@@ -473,20 +511,24 @@ class _CourseScreenState extends State<CourseScreen> {
                   ],
                   Expanded(
                     child: filtered.isEmpty
-                        ? ListView(
-                            children: [
-                              const SizedBox(height: 120),
-                              Center(
-                                child: Text(
-                                  _t(
-                                    '검색 결과가 없습니다.',
-                                    'No matching course found.',
-                                  ),
-                                  style: TextStyle(color: cm.textTertiary),
-                                ),
-                              ),
-                            ],
-                          )
+                        ? (query.isEmpty && courses.isEmpty
+                              ? _buildFirstCourseEmptyState(context)
+                              : ListView(
+                                  children: [
+                                    const SizedBox(height: 120),
+                                    Center(
+                                      child: Text(
+                                        _t(
+                                          '검색 조건에 맞는 강의가 없어요.',
+                                          'No matching course found.',
+                                        ),
+                                        style: TextStyle(
+                                          color: cm.textTertiary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ))
                         : ListView.builder(
                             padding: const EdgeInsets.only(bottom: 18),
                             itemCount: filtered.length + 1,

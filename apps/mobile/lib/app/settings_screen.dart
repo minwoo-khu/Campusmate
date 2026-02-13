@@ -605,310 +605,351 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(title: Text(_t('설정', 'Settings'))),
       body: IgnorePointer(
         ignoring: _busy,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          children: [
-            _SectionTitle(
-              title: _t('홈 화면', 'Home screen'),
-              subtitle: _t('시작 탭을 선택하세요', 'Choose which tab opens first'),
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: List.generate(5, (index) {
-                return ChoiceChip(
-                  label: Text(_startTabLabel(index)),
-                  selected: _startTab == index,
-                  onSelected: (_) => setState(() => _startTab = index),
-                );
-              }),
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(
-              title: _t('화면 테마', 'Appearance'),
-              subtitle: _t('테마 모드를 선택하세요', 'Choose theme mode'),
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: ThemeMode.values.map((mode) {
-                return ChoiceChip(
-                  label: Text(_themeModeLabel(mode)),
-                  selected: currentMode == mode,
-                  onSelected: (_) async {
-                    await appState?.setThemeMode(mode);
-                    if (mounted) setState(() {});
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(
-              title: _t('색 조합', 'Color palette'),
-              subtitle: _t('앱 색감 프리셋을 선택하세요', 'Choose a color preset'),
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _paletteKeys.map((key) {
-                return ChoiceChip(
-                  label: Text(_paletteLabel(key)),
-                  selected: currentPaletteKey == key,
-                  onSelected: (_) async {
-                    await appState?.setThemePresetKey(key);
-                    if (mounted) setState(() {});
-                  },
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(
-              title: _t('언어', 'Language'),
-              subtitle: _t('앱 언어를 선택하세요', 'Choose app language'),
-            ),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ChoiceChip(
-                  label: const Text('한국어'),
-                  selected: currentLocaleCode == 'ko',
-                  onSelected: (_) async {
-                    await appState?.setLocaleCode('ko');
-                    if (mounted) setState(() {});
-                  },
-                ),
-                ChoiceChip(
-                  label: const Text('English'),
-                  selected: currentLocaleCode == 'en',
-                  onSelected: (_) async {
-                    await appState?.setLocaleCode('en');
-                    if (mounted) setState(() {});
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(
-              title: _t('데이터', 'Data'),
-              subtitle: _t(
-                '백업 파일 내보내기/복원 및 PIN 암호화를 관리합니다',
-                'Manage backup export/restore and PIN encryption',
-              ),
-            ),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    style: _outlinedStyle(context),
-                    onPressed: _exportBackup,
-                    icon: const Icon(Icons.download_outlined),
-                    label: Text(_t('백업 내보내기', 'Export backup')),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton.icon(
-                    style: _filledStyle(context),
-                    onPressed: _importBackup,
-                    icon: const Icon(Icons.upload_file_outlined),
-                    label: Text(_t('백업 복원', 'Restore backup')),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: cm.inputBg,
-                border: Border.all(color: cm.cardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _hasBackupPin
-                        ? _t('백업 PIN: 설정됨', 'Backup PIN: Enabled')
-                        : _t('백업 PIN: 미설정', 'Backup PIN: Disabled'),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: _outlinedStyle(context),
-                          onPressed: _setOrChangeBackupPin,
-                          child: Text(
-                            _hasBackupPin
-                                ? _t('PIN 변경', 'Change PIN')
-                                : _t('PIN 설정', 'Set PIN'),
-                          ),
-                        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  children: [
+                    _SectionTitle(
+                      title: _t('홈 화면', 'Home screen'),
+                      subtitle: _t(
+                        '시작 탭을 선택하세요',
+                        'Choose which tab opens first',
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton(
-                          style: _outlinedStyle(context, destructive: true),
-                          onPressed: _hasBackupPin ? _clearBackupPin : null,
-                          child: Text(_t('PIN 해제', 'Disable PIN')),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(
-              title: _t('알림 점검', 'Notification health'),
-              subtitle: _t(
-                '권한/정확 알람/테스트 알림을 확인합니다',
-                'Check permission, exact alarm, and self-test',
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: cm.inputBg,
-                border: Border.all(color: cm.cardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${_t('알림 권한', 'Notification permission')}: ${_boolStatus(_notifDiagnostics?.notificationsEnabled)}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_t('정확 알람', 'Exact alarms')}: ${_boolStatus(_notifDiagnostics?.canScheduleExactNotifications)}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${_t('대기 알림 수', 'Pending notifications')}: ${_notifDiagnostics?.pendingCount ?? 0}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          style: _outlinedStyle(context),
-                          onPressed: _notifBusy
-                              ? null
-                              : _requestNotificationPermission,
-                          child: Text(_t('권한 요청', 'Request permission')),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton(
-                          style: _outlinedStyle(context),
-                          onPressed: _notifBusy
-                              ? null
-                              : _requestExactAlarmPermission,
-                          child: Text(_t('정확 알람', 'Exact alarm')),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton(
-                          style: _filledStyle(context),
-                          onPressed: _notifBusy
-                              ? null
-                              : _scheduleNotificationSelfTest,
-                          child: Text(
-                            _t('15초 테스트 알림', '15s test notification'),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      OutlinedButton(
-                        style: _outlinedStyle(context),
-                        onPressed: _notifBusy
-                            ? null
-                            : _refreshNotificationDiagnostics,
-                        child: Icon(Icons.refresh, color: cm.textSecondary),
-                      ),
-                    ],
-                  ),
-                  if (_notifBusy) ...[
-                    const SizedBox(height: 10),
-                    const LinearProgressIndicator(minHeight: 2),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(
-              title: _t('크래시 리포팅', 'Crash reporting'),
-              subtitle: _t(
-                'Sentry 연동 상태와 테스트 이벤트',
-                'Sentry integration status and test event',
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: cm.inputBg,
-                border: Border.all(color: cm.cardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    CrashReportingService.I.isEnabled
-                        ? _t('상태: 활성화', 'Status: enabled')
-                        : _t('상태: 비활성화', 'Status: disabled'),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _t(
-                      '활성화 조건: --dart-define=ENABLE_SENTRY=true 와 SENTRY_DSN 설정',
-                      'Enable with --dart-define=ENABLE_SENTRY=true and SENTRY_DSN',
                     ),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: cm.textHint),
-                  ),
-                  const SizedBox(height: 10),
-                  FilledButton(
-                    style: _filledStyle(context),
-                    onPressed:
-                        (_crashBusy || !CrashReportingService.I.isEnabled)
-                        ? null
-                        : _sendCrashReportingSmokeTest,
-                    child: Text(_t('테스트 이벤트 전송', 'Send test event')),
-                  ),
-                  if (_crashBusy) ...[
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(5, (index) {
+                        return ChoiceChip(
+                          label: Text(_startTabLabel(index)),
+                          selected: _startTab == index,
+                          onSelected: (_) => setState(() => _startTab = index),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: _t('화면 테마', 'Appearance'),
+                      subtitle: _t('테마 모드를 선택하세요', 'Choose theme mode'),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: ThemeMode.values.map((mode) {
+                        return ChoiceChip(
+                          label: Text(_themeModeLabel(mode)),
+                          selected: currentMode == mode,
+                          onSelected: (_) async {
+                            await appState?.setThemeMode(mode);
+                            if (mounted) setState(() {});
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: _t('색 조합', 'Color palette'),
+                      subtitle: _t('앱 색감 프리셋을 선택하세요', 'Choose a color preset'),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _paletteKeys.map((key) {
+                        return ChoiceChip(
+                          label: Text(_paletteLabel(key)),
+                          selected: currentPaletteKey == key,
+                          onSelected: (_) async {
+                            await appState?.setThemePresetKey(key);
+                            if (mounted) setState(() {});
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: _t('언어', 'Language'),
+                      subtitle: _t('앱 언어를 선택하세요', 'Choose app language'),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        ChoiceChip(
+                          label: const Text('한국어'),
+                          selected: currentLocaleCode == 'ko',
+                          onSelected: (_) async {
+                            await appState?.setLocaleCode('ko');
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                        ChoiceChip(
+                          label: const Text('English'),
+                          selected: currentLocaleCode == 'en',
+                          onSelected: (_) async {
+                            await appState?.setLocaleCode('en');
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: _t('데이터', 'Data'),
+                      subtitle: _t(
+                        '백업 파일 내보내기/복원 및 PIN 암호화를 관리합니다',
+                        'Manage backup export/restore and PIN encryption',
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: _outlinedStyle(context),
+                            onPressed: _exportBackup,
+                            icon: const Icon(Icons.download_outlined),
+                            label: Text(_t('백업 내보내기', 'Export backup')),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton.icon(
+                            style: _filledStyle(context),
+                            onPressed: _importBackup,
+                            icon: const Icon(Icons.upload_file_outlined),
+                            label: Text(_t('백업 복원', 'Restore backup')),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 10),
-                    const LinearProgressIndicator(minHeight: 2),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: cm.inputBg,
+                        border: Border.all(color: cm.cardBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _hasBackupPin
+                                ? _t('백업 PIN: 설정됨', 'Backup PIN: Enabled')
+                                : _t('백업 PIN: 미설정', 'Backup PIN: Disabled'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: _outlinedStyle(context),
+                                  onPressed: _setOrChangeBackupPin,
+                                  child: Text(
+                                    _hasBackupPin
+                                        ? _t('PIN 변경', 'Change PIN')
+                                        : _t('PIN 설정', 'Set PIN'),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: _outlinedStyle(
+                                    context,
+                                    destructive: true,
+                                  ),
+                                  onPressed: _hasBackupPin
+                                      ? _clearBackupPin
+                                      : null,
+                                  child: Text(_t('PIN 해제', 'Disable PIN')),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: _t('알림 점검', 'Notification health'),
+                      subtitle: _t(
+                        '권한/정확 알람/테스트 알림을 확인합니다',
+                        'Check permission, exact alarm, and self-test',
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: cm.inputBg,
+                        border: Border.all(color: cm.cardBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${_t('알림 권한', 'Notification permission')}: ${_boolStatus(_notifDiagnostics?.notificationsEnabled)}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_t('정확 알람', 'Exact alarms')}: ${_boolStatus(_notifDiagnostics?.canScheduleExactNotifications)}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_t('대기 알림 수', 'Pending notifications')}: ${_notifDiagnostics?.pendingCount ?? 0}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: _outlinedStyle(context),
+                                  onPressed: _notifBusy
+                                      ? null
+                                      : _requestNotificationPermission,
+                                  child: Text(
+                                    _t('권한 요청', 'Request permission'),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: _outlinedStyle(context),
+                                  onPressed: _notifBusy
+                                      ? null
+                                      : _requestExactAlarmPermission,
+                                  child: Text(_t('정확 알람', 'Exact alarm')),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: FilledButton(
+                                  style: _filledStyle(context),
+                                  onPressed: _notifBusy
+                                      ? null
+                                      : _scheduleNotificationSelfTest,
+                                  child: Text(
+                                    _t('15초 테스트 알림', '15s test notification'),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              OutlinedButton(
+                                style: _outlinedStyle(context),
+                                onPressed: _notifBusy
+                                    ? null
+                                    : _refreshNotificationDiagnostics,
+                                child: Icon(
+                                  Icons.refresh,
+                                  color: cm.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_notifBusy) ...[
+                            const SizedBox(height: 10),
+                            const LinearProgressIndicator(minHeight: 2),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: _t('크래시 리포팅', 'Crash reporting'),
+                      subtitle: _t(
+                        'Sentry 연동 상태와 테스트 이벤트',
+                        'Sentry integration status and test event',
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: cm.inputBg,
+                        border: Border.all(color: cm.cardBorder),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            CrashReportingService.I.isEnabled
+                                ? _t('상태: 활성화', 'Status: enabled')
+                                : _t('상태: 비활성화', 'Status: disabled'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            _t(
+                              '활성화 조건: --dart-define=ENABLE_SENTRY=true 와 SENTRY_DSN 설정',
+                              'Enable with --dart-define=ENABLE_SENTRY=true and SENTRY_DSN',
+                            ),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.copyWith(color: cm.textHint),
+                          ),
+                          const SizedBox(height: 10),
+                          FilledButton(
+                            style: _filledStyle(context),
+                            onPressed:
+                                (_crashBusy ||
+                                    !CrashReportingService.I.isEnabled)
+                                ? null
+                                : _sendCrashReportingSmokeTest,
+                            child: Text(_t('테스트 이벤트 전송', 'Send test event')),
+                          ),
+                          if (_crashBusy) ...[
+                            const SizedBox(height: 10),
+                            const LinearProgressIndicator(minHeight: 2),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (_busy) ...[
+                      const SizedBox(height: 12),
+                      const LinearProgressIndicator(minHeight: 2),
+                    ],
+                    const SizedBox(height: 8),
                   ],
-                ],
+                ),
               ),
-            ),
-            if (_busy) ...[
-              const SizedBox(height: 12),
-              const LinearProgressIndicator(minHeight: 2),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: cm.navBarBg,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cm.navBarShadow,
+                        blurRadius: 20,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: FilledButton(
+                    style: _filledStyle(context),
+                    onPressed: () => Navigator.of(context).pop(_startTab),
+                    child: Text(_t('저장', 'Save')),
+                  ),
+                ),
+              ),
             ],
-            const SizedBox(height: 24),
-            FilledButton(
-              style: _filledStyle(context),
-              onPressed: () => Navigator.of(context).pop(_startTab),
-              child: Text(_t('저장', 'Save')),
-            ),
-          ],
+          ),
         ),
       ),
     );

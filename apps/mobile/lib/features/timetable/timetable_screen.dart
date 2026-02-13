@@ -204,8 +204,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 const SizedBox(height: 8),
                 Text(
                   _t(
-                    '갤러리에서 이번 학기 시간표 이미지를 업로드하고\n확대/축소하여 확인하세요.',
-                    'Upload your semester timetable image\nand zoom in/out to view.',
+                    '갤러리에서 이번 학기 시간표 이미지를 선택해\n확대/축소해서 확인해 보세요.',
+                    'Pick your semester timetable image\nand zoom in/out to review.',
                   ),
                   textAlign: TextAlign.center,
                   style: TextStyle(color: cm.textHint, height: 1.4),
@@ -254,8 +254,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
                   Text(
                     _t('시간표', 'Timetable'),
                     style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
                       color: cm.textPrimary,
                     ),
                   ),

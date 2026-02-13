@@ -35,7 +35,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
-
     final todoBox = Hive.box<TodoItem>('todos');
     final courseBox = Hive.box<Course>('courses');
     final materialBox = Hive.box<CourseMaterial>('course_materials');
@@ -65,7 +64,6 @@ class HomeScreen extends StatelessWidget {
                 if (due == null) return false;
                 return _ymd(due).isBefore(today);
               }).length;
-
               final dueToday = activeTodos.where((t) {
                 final due = t.dueAt;
                 if (due == null) return false;
@@ -84,7 +82,7 @@ class HomeScreen extends StatelessWidget {
                 recos.add(
                   _t(
                     context,
-                    '기한 지난 할 일 $overdue개를 먼저 정리해보세요.',
+                    '기한 지난 할 일 $overdue개를 먼저 정리해 보세요.',
                     'Handle $overdue overdue todos first.',
                   ),
                 );
@@ -93,7 +91,7 @@ class HomeScreen extends StatelessWidget {
                 recos.add(
                   _t(
                     context,
-                    '오늘 마감 $dueToday개가 있습니다.',
+                    '오늘 마감 할 일이 $dueToday개 있어요.',
                     '$dueToday todos are due today.',
                   ),
                 );
@@ -110,7 +108,7 @@ class HomeScreen extends StatelessWidget {
                 recos.add(
                   _t(
                     context,
-                    '강의 자료 PDF를 올려서 페이지 메모를 시작해보세요.',
+                    '강의 자료 PDF를 올리고 페이지 메모를 시작해 보세요.',
                     'Upload course PDFs and start page-level notes.',
                   ),
                 );
@@ -193,7 +191,7 @@ class HomeScreen extends StatelessWidget {
                           nextTodo == null
                               ? _t(
                                   context,
-                                  '다음 마감 할 일이 없습니다.',
+                                  '예정된 마감 일정이 없어요.',
                                   'No upcoming due todo.',
                                 )
                               : _t(
@@ -293,7 +291,7 @@ class HomeScreen extends StatelessWidget {
                           Text(
                             _t(
                               context,
-                              '오늘은 추천 항목이 없습니다. 계획대로 진행해도 좋아요.',
+                              '오늘은 추천 항목이 없어요. 지금 페이스를 유지해 보세요.',
                               'No recommendations for now. You are on track.',
                             ),
                             style: TextStyle(color: cm.textTertiary),
