@@ -391,27 +391,21 @@ class DataBackupService {
     await prefs.setString(_prefThemeMode, themeMode);
     await prefs.setString(_prefThemePreset, themePresetKey);
     await prefs.setString(_prefLocaleCode, localeCode);
-    await _putOrRemoveString(prefs, _prefIcsUrl, settingsRaw[_prefIcsUrl]);
-    await _putOrRemoveString(
-      prefs,
-      _prefIcsCacheEvents,
-      settingsRaw[_prefIcsCacheEvents],
-    );
-    await _putOrRemoveString(
-      prefs,
-      _prefIcsLastSuccessAt,
-      settingsRaw[_prefIcsLastSuccessAt],
-    );
-    await _putOrRemoveString(
-      prefs,
-      _prefIcsLastFailureAt,
-      settingsRaw[_prefIcsLastFailureAt],
-    );
-    await _putOrRemoveString(
-      prefs,
-      _prefIcsLastFailureReason,
-      settingsRaw[_prefIcsLastFailureReason],
-    );
+    final importedIcsUrl = _normalizeHttpsUrl(settingsRaw[_prefIcsUrl]);
+    if (importedIcsUrl == null) {
+      await prefs.remove(_prefIcsUrl);
+      await prefs.remove(_prefIcsCacheEvents);
+      await prefs.remove(_prefIcsLastSuccessAt);
+      await prefs.remove(_prefIcsLastFailureAt);
+      await prefs.remove(_prefIcsLastFailureReason);
+    } else {
+      await prefs.setString(_prefIcsUrl, importedIcsUrl);
+      // Force fresh sync after restore instead of trusting cached remote payload.
+      await prefs.remove(_prefIcsCacheEvents);
+      await prefs.remove(_prefIcsLastSuccessAt);
+      await prefs.remove(_prefIcsLastFailureAt);
+      await prefs.remove(_prefIcsLastFailureReason);
+    }
 
     final timetableRaw = _asMap(payload['timetable']);
     final timetableName = timetableRaw['fileName']?.toString();
@@ -834,17 +828,16 @@ class DataBackupService {
     return null;
   }
 
-  static Future<void> _putOrRemoveString(
-    SharedPreferences prefs,
-    String key,
-    dynamic value,
-  ) async {
-    final text = value?.toString();
-    if (text == null || text.isEmpty) {
-      await prefs.remove(key);
-    } else {
-      await prefs.setString(key, text);
-    }
+  static String? _normalizeHttpsUrl(dynamic value) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) return null;
+    if (text.length > 2048) return null;
+
+    final uri = Uri.tryParse(text);
+    if (uri == null) return null;
+    if (uri.scheme.toLowerCase() != 'https' || uri.host.isEmpty) return null;
+
+    return uri.replace(fragment: '').toString();
   }
 
   static Future<String> _defaultBackupPath() async {
