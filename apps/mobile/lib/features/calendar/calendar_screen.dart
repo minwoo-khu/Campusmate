@@ -11,6 +11,7 @@ import '../../app/app_link.dart';
 import '../../app/home_widget_service.dart';
 import '../../app/ics_settings_screen.dart';
 import '../../app/l10n.dart';
+import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
 import '../todo/todo_edit_screen.dart';
 import '../todo/todo_model.dart';
@@ -51,9 +52,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   DateTime _ymd(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  bool _sameYmd(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
-
   String _fmtYmd(DateTime dt) => '${dt.year}-${_two(dt.month)}-${_two(dt.day)}';
 
   String _fmtHm(DateTime dt) => '${_two(dt.hour)}:${_two(dt.minute)}';
@@ -62,6 +60,101 @@ class _CalendarScreenState extends State<CalendarScreen> {
       '${day.year} ${day.month.toString().padLeft(2, '0')}';
 
   String _t(String ko, String en) => context.tr(ko, en);
+
+  int _dayKey(DateTime day) => day.year * 10000 + day.month * 100 + day.day;
+
+  _DayItems _buildDayItems(Box<TodoItem> box) {
+    final itemsByDay = <int, List<_CalItem>>{};
+    final totalByDay = <int, int>{};
+
+    void addItem(int key, _CalItem item) {
+      totalByDay.update(key, (value) => value + 1, ifAbsent: () => 1);
+      final bucket = itemsByDay.putIfAbsent(key, () => <_CalItem>[]);
+      if (bucket.length < SafetyLimits.maxCalendarItemsPerDay) {
+        bucket.add(item);
+      }
+    }
+
+    for (final todo in box.values) {
+      if (todo.completed) continue;
+      final due = todo.dueAt;
+      if (due == null) continue;
+
+      addItem(
+        _dayKey(due),
+        _CalItem.todo(
+          todoItem: todo,
+          when: due,
+          subtitle: _t('${_fmtHm(due)} due', 'Due ${_fmtHm(due)}'),
+        ),
+      );
+    }
+
+    for (final event in _icsEvents) {
+      addItem(
+        _dayKey(event.start),
+        _CalItem.ics(
+          event: event,
+          when: event.start,
+          subtitle: event.allDay
+              ? _t('All day', 'All day')
+              : _t(
+                  '${_fmtHm(event.start)} start',
+                  '${_fmtHm(event.start)} start',
+                ),
+        ),
+      );
+    }
+
+    for (final bucket in itemsByDay.values) {
+      bucket.sort((a, b) => a.when.compareTo(b.when));
+    }
+
+    final hiddenCountByDay = <int, int>{};
+    totalByDay.forEach((dayKey, total) {
+      final shown = itemsByDay[dayKey]?.length ?? 0;
+      final hidden = total - shown;
+      if (hidden > 0) {
+        hiddenCountByDay[dayKey] = hidden;
+      }
+    });
+
+    return _DayItems(
+      itemsByDay: itemsByDay,
+      hiddenCountByDay: hiddenCountByDay,
+    );
+  }
+
+  List<_CalItem> _itemsForDay(_DayItems dayItems, DateTime day) {
+    final key = _dayKey(day);
+    return dayItems.itemsByDay[key] ?? const [];
+  }
+
+  List<_CalItem> _markerItemsForDay(_DayItems dayItems, DateTime day) {
+    final items = _itemsForDay(dayItems, day);
+    if (items.length <= SafetyLimits.maxCalendarMarkerItemsPerDay) {
+      return items;
+    }
+    return items.sublist(0, SafetyLimits.maxCalendarMarkerItemsPerDay);
+  }
+
+  int _hiddenItemCountForDay(_DayItems dayItems, DateTime day) {
+    return dayItems.hiddenCountByDay[_dayKey(day)] ?? 0;
+  }
+
+  void _showDailyLimitMessage(TodoDailyLimitExceededException e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _t(
+            '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
+            'Daily todo limit reached (${e.limit}).',
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _openIcsSettings() async {
     final changed = await Navigator.of(
@@ -209,9 +302,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (resp.statusCode < 200 || resp.statusCode >= 300) {
         throw Exception('HTTP ${resp.statusCode}');
       }
+      if (resp.bodyBytes.length > SafetyLimits.maxIcsPayloadBytes) {
+        throw Exception(
+          'ICS payload too large (${resp.bodyBytes.length} bytes, limit ${SafetyLimits.maxIcsPayloadBytes})',
+        );
+      }
 
-      final events = parseIcs(resp.body)
+      final parsed = parseIcs(resp.body)
         ..sort((a, b) => a.start.compareTo(b.start));
+      final truncated = parsed.length > SafetyLimits.maxIcsEvents;
+      final events = truncated
+          ? parsed.sublist(0, SafetyLimits.maxIcsEvents)
+          : parsed;
       final now = DateTime.now();
 
       await HomeWidgetService.syncIcsTodayCount(events.map((e) => e.start));
@@ -225,6 +327,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _lastIcsFailureReason = null;
         if (events.isEmpty) {
           _message = _t('연결되었지만 일정이 없습니다.', 'Connected, but no events found.');
+        } else if (truncated) {
+          _message = _t(
+            '일정이 많아 일부만 표시합니다. (${events.length}개)',
+            'Calendar is large. Showing first ${events.length} events.',
+          );
         }
       });
     } catch (e) {
@@ -254,44 +361,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _focusedDay = moved;
       _selectedDay = moved;
     });
-  }
-
-  List<_CalItem> _itemsForDay(Box<TodoItem> box, DateTime day) {
-    final items = <_CalItem>[];
-
-    for (final todo in box.values) {
-      if (todo.completed) continue;
-      final due = todo.dueAt;
-      if (due != null && _sameYmd(due, day)) {
-        items.add(
-          _CalItem.todo(
-            todoItem: todo,
-            when: due,
-            subtitle: _t('${_fmtHm(due)} 마감', 'Due ${_fmtHm(due)}'),
-          ),
-        );
-      }
-    }
-
-    for (final event in _icsEvents) {
-      if (_sameYmd(event.start, day)) {
-        items.add(
-          _CalItem.ics(
-            event: event,
-            when: event.start,
-            subtitle: event.allDay
-                ? _t('종일', 'All day')
-                : _t(
-                    '${_fmtHm(event.start)} 시작',
-                    '${_fmtHm(event.start)} start',
-                  ),
-          ),
-        );
-      }
-    }
-
-    items.sort((a, b) => a.when.compareTo(b.when));
-    return items;
   }
 
   Future<void> _showEventBottomSheet(_CalItem item) async {
@@ -474,7 +543,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     child: TextButton.icon(
                       onPressed: () async {
                         Navigator.of(sheetContext).pop();
-                        await todoRepo.toggle(todo);
+                        try {
+                          await todoRepo.toggle(todo);
+                        } on TodoDailyLimitExceededException catch (e) {
+                          _showDailyLimitMessage(e);
+                        }
                       },
                       style: TextButton.styleFrom(
                         foregroundColor: cm.navActive,
@@ -596,7 +669,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: ValueListenableBuilder(
           valueListenable: todoBox.listenable(),
           builder: (context, Box<TodoItem> box, _) {
-            final selectedItems = _itemsForDay(box, _selectedDay);
+            final dayItems = _buildDayItems(box);
+            final selectedItems = _itemsForDay(dayItems, _selectedDay);
+            final hiddenItemCount = _hiddenItemCountForDay(
+              dayItems,
+              _selectedDay,
+            );
 
             return Column(
               children: [
@@ -662,7 +740,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               _focusedDay = focusedDay;
                             });
                           },
-                          eventLoader: (day) => _itemsForDay(box, day),
+                          eventLoader: (day) =>
+                              _markerItemsForDay(dayItems, day),
                           calendarStyle: CalendarStyle(
                             defaultTextStyle: TextStyle(color: cm.textPrimary),
                             weekendTextStyle: TextStyle(color: cm.textPrimary),
@@ -807,6 +886,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     ),
                   ),
+                if (hiddenItemCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        context.tr(
+                          '표시 제한으로 $hiddenItemCount개 항목이 숨겨졌습니다.',
+                          '$hiddenItemCount items are hidden by safety limit.',
+                        ),
+                        style: TextStyle(fontSize: 12, color: cm.textHint),
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _loadIcs,
@@ -851,6 +944,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
 }
 
 enum _Source { todo, ics }
+
+class _DayItems {
+  final Map<int, List<_CalItem>> itemsByDay;
+  final Map<int, int> hiddenCountByDay;
+
+  const _DayItems({required this.itemsByDay, required this.hiddenCountByDay});
+}
 
 class _CalItem {
   final String title;

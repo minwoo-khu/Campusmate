@@ -15,6 +15,7 @@ import '../features/todo/todo_repo.dart';
 import 'change_history_service.dart';
 import 'home_widget_service.dart';
 import 'notification_service.dart';
+import 'safety_limits.dart';
 import 'theme.dart';
 
 class BackupSummary {
@@ -156,6 +157,13 @@ class DataBackupService {
     await outFile.writeAsString(
       const JsonEncoder.withIndent('  ').convert(outObject),
     );
+    final writtenBytes = await outFile.length();
+    if (writtenBytes > SafetyLimits.maxBackupFileBytes) {
+      await outFile.delete();
+      throw FormatException(
+        'Backup file is too large (limit ${_mb(SafetyLimits.maxBackupFileBytes)}MB).',
+      );
+    }
 
     final summary = _extractSummary(payload);
     await ChangeHistoryService.log(
@@ -180,6 +188,12 @@ class DataBackupService {
     if (!await file.exists()) {
       throw const FormatException('Backup file does not exist.');
     }
+    final fileBytes = await file.length();
+    if (fileBytes > SafetyLimits.maxBackupFileBytes) {
+      throw FormatException(
+        'Backup file is too large (limit ${_mb(SafetyLimits.maxBackupFileBytes)}MB).',
+      );
+    }
 
     final decoded = jsonDecode(await file.readAsString());
     final decodedMap = _asMap(decoded);
@@ -189,6 +203,7 @@ class DataBackupService {
 
     final encrypted = decodedMap['backupFormat'] == _encryptedFormat;
     final payload = await _decodePayloadForImport(decodedMap, pin: pin);
+    _validatePayloadLimits(payload);
 
     final version = payload['schemaVersion'];
     if (version is! int || version <= 0 || version > _schemaVersion) {
@@ -218,7 +233,10 @@ class DataBackupService {
     for (final rawCourse in coursesRaw) {
       final m = _asMap(rawCourse);
       final id = m['id']?.toString() ?? '';
-      final name = m['name']?.toString() ?? '';
+      final name = _clampText(
+        m['name']?.toString() ?? '',
+        SafetyLimits.maxCourseNameChars,
+      );
       if (id.isEmpty || name.isEmpty) continue;
       await courseBox.add(Course(id: id, name: name));
     }
@@ -227,7 +245,10 @@ class DataBackupService {
     for (final rawTodo in todosRaw) {
       final m = _asMap(rawTodo);
       final id = m['id']?.toString() ?? '';
-      final title = m['title']?.toString() ?? '';
+      final title = _clampText(
+        m['title']?.toString() ?? '',
+        SafetyLimits.maxTodoTitleChars,
+      );
       if (id.isEmpty || title.isEmpty) continue;
 
       final dueAtMillis = _toInt(m['dueAtMillis']);
@@ -272,7 +293,15 @@ class DataBackupService {
       final bytesBase64 = materialFiles[relativePath]?.toString() ?? '';
       if (bytesBase64.isEmpty) continue;
 
-      final bytes = base64Decode(bytesBase64);
+      List<int> bytes;
+      try {
+        bytes = base64Decode(bytesBase64);
+      } catch (_) {
+        continue;
+      }
+      if (bytes.length > SafetyLimits.maxBackupMaterialFileBytes) {
+        continue;
+      }
       final targetPath = p.join(materialRoot.path, _safePath(relativePath));
       final targetFile = File(targetPath);
       await targetFile.parent.create(recursive: true);
@@ -289,21 +318,31 @@ class DataBackupService {
     }
 
     final notesRaw = _asMap(payload['materialNotes']);
+    var importedNoteCount = 0;
     for (final entry in notesRaw.entries) {
+      if (importedNoteCount >= SafetyLimits.maxBackupMaterials) break;
       final value = entry.value?.toString();
       if (value == null) continue;
-      await noteBox.put(entry.key.toString(), value);
+      final safeValue = _clampText(value, SafetyLimits.maxOverallNoteChars);
+      if (safeValue.isEmpty) continue;
+      await noteBox.put(entry.key.toString(), safeValue);
+      importedNoteCount++;
     }
 
     final pageMemosRaw = _asMap(payload['materialPageMemos']);
+    var importedPageMemoCount = 0;
     for (final entry in pageMemosRaw.entries) {
+      if (importedPageMemoCount >= SafetyLimits.maxBackupMaterials) break;
       final value = entry.value?.toString();
       if (value == null) continue;
-      await pageMemoBox.put(entry.key.toString(), value);
+      final safeValue = _clampText(value, SafetyLimits.maxPageMemoPayloadChars);
+      if (safeValue.isEmpty) continue;
+      await pageMemoBox.put(entry.key.toString(), safeValue);
+      importedPageMemoCount++;
     }
 
     final historyRaw = _asList(payload['changeHistory']);
-    for (final entry in historyRaw) {
+    for (final entry in historyRaw.take(SafetyLimits.maxBackupHistoryEntries)) {
       final value = entry?.toString();
       if (value == null || value.isEmpty) continue;
       await historyBox.add(value);
@@ -365,15 +404,23 @@ class DataBackupService {
         timetableName.isNotEmpty &&
         timetableBytesBase64 != null &&
         timetableBytesBase64.isNotEmpty) {
-      final bytes = base64Decode(timetableBytesBase64);
-      final appDir = await getApplicationDocumentsDirectory();
-      final timetablePath = p.join(
-        appDir.path,
-        'timetable_restored${p.extension(timetableName)}',
-      );
-      final timetableFile = File(timetablePath);
-      await timetableFile.writeAsBytes(bytes, flush: true);
-      await prefs.setString(_prefTimetablePath, timetableFile.path);
+      try {
+        final bytes = base64Decode(timetableBytesBase64);
+        if (bytes.length <= SafetyLimits.maxTimetableImageBytes) {
+          final appDir = await getApplicationDocumentsDirectory();
+          final timetablePath = p.join(
+            appDir.path,
+            'timetable_restored${p.extension(timetableName)}',
+          );
+          final timetableFile = File(timetablePath);
+          await timetableFile.writeAsBytes(bytes, flush: true);
+          await prefs.setString(_prefTimetablePath, timetableFile.path);
+        } else {
+          await prefs.remove(_prefTimetablePath);
+        }
+      } catch (_) {
+        await prefs.remove(_prefTimetablePath);
+      }
     } else {
       await prefs.remove(_prefTimetablePath);
     }
@@ -432,6 +479,9 @@ class DataBackupService {
     final nonce = base64Decode(nonceBase64);
     final cipherText = base64Decode(cipherTextBase64);
     final macBytes = base64Decode(macBase64);
+    if (cipherText.length > SafetyLimits.maxBackupFileBytes) {
+      throw const FormatException('Encrypted backup is too large.');
+    }
 
     final secretKey = await _deriveAesKey(normalizedPin, salt);
     final algorithm = AesGcm.with256bits();
@@ -522,6 +572,22 @@ class DataBackupService {
     final historyBox = Hive.box<String>(ChangeHistoryService.boxName);
     final notifBox = Hive.box<int>('notif');
 
+    if (todoBox.length > SafetyLimits.maxBackupTodos) {
+      throw FormatException(
+        'Too many todos to export (limit ${SafetyLimits.maxBackupTodos}).',
+      );
+    }
+    if (courseBox.length > SafetyLimits.maxBackupCourses) {
+      throw FormatException(
+        'Too many courses to export (limit ${SafetyLimits.maxBackupCourses}).',
+      );
+    }
+    if (materialBox.length > SafetyLimits.maxBackupMaterials) {
+      throw FormatException(
+        'Too many course materials to export (limit ${SafetyLimits.maxBackupMaterials}).',
+      );
+    }
+
     final materialFiles = <String, String>{};
     final materials = <Map<String, dynamic>>[];
 
@@ -536,6 +602,12 @@ class DataBackupService {
         _safePath(material.courseId),
         '${i}_${_safePath(material.fileName)}',
       );
+      final sourceBytes = await sourceFile.length();
+      if (sourceBytes > SafetyLimits.maxBackupMaterialFileBytes) {
+        throw FormatException(
+          'Material is too large for backup: ${material.fileName} (limit ${_mb(SafetyLimits.maxBackupMaterialFileBytes)}MB).',
+        );
+      }
       final bytes = await sourceFile.readAsBytes();
       materialFiles[relativePath] = base64Encode(bytes);
 
@@ -583,9 +655,20 @@ class DataBackupService {
       ],
       'courseMaterials': materials,
       'materialFiles': materialFiles,
-      'materialNotes': _stringBoxToMap(noteBox),
-      'materialPageMemos': _stringBoxToMap(pageMemoBox),
-      'changeHistory': historyBox.values.toList(),
+      'materialNotes': _stringBoxToMap(
+        noteBox,
+        maxEntries: SafetyLimits.maxBackupMaterials,
+        maxValueChars: SafetyLimits.maxOverallNoteChars,
+      ),
+      'materialPageMemos': _stringBoxToMap(
+        pageMemoBox,
+        maxEntries: SafetyLimits.maxBackupMaterials,
+        maxValueChars: SafetyLimits.maxPageMemoPayloadChars,
+      ),
+      'changeHistory': historyBox.values
+          .toList()
+          .take(SafetyLimits.maxBackupHistoryEntries)
+          .toList(),
       'notif': _intBoxToMap(notifBox),
       'timetable': timetable,
     };
@@ -611,6 +694,11 @@ class DataBackupService {
       return const <String, dynamic>{};
     }
 
+    final fileBytes = await file.length();
+    if (fileBytes > SafetyLimits.maxTimetableImageBytes) {
+      return const <String, dynamic>{};
+    }
+
     final bytes = await file.readAsBytes();
     return {
       'fileName': p.basename(file.path),
@@ -618,12 +706,17 @@ class DataBackupService {
     };
   }
 
-  static Map<String, String> _stringBoxToMap(Box<String> box) {
+  static Map<String, String> _stringBoxToMap(
+    Box<String> box, {
+    int? maxEntries,
+    int? maxValueChars,
+  }) {
     final out = <String, String>{};
     for (final key in box.keys) {
+      if (maxEntries != null && out.length >= maxEntries) break;
       final value = box.get(key);
       if (value != null) {
-        out[key.toString()] = value;
+        out[key.toString()] = _clampText(value, maxValueChars);
       }
     }
     return out;
@@ -638,6 +731,46 @@ class DataBackupService {
       }
     }
     return out;
+  }
+
+  static void _validatePayloadLimits(Map<String, dynamic> payload) {
+    final todoCount = _asList(payload['todos']).length;
+    final courseCount = _asList(payload['courses']).length;
+    final materialCount = _asList(payload['courseMaterials']).length;
+    final historyCount = _asList(payload['changeHistory']).length;
+    final noteCount = _asMap(payload['materialNotes']).length;
+    final pageMemoCount = _asMap(payload['materialPageMemos']).length;
+
+    if (todoCount > SafetyLimits.maxBackupTodos) {
+      throw FormatException(
+        'Backup has too many todos (limit ${SafetyLimits.maxBackupTodos}).',
+      );
+    }
+    if (courseCount > SafetyLimits.maxBackupCourses) {
+      throw FormatException(
+        'Backup has too many courses (limit ${SafetyLimits.maxBackupCourses}).',
+      );
+    }
+    if (materialCount > SafetyLimits.maxBackupMaterials) {
+      throw FormatException(
+        'Backup has too many materials (limit ${SafetyLimits.maxBackupMaterials}).',
+      );
+    }
+    if (historyCount > SafetyLimits.maxBackupHistoryEntries) {
+      throw FormatException(
+        'Backup has too many history entries (limit ${SafetyLimits.maxBackupHistoryEntries}).',
+      );
+    }
+    if (noteCount > SafetyLimits.maxBackupMaterials) {
+      throw FormatException(
+        'Backup has too many material notes (limit ${SafetyLimits.maxBackupMaterials}).',
+      );
+    }
+    if (pageMemoCount > SafetyLimits.maxBackupMaterials) {
+      throw FormatException(
+        'Backup has too many material memo entries (limit ${SafetyLimits.maxBackupMaterials}).',
+      );
+    }
   }
 
   static List<dynamic> _asList(dynamic value) {
@@ -690,6 +823,13 @@ class DataBackupService {
     return Directory(p.join(appDir.path, 'course_materials_restored'));
   }
 
+  static String _clampText(String text, int? maxChars) {
+    final normalized = text.trim();
+    if (maxChars == null || maxChars <= 0) return normalized;
+    if (normalized.length <= maxChars) return normalized;
+    return normalized.substring(0, maxChars);
+  }
+
   static String _safePath(String raw) {
     final out = raw.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_').trim();
     if (out.isEmpty) return 'item';
@@ -697,4 +837,6 @@ class DataBackupService {
   }
 
   static String _two(int x) => x.toString().padLeft(2, '0');
+
+  static String _mb(int bytes) => (bytes / (1024 * 1024)).toStringAsFixed(0);
 }

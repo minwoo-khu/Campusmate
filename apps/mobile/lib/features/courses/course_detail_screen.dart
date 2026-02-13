@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../app/change_history_service.dart';
 import '../../app/l10n.dart';
+import '../../app/safety_limits.dart';
 import 'course_material.dart';
 import 'pdf_viewer_screen.dart';
 
@@ -34,6 +35,40 @@ class CourseDetailScreen extends StatelessWidget {
     final pickedPath = result.files.single.path;
     if (pickedPath == null) return;
 
+    final sourceFile = File(pickedPath);
+    final sourceBytes = await sourceFile.length();
+    if (sourceBytes > SafetyLimits.maxCoursePdfBytes) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              'PDF ?ш린 ?쒕룄(${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB)瑜?珥덇낵?덉뒿?덈떎.',
+              'PDF is too large (limit ${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final box = Hive.box<CourseMaterial>('course_materials');
+    final currentCount = box.values.where((m) => m.courseId == courseId).length;
+    if (currentCount >= SafetyLimits.maxMaterialsPerCourse) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              '媛뺤쓽蹂?PDF ?쒕룄(${SafetyLimits.maxMaterialsPerCourse}媛????꾨떖?덉뒿?덈떎.',
+              'PDF limit reached for this course (${SafetyLimits.maxMaterialsPerCourse}).',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
     final appDir = await getApplicationDocumentsDirectory();
     final folder = Directory(p.join(appDir.path, 'course_materials', courseId));
     if (!await folder.exists()) {
@@ -44,9 +79,8 @@ class CourseDetailScreen extends StatelessWidget {
     final targetPath = p.join(folder.path, fileName);
     final targetFile = await _uniquePath(targetPath);
 
-    await File(pickedPath).copy(targetFile);
+    await sourceFile.copy(targetFile);
 
-    final box = Hive.box<CourseMaterial>('course_materials');
     await box.add(
       CourseMaterial(
         courseId: courseId,
@@ -63,7 +97,7 @@ class CourseDetailScreen extends StatelessWidget {
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.tr('PDF를 업로드했습니다.', 'PDF uploaded.'))),
+      SnackBar(content: Text(context.tr('PDF瑜??낅줈?쒗뻽?듬땲??', 'PDF uploaded.'))),
     );
   }
 
@@ -89,16 +123,16 @@ class CourseDetailScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(context.tr('PDF를 삭제할까요?', 'Delete PDF?')),
+        title: Text(context.tr('PDF瑜???젣?좉퉴??', 'Delete PDF?')),
         content: Text(material.fileName),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(context.tr('취소', 'Cancel')),
+            child: Text(context.tr('痍⑥냼', 'Cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.tr('삭제', 'Delete')),
+            child: Text(context.tr('??젣', 'Delete')),
           ),
         ],
       ),
@@ -114,10 +148,18 @@ class CourseDetailScreen extends StatelessWidget {
     );
 
     List<int>? bytes;
+    var undoAvailable = true;
     final f = File(material.localPath);
     if (await f.exists()) {
-      bytes = await f.readAsBytes();
+      final fileBytes = await f.length();
+      if (fileBytes <= SafetyLimits.maxUndoPdfBytes) {
+        bytes = await f.readAsBytes();
+      } else {
+        undoAvailable = false;
+      }
       await f.delete();
+    } else {
+      undoAvailable = false;
     }
 
     await material.delete();
@@ -129,27 +171,36 @@ class CourseDetailScreen extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          context.tr(
-            '"${backup.fileName}" 삭제됨',
-            'Deleted "${backup.fileName}"',
-          ),
+          undoAvailable
+              ? context.tr(
+                  'Deleted "${backup.fileName}"',
+                  'Deleted "${backup.fileName}"',
+                )
+              : context.tr(
+                  'Deleted "${backup.fileName}" (undo disabled for large file)',
+                  'Deleted "${backup.fileName}" (undo disabled for large file)',
+                ),
         ),
-        action: SnackBarAction(
-          label: context.tr('실행 취소', 'Undo'),
-          onPressed: () async {
-            if (bytes != null) {
-              final restoreFile = File(backup.localPath);
-              await restoreFile.parent.create(recursive: true);
-              await restoreFile.writeAsBytes(bytes);
-            }
+        action: undoAvailable
+            ? SnackBarAction(
+                label: context.tr('Undo', 'Undo'),
+                onPressed: () async {
+                  if (bytes != null) {
+                    final restoreFile = File(backup.localPath);
+                    await restoreFile.parent.create(recursive: true);
+                    await restoreFile.writeAsBytes(bytes);
+                  }
 
-            await Hive.box<CourseMaterial>('course_materials').add(backup);
-            await ChangeHistoryService.log(
-              'PDF restored',
-              detail: backup.fileName,
-            );
-          },
-        ),
+                  await Hive.box<CourseMaterial>(
+                    'course_materials',
+                  ).add(backup);
+                  await ChangeHistoryService.log(
+                    'PDF restored',
+                    detail: backup.fileName,
+                  );
+                },
+              )
+            : null,
       ),
     );
   }
@@ -175,7 +226,7 @@ class CourseDetailScreen extends StatelessWidget {
             return Center(
               child: Text(
                 context.tr(
-                  '아직 PDF가 없습니다. + 버튼으로 업로드하세요.',
+                  '?꾩쭅 PDF媛 ?놁뒿?덈떎. + 踰꾪듉?쇰줈 ?낅줈?쒗븯?몄슂.',
                   'No PDFs yet. Tap + to upload.',
                 ),
               ),
@@ -195,7 +246,7 @@ class CourseDetailScreen extends StatelessWidget {
               return ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
                 title: Text(material.fileName),
-                subtitle: Text(context.tr('추가됨: $dateStr', 'Added: $dateStr')),
+                subtitle: Text(context.tr('異붽??? $dateStr', 'Added: $dateStr')),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _deleteMaterialWithUndo(context, material),

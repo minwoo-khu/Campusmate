@@ -6,6 +6,7 @@ import '../../app/app_link.dart';
 import '../../app/change_history_service.dart';
 import '../../app/change_history_sheet.dart';
 import '../../app/l10n.dart';
+import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
 import 'todo_edit_screen.dart';
 import 'todo_model.dart';
@@ -117,6 +118,20 @@ class _TodoScreenState extends State<TodoScreen> {
       return _t('내일 ${_fmtHm(dt)}', 'Tomorrow ${_fmtHm(dt)}');
     }
     return '${_fmtYmd(dt)} ${_fmtHm(dt)}';
+  }
+
+  void _showDailyLimitMessage(TodoDailyLimitExceededException e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _t(
+            '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
+            'Daily todo limit reached (${e.limit}).',
+          ),
+        ),
+      ),
+    );
   }
 
   Future<DateTime?> _pickDateTime(DateTime initial) async {
@@ -299,11 +314,15 @@ class _TodoScreenState extends State<TodoScreen> {
         action: SnackBarAction(
           label: _t('실행 취소', 'Undo'),
           onPressed: () async {
-            await todoRepo.add(backup, logAction: false);
-            await ChangeHistoryService.log(
-              'Todo restored',
-              detail: backup.title,
-            );
+            try {
+              await todoRepo.add(backup, logAction: false);
+              await ChangeHistoryService.log(
+                'Todo restored',
+                detail: backup.title,
+              );
+            } on TodoDailyLimitExceededException catch (e) {
+              _showDailyLimitMessage(e);
+            }
           },
         ),
       ),
@@ -357,7 +376,12 @@ class _TodoScreenState extends State<TodoScreen> {
       priorityLevel: _quickPriority,
     );
 
-    await todoRepo.add(item);
+    try {
+      await todoRepo.add(item);
+    } on TodoDailyLimitExceededException catch (e) {
+      _showDailyLimitMessage(e);
+      return;
+    }
 
     if (!mounted) return;
 
@@ -520,6 +544,7 @@ class _TodoScreenState extends State<TodoScreen> {
               Expanded(
                 child: TextField(
                   controller: _quickTitleController,
+                  maxLength: SafetyLimits.maxTodoTitleChars,
                   decoration: InputDecoration(
                     isDense: true,
                     border: InputBorder.none,
@@ -821,7 +846,12 @@ class _TodoScreenState extends State<TodoScreen> {
             onTap: () => _openEdit(context, item),
             leading: IconButton(
               onPressed: () async {
-                await todoRepo.toggle(item);
+                try {
+                  await todoRepo.toggle(item);
+                } on TodoDailyLimitExceededException catch (e) {
+                  _showDailyLimitMessage(e);
+                  return;
+                }
                 setState(() {});
               },
               icon: Icon(

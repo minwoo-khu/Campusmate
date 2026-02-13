@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/l10n.dart';
+import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
 
 class TimetableScreen extends StatefulWidget {
@@ -74,6 +75,23 @@ class _TimetableScreenState extends State<TimetableScreen> {
     final pickedPath = result.files.single.path;
     if (pickedPath == null) return;
 
+    final sourceFile = File(pickedPath);
+    final sourceBytes = await sourceFile.length();
+    if (sourceBytes > SafetyLimits.maxTimetableImageBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _t(
+              '시간표 이미지 크기 한도(${(SafetyLimits.maxTimetableImageBytes / (1024 * 1024)).toStringAsFixed(0)}MB)를 초과했습니다.',
+              'Timetable image is too large (limit ${(SafetyLimits.maxTimetableImageBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
     final appDir = await getApplicationDocumentsDirectory();
 
     final ext = p.extension(pickedPath).toLowerCase();
@@ -82,7 +100,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
         : '.png';
 
     final targetPath = p.join(appDir.path, 'timetable$safeExt');
-    await File(pickedPath).copy(targetPath);
+    await sourceFile.copy(targetPath);
 
     await _savePath(targetPath);
     setState(() => _imagePath = targetPath);

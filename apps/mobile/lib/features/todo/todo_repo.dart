@@ -3,7 +3,24 @@ import 'package:hive/hive.dart';
 import '../../app/change_history_service.dart';
 import '../../app/home_widget_service.dart';
 import '../../app/notification_service.dart';
+import '../../app/safety_limits.dart';
 import 'todo_model.dart';
+
+class TodoDailyLimitExceededException implements Exception {
+  final DateTime day;
+  final int limit;
+  final int currentCount;
+
+  TodoDailyLimitExceededException({
+    required this.day,
+    required this.limit,
+    required this.currentCount,
+  });
+
+  @override
+  String toString() =>
+      'TodoDailyLimitExceededException(day: $day, limit: $limit, currentCount: $currentCount)';
+}
 
 class TodoRepo {
   Box<TodoItem> get _box => Hive.box<TodoItem>('todos');
@@ -13,6 +30,17 @@ class TodoRepo {
     final cur = _notifBox.get('nextId') ?? 1;
     _notifBox.put('nextId', cur + 1);
     return cur;
+  }
+
+  String _normalizeTitle(String raw) {
+    var text = raw.trim();
+    if (text.isEmpty) {
+      return 'Untitled';
+    }
+    if (text.length > SafetyLimits.maxTodoTitleChars) {
+      text = text.substring(0, SafetyLimits.maxTodoTitleChars);
+    }
+    return text;
   }
 
   List<TodoItem> list() {
@@ -47,6 +75,48 @@ class TodoRepo {
 
   DateTime _endOfDay(DateTime dt) =>
       DateTime(dt.year, dt.month, dt.day, 23, 59);
+
+  DateTime _ymd(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
+
+  bool _sameYmd(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  int _countActiveDueForDay(DateTime day, {TodoItem? excluding}) {
+    var count = 0;
+    for (final item in _box.values) {
+      if (item.completed) continue;
+
+      final due = item.dueAt;
+      if (due == null || !_sameYmd(due, day)) continue;
+
+      if (excluding != null) {
+        final sameKey = item.key != null && item.key == excluding.key;
+        final sameId = item.id == excluding.id;
+        if (sameKey || sameId) continue;
+      }
+
+      count++;
+    }
+    return count;
+  }
+
+  void _ensureDailyLimit(TodoItem item, {TodoItem? excluding}) {
+    if (item.completed) return;
+
+    final due = item.dueAt;
+    if (due == null) return;
+
+    final day = _ymd(due);
+    final currentCount = _countActiveDueForDay(day, excluding: excluding);
+    final limit = SafetyLimits.maxActiveTodosPerDay;
+    if (currentCount >= limit) {
+      throw TodoDailyLimitExceededException(
+        day: day,
+        limit: limit,
+        currentCount: currentCount,
+      );
+    }
+  }
 
   TodoItem? _buildNextRecurringItem(TodoItem completedItem) {
     final rule = completedItem.repeatRule;
@@ -127,6 +197,8 @@ class TodoRepo {
   }
 
   Future<void> add(TodoItem item, {bool logAction = true}) async {
+    item.title = _normalizeTitle(item.title);
+    _ensureDailyLimit(item);
     await _box.add(item);
     await _syncReminder(item);
     await _syncHomeWidget();
@@ -139,6 +211,14 @@ class TodoRepo {
   Future<void> toggle(TodoItem item, {bool logAction = true}) async {
     final wasCompleted = item.completed;
     item.completed = !item.completed;
+    if (!item.completed) {
+      try {
+        _ensureDailyLimit(item, excluding: item);
+      } on TodoDailyLimitExceededException {
+        item.completed = wasCompleted;
+        rethrow;
+      }
+    }
     await item.save();
     await _syncReminder(item);
     await _syncHomeWidget();
@@ -153,16 +233,25 @@ class TodoRepo {
     if (!wasCompleted && item.completed) {
       final next = _buildNextRecurringItem(item);
       if (next != null) {
-        await add(next, logAction: false);
-        await ChangeHistoryService.log(
-          'Recurring todo scheduled',
-          detail: next.title,
-        );
+        try {
+          await add(next, logAction: false);
+          await ChangeHistoryService.log(
+            'Recurring todo scheduled',
+            detail: next.title,
+          );
+        } on TodoDailyLimitExceededException {
+          await ChangeHistoryService.log(
+            'Recurring todo skipped (daily limit)',
+            detail: next.title,
+          );
+        }
       }
     }
   }
 
   Future<void> update(TodoItem item, {bool logAction = true}) async {
+    item.title = _normalizeTitle(item.title);
+    _ensureDailyLimit(item, excluding: item);
     await item.save();
     await _syncReminder(item);
     await _syncHomeWidget();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/l10n.dart';
 import '../../app/change_history_service.dart';
+import '../../app/safety_limits.dart';
 import 'course.dart';
 
 class CourseEditScreen extends StatefulWidget {
@@ -28,8 +29,11 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
   }
 
   Future<void> _save() async {
-    final name = _controller.text.trim();
+    var name = _controller.text.trim();
     if (name.isEmpty) return;
+    if (name.length > SafetyLimits.maxCourseNameChars) {
+      name = name.substring(0, SafetyLimits.maxCourseNameChars);
+    }
 
     widget.course.name = name;
     await widget.course.save();
@@ -49,6 +53,7 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
           children: [
             TextField(
               controller: _controller,
+              maxLength: SafetyLimits.maxCourseNameChars,
               decoration: InputDecoration(
                 labelText: context.tr('강의명', 'Course name'),
                 border: const OutlineInputBorder(),

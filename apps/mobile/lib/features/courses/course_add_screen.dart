@@ -4,6 +4,7 @@ import 'package:hive/hive.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../app/change_history_service.dart';
+import '../../app/safety_limits.dart';
 import 'course.dart';
 
 class CourseAddScreen extends StatefulWidget {
@@ -23,12 +24,29 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
   }
 
   Future<void> _save() async {
-    final name = _controller.text.trim();
+    var name = _controller.text.trim();
     if (name.isEmpty) return;
+    if (name.length > SafetyLimits.maxCourseNameChars) {
+      name = name.substring(0, SafetyLimits.maxCourseNameChars);
+    }
 
     final id = DateTime.now().microsecondsSinceEpoch.toString();
 
     final box = Hive.box<Course>('courses');
+    if (box.length >= SafetyLimits.maxCourses) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              '강의 한도(${SafetyLimits.maxCourses}개)에 도달했습니다.',
+              'Course limit reached (${SafetyLimits.maxCourses}).',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
     await box.add(Course(id: id, name: name));
     await ChangeHistoryService.log('Course added', detail: name);
 
@@ -48,6 +66,7 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
           children: [
             TextField(
               controller: _controller,
+              maxLength: SafetyLimits.maxCourseNameChars,
               decoration: InputDecoration(
                 labelText: context.tr('강의명', 'Course name'),
                 border: const OutlineInputBorder(),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/l10n.dart';
+import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
 import 'todo_model.dart';
 import 'todo_repo.dart';
@@ -169,7 +170,22 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
     widget.item.repeatRule = _repeat;
     widget.item.priorityLevel = _priority;
 
-    await todoRepo.update(widget.item);
+    try {
+      await todoRepo.update(widget.item);
+    } on TodoDailyLimitExceededException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.tr(
+              '하루 할 일 한도(${e.limit}개)를 초과했습니다.',
+              'Daily todo limit reached (${e.limit}).',
+            ),
+          ),
+        ),
+      );
+      return;
+    }
 
     if (mounted) Navigator.of(context).pop(true);
   }
@@ -213,6 +229,7 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
           const SizedBox(height: 8),
           TextField(
             controller: _titleController,
+            maxLength: SafetyLimits.maxTodoTitleChars,
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               hintText: context.tr('할 일을 수정하세요', 'Update todo title'),
