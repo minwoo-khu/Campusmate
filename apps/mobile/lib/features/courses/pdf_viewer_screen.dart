@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import 'package:pdfx/pdfx.dart';
 
 import '../../app/center_notice.dart';
+import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
 
 class PdfViewerScreen extends StatefulWidget {
@@ -46,6 +47,25 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     'Assignment',
     'Question',
   ];
+
+  String _t(String ko, String en) => context.tr(ko, en);
+
+  String _tagLabel(String tag) {
+    switch (tag) {
+      case 'Exam':
+        return _t('시험', 'Exam');
+      case 'Important':
+        return _t('중요', 'Important');
+      case 'Memorize':
+        return _t('암기', 'Memorize');
+      case 'Assignment':
+        return _t('과제', 'Assignment');
+      case 'Question':
+        return _t('질문', 'Question');
+      default:
+        return tag;
+    }
+  }
 
   @override
   void initState() {
@@ -202,7 +222,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       encoded = '{}';
       safeMemos = const {};
       _showMessage(
-        'Page memos exceeded safe storage size and were reset for stability.',
+        _t(
+          '페이지 메모 저장 용량 한도를 넘어 안정성을 위해 초기화했습니다.',
+          'Page memos exceeded safe storage size and were reset for stability.',
+        ),
       );
     }
 
@@ -228,18 +251,21 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                'PDF note',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                _t('PDF 노트', 'PDF note'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: controller,
                 maxLines: 6,
                 maxLength: SafetyLimits.maxOverallNoteChars,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Write overall notes for this PDF',
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  hintText: _t(
+                    '이 PDF 전체에 대한 메모를 작성하세요',
+                    'Write overall notes for this PDF',
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -248,7 +274,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   Expanded(
                     child: FilledButton(
                       onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Save'),
+                      child: Text(_t('저장', 'Save')),
                     ),
                   ),
                 ],
@@ -297,7 +323,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
           if (selectedTags.length >= SafetyLimits.maxTagsPerPageMemo) {
             _showMessage(
-              'You can add up to ${SafetyLimits.maxTagsPerPageMemo} tags per page memo.',
+              _t(
+                '페이지 메모당 태그는 최대 ${SafetyLimits.maxTagsPerPageMemo}개까지 추가할 수 있습니다.',
+                'You can add up to ${SafetyLimits.maxTagsPerPageMemo} tags per page memo.',
+              ),
             );
             return;
           }
@@ -311,7 +340,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
           if (selectedTags.length >= SafetyLimits.maxTagsPerPageMemo) {
             _showMessage(
-              'You can add up to ${SafetyLimits.maxTagsPerPageMemo} tags per page memo.',
+              _t(
+                '페이지 메모당 태그는 최대 ${SafetyLimits.maxTagsPerPageMemo}개까지 추가할 수 있습니다.',
+                'You can add up to ${SafetyLimits.maxTagsPerPageMemo} tags per page memo.',
+              ),
             );
             return;
           }
@@ -345,7 +377,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Page memo (p.$page)',
+                      _t('페이지 메모 (p.$page)', 'Page memo (p.$page)'),
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
@@ -353,15 +385,18 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                       controller: textController,
                       maxLines: 5,
                       maxLength: SafetyLimits.maxPageMemoTextChars,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: 'Write key points for this page',
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        hintText: _t(
+                          '이 페이지의 핵심 내용을 메모하세요',
+                          'Write key points for this page',
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Tags',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    Text(
+                      _t('태그', 'Tags'),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -370,7 +405,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                       children: [
                         for (final t in _presetTags)
                           FilterChip(
-                            label: Text(t),
+                            label: Text(_tagLabel(t)),
                             selected: selectedTags.contains(t),
                             onSelected: (_) => setLocal(() => toggleTag(t)),
                           ),
@@ -389,9 +424,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                           child: TextField(
                             controller: tagInputController,
                             maxLength: SafetyLimits.maxPageMemoTagChars,
-                            decoration: const InputDecoration(
-                              border: OutlineInputBorder(),
-                              hintText: 'Add tag (example: midterm)',
+                            decoration: InputDecoration(
+                              border: const OutlineInputBorder(),
+                              hintText: _t(
+                                '태그 추가 (예: 중간고사)',
+                                'Add tag (example: midterm)',
+                              ),
                             ),
                             onSubmitted: (v) {
                               setLocal(() {
@@ -409,7 +447,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                               tagInputController.clear();
                             });
                           },
-                          child: const Text('Add'),
+                          child: Text(_t('추가', 'Add')),
                         ),
                       ],
                     ),
@@ -419,14 +457,14 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                         OutlinedButton(
                           onPressed: () =>
                               Navigator.of(context).pop(_PageMemoResult.delete),
-                          child: const Text('Delete'),
+                          child: Text(_t('삭제', 'Delete')),
                         ),
                         const Spacer(),
                         FilledButton(
                           onPressed: () => Navigator.of(
                             context,
                           ).pop(_PageMemoResult.saveWith(selectedTags)),
-                          child: const Text('Save'),
+                          child: Text(_t('저장', 'Save')),
                         ),
                       ],
                     ),
@@ -454,7 +492,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         final isNewPage = !memos.containsKey(page);
         if (isNewPage && memos.length >= SafetyLimits.maxPageMemosPerMaterial) {
           _showMessage(
-            'Page memo limit reached (${SafetyLimits.maxPageMemosPerMaterial}).',
+            _t(
+              '페이지 메모 한도에 도달했습니다 (${SafetyLimits.maxPageMemosPerMaterial}개).',
+              'Page memo limit reached (${SafetyLimits.maxPageMemosPerMaterial}).',
+            ),
           );
           return;
         }
@@ -494,9 +535,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       isScrollControlled: true,
       builder: (_) {
         if (pagesAll.isEmpty) {
-          return const Padding(
+          return Padding(
             padding: EdgeInsets.all(16),
-            child: Text('No page memos yet.'),
+            child: Text(_t('아직 페이지 메모가 없습니다.', 'No page memos yet.')),
           );
         }
 
@@ -546,10 +587,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 child: Column(
                   children: [
                     TextField(
-                      decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                        hintText: 'Search memo content/tags',
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search),
+                        border: const OutlineInputBorder(),
+                        hintText: _t('메모 내용/태그 검색', 'Search memo content/tags'),
                       ),
                       onChanged: (v) => setLocal(() => query = v),
                     ),
@@ -562,7 +603,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                           child: Row(
                             children: [
                               ChoiceChip(
-                                label: const Text('All'),
+                                label: Text(_t('전체', 'All')),
                                 selected: tagFilter == null,
                                 onSelected: (_) =>
                                     setLocal(() => tagFilter = null),
@@ -584,8 +625,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                     const SizedBox(height: 10),
                     Expanded(
                       child: pages.isEmpty
-                          ? const Center(
-                              child: Text('No memo matches the filter.'),
+                          ? Center(
+                              child: Text(
+                                _t(
+                                  '필터에 맞는 메모가 없습니다.',
+                                  'No memo matches the filter.',
+                                ),
+                              ),
                             )
                           : ListView.separated(
                               itemCount: pages.length,
@@ -649,8 +695,15 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_fileExists) {
-      return const Scaffold(
-        body: Center(child: Text('Cannot find file. Please re-upload it.')),
+      return Scaffold(
+        body: Center(
+          child: Text(
+            _t(
+              '파일을 찾을 수 없습니다. 다시 업로드해주세요.',
+              'Cannot find file. Please re-upload it.',
+            ),
+          ),
+        ),
       );
     }
 
@@ -664,7 +717,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         title: Text(widget.fileName),
         actions: [
           IconButton(
-            tooltip: 'PDF note',
+            tooltip: _t('PDF 노트', 'PDF note'),
             icon: Icon(
               _hasOverallNote
                   ? Icons.sticky_note_2
@@ -673,7 +726,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             onPressed: _editOverallNote,
           ),
           IconButton(
-            tooltip: 'Page memo list',
+            tooltip: _t('페이지 메모 목록', 'Page memo list'),
             icon: const Icon(Icons.list_alt),
             onPressed: _openPageMemoList,
           ),
@@ -686,7 +739,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           return FloatingActionButton.extended(
             onPressed: () => _editPageMemo(page),
             icon: Icon(hasPageMemo ? Icons.edit_note : Icons.note_add_outlined),
-            label: Text('p.$page memo'),
+            label: Text(_t('p.$page 메모', 'p.$page memo')),
           );
         },
       ),
@@ -709,7 +762,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                       children: [
                         Text('$page / $pageCount'),
                         const Spacer(),
-                        if (hasPageMemo) const Text('Memo exists'),
+                        if (hasPageMemo) Text(_t('메모 있음', 'Memo exists')),
                       ],
                     ),
                   );
@@ -730,7 +783,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   _pageCountListenable.value = pagesCount;
                 },
                 onDocumentError: (_) {
-                  _showMessage('Failed to open this PDF file.');
+                  _showMessage(
+                    _t('이 PDF 파일을 열 수 없습니다.', 'Failed to open this PDF file.'),
+                  );
                 },
                 onPageChanged: (page) {
                   if (_currentPageListenable.value == page) return;
