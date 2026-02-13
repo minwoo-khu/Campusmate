@@ -131,6 +131,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  CampusMateColors _paletteColors(String key) {
+    final theme = CampusMateTheme.light(paletteKey: key);
+    return theme.extension<CampusMateColors>() ?? CampusMateColors.light;
+  }
+
+  List<Color> _palettePreviewColors(String key) {
+    final colors = _paletteColors(key);
+    return [
+      colors.navActive,
+      colors.inputBg,
+      colors.tipBannerBg,
+      colors.deleteBg,
+    ];
+  }
+
   String _startTabLabel(int index) {
     switch (index) {
       case 0:
@@ -580,9 +595,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ];
 
     Widget paletteChip(String key) {
+      final previewColors = _palettePreviewColors(key);
       return ChoiceChip(
         showCheckmark: false,
-        label: Text(_paletteLabel(key)),
+        label: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: previewColors.map((color) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.black.withValues(alpha: 0.12),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(width: 4),
+            Text(_paletteLabel(key)),
+          ],
+        ),
         selected: currentPaletteKey == key,
         onSelected: (_) async {
           await appState?.setThemePresetKey(key);
