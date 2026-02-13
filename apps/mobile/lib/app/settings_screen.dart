@@ -146,23 +146,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ];
   }
 
-  String _startTabLabel(int index) {
-    switch (index) {
-      case 0:
-        return _t('홈', 'Home');
-      case 1:
-        return _t('할 일', 'Todo');
-      case 2:
-        return _t('캘린더', 'Calendar');
-      case 3:
-        return _t('시간표', 'Timetable');
-      case 4:
-        return _t('강의', 'Courses');
-      default:
-        return '$index';
-    }
-  }
-
   String _calendarRangeModeLabel(CalendarRangeMode mode) {
     switch (mode) {
       case CalendarRangeMode.weeks:
@@ -644,25 +627,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   children: [
-                    _SectionTitle(
-                      title: _t('홈 화면', 'Home screen'),
-                      subtitle: _t(
-                        '시작 탭을 선택하세요',
-                        'Choose which tab opens first',
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: List.generate(5, (index) {
-                        return ChoiceChip(
-                          label: Text(_startTabLabel(index)),
-                          selected: _startTab == index,
-                          onSelected: (_) => setState(() => _startTab = index),
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 24),
                     _SectionTitle(
                       title: _t('캘린더 범위', 'Calendar range'),
                       subtitle: _t(
