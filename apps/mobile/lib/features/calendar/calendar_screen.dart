@@ -866,12 +866,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           calendarBuilders: CalendarBuilders<_CalItem>(
                             dowBuilder: (context, day) {
                               final isSunday = day.weekday == DateTime.sunday;
+                              final isSaturday =
+                                  day.weekday == DateTime.saturday;
                               return Center(
                                 child: Text(
                                   _weekdayShortLabel(day.weekday),
                                   style: TextStyle(
                                     color: isSunday
                                         ? const Color(0xFFDC2626)
+                                        : isSaturday
+                                        ? const Color(0xFF2563EB)
                                         : cm.textSecondary,
                                     fontWeight: FontWeight.w600,
                                   ),
