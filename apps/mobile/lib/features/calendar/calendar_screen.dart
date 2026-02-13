@@ -783,12 +783,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           lastDay: DateTime.utc(2100, 12, 31),
                           focusedDay: _focusedDay,
                           headerVisible: false,
+                          availableGestures: AvailableGestures.horizontalSwipe,
                           selectedDayPredicate: (day) =>
                               isSameDay(day, _selectedDay),
                           onDaySelected: (selectedDay, focusedDay) {
                             setState(() {
                               _selectedDay = selectedDay;
                               _focusedDay = focusedDay;
+                            });
+                          },
+                          onPageChanged: (focusedDay) {
+                            final moved = DateTime(
+                              focusedDay.year,
+                              focusedDay.month,
+                              1,
+                            );
+                            setState(() {
+                              _focusedDay = moved;
+                              _selectedDay = moved;
                             });
                           },
                           eventLoader: (day) =>

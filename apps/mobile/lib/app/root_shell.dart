@@ -33,6 +33,7 @@ class _RootShellState extends State<RootShell> {
   static const _calendarTab = 2;
   static const _timetableTab = 3;
   static const _coursesTab = 4;
+  static const _swipeVelocityThreshold = 240.0;
 
   int _currentIndex = _homeTab;
   int _startTabIndex = _homeTab;
@@ -168,6 +169,17 @@ class _RootShellState extends State<RootShell> {
     unawaited(_persistLastTab(next));
   }
 
+  void _onBodyHorizontalDragEnd(DragEndDetails details) {
+    // Keep calendar swipe dedicated to month navigation.
+    if (_currentIndex == _calendarTab) return;
+
+    final velocity = details.primaryVelocity;
+    if (velocity == null || velocity.abs() < _swipeVelocityThreshold) return;
+
+    final direction = velocity < 0 ? 1 : -1;
+    _setCurrentTab(_currentIndex + direction);
+  }
+
   Future<void> _openSettings() async {
     final selected = await Navigator.of(context).push<int>(
       MaterialPageRoute(
@@ -213,6 +225,9 @@ class _RootShellState extends State<RootShell> {
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _dismissKeyboard,
+        onHorizontalDragEnd: _currentIndex == _calendarTab
+            ? null
+            : _onBodyHorizontalDragEnd,
         child: IndexedStack(index: _currentIndex, children: tabs),
       ),
       bottomNavigationBar: Column(
