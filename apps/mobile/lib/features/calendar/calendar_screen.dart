@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../app/app_link.dart';
+import '../../app/calendar_range_settings.dart';
 import '../../app/center_notice.dart';
 import '../../app/home_widget_service.dart';
 import '../../app/ics_settings_screen.dart';
@@ -38,6 +39,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   bool _loading = false;
   String? _message;
+  CalendarRangeConfig _calendarRange = CalendarRangeSettings.defaultValue;
   DateTime? _lastIcsSyncAt;
   DateTime? _lastIcsFailureAt;
   String? _lastIcsFailureReason;
@@ -46,7 +48,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
+    _calendarRange = CalendarRangeSettings.notifier.value;
+    CalendarRangeSettings.notifier.addListener(_onCalendarRangeChanged);
+    CalendarRangeSettings.ensureLoaded();
     _bootstrapIcs();
+  }
+
+  @override
+  void dispose() {
+    CalendarRangeSettings.notifier.removeListener(_onCalendarRangeChanged);
+    super.dispose();
   }
 
   String _two(int x) => x.toString().padLeft(2, '0');
@@ -61,6 +72,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
       '${day.year} ${day.month.toString().padLeft(2, '0')}';
 
   String _t(String ko, String en) => context.tr(ko, en);
+
+  DateTime get _today => _ymd(DateTime.now());
+
+  DateTime get _rangeFirstDay =>
+      CalendarRangeSettings.firstDayFor(_today, _calendarRange);
+
+  DateTime get _rangeLastDay =>
+      CalendarRangeSettings.lastDayFor(_today, _calendarRange);
+
+  void _onCalendarRangeChanged() {
+    if (!mounted) return;
+    final next = CalendarRangeSettings.notifier.value;
+    final nextFirst = CalendarRangeSettings.firstDayFor(_today, next);
+    final nextLast = CalendarRangeSettings.lastDayFor(_today, next);
+    setState(() {
+      _calendarRange = next;
+      _focusedDay = _clampToRange(_focusedDay, nextFirst, nextLast);
+      _selectedDay = _clampToRange(_selectedDay, nextFirst, nextLast);
+    });
+  }
+
+  DateTime _clampToRange(DateTime day, DateTime firstDay, DateTime lastDay) {
+    final normalized = _ymd(day);
+    if (normalized.isBefore(firstDay)) return firstDay;
+    if (normalized.isAfter(lastDay)) return lastDay;
+    return normalized;
+  }
 
   String _weekdayShortLabel(int weekday) {
     switch (weekday) {
@@ -408,9 +446,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _moveMonth(int offset) {
     final moved = DateTime(_focusedDay.year, _focusedDay.month + offset, 1);
+    final clamped = _clampToRange(moved, _rangeFirstDay, _rangeLastDay);
+    if (isSameDay(clamped, _focusedDay)) return;
     setState(() {
-      _focusedDay = moved;
-      _selectedDay = moved;
+      _focusedDay = clamped;
+      _selectedDay = clamped;
     });
   }
 
@@ -726,6 +766,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               dayItems,
               _selectedDay,
             );
+            final rangeFirstDay = _rangeFirstDay;
+            final rangeLastDay = _rangeLastDay;
 
             return Column(
               children: [
@@ -779,8 +821,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           border: Border.all(color: cm.cardBorder),
                         ),
                         child: TableCalendar<_CalItem>(
-                          firstDay: DateTime.utc(2000, 1, 1),
-                          lastDay: DateTime.utc(2100, 12, 31),
+                          firstDay: rangeFirstDay,
+                          lastDay: rangeLastDay,
                           focusedDay: _focusedDay,
                           headerVisible: false,
                           availableGestures: AvailableGestures.horizontalSwipe,
@@ -788,8 +830,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               isSameDay(day, _selectedDay),
                           onDaySelected: (selectedDay, focusedDay) {
                             setState(() {
-                              _selectedDay = selectedDay;
-                              _focusedDay = focusedDay;
+                              _selectedDay = _clampToRange(
+                                selectedDay,
+                                rangeFirstDay,
+                                rangeLastDay,
+                              );
+                              _focusedDay = _clampToRange(
+                                focusedDay,
+                                rangeFirstDay,
+                                rangeLastDay,
+                              );
                             });
                           },
                           onPageChanged: (focusedDay) {
@@ -799,8 +849,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               1,
                             );
                             setState(() {
-                              _focusedDay = moved;
-                              _selectedDay = moved;
+                              _focusedDay = _clampToRange(
+                                moved,
+                                rangeFirstDay,
+                                rangeLastDay,
+                              );
+                              _selectedDay = _clampToRange(
+                                moved,
+                                rangeFirstDay,
+                                rangeLastDay,
+                              );
                             });
                           },
                           eventLoader: (day) =>

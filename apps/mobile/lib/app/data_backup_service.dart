@@ -12,6 +12,7 @@ import '../features/courses/course.dart';
 import '../features/courses/course_material.dart';
 import '../features/todo/todo_model.dart';
 import '../features/todo/todo_repo.dart';
+import 'calendar_range_settings.dart';
 import 'change_history_service.dart';
 import 'home_widget_service.dart';
 import 'notification_service.dart';
@@ -70,6 +71,8 @@ class DataBackupService {
   static const _prefThemeMode = 'theme_mode';
   static const _prefThemePreset = 'theme_preset_key';
   static const _prefLocaleCode = 'locale_code';
+  static const _prefCalendarRangeMode = CalendarRangeSettings.prefKeyMode;
+  static const _prefCalendarRangeAmount = CalendarRangeSettings.prefKeyAmount;
   static const _prefIcsUrl = 'ics_feed_url';
   static const _prefIcsCacheEvents = 'ics_cache_events_v1';
   static const _prefIcsLastSuccessAt = 'ics_last_success_at_v1';
@@ -386,11 +389,27 @@ class DataBackupService {
         ? rawThemePreset
         : CampusMateTheme.defaultPaletteKey;
     final localeCode = settingsRaw[_prefLocaleCode]?.toString() ?? 'ko';
+    final calendarRangeMode = CalendarRangeSettings.parseMode(
+      settingsRaw[_prefCalendarRangeMode]?.toString(),
+    );
+    final calendarRangeAmount = CalendarRangeSettings.normalizeAmount(
+      calendarRangeMode,
+      _toInt(settingsRaw[_prefCalendarRangeAmount]),
+    );
 
     await prefs.setInt(_prefStartTab, startTab);
     await prefs.setString(_prefThemeMode, themeMode);
     await prefs.setString(_prefThemePreset, themePresetKey);
     await prefs.setString(_prefLocaleCode, localeCode);
+    await prefs.setString(
+      _prefCalendarRangeMode,
+      CalendarRangeSettings.modeToStorage(calendarRangeMode),
+    );
+    await prefs.setInt(_prefCalendarRangeAmount, calendarRangeAmount);
+    CalendarRangeSettings.notifier.value = CalendarRangeConfig(
+      mode: calendarRangeMode,
+      amount: calendarRangeAmount,
+    );
     final importedIcsUrl = _normalizeHttpsUrl(settingsRaw[_prefIcsUrl]);
     if (importedIcsUrl == null) {
       await prefs.remove(_prefIcsUrl);
@@ -666,6 +685,14 @@ class DataBackupService {
             prefs.getString(_prefThemePreset) ??
             CampusMateTheme.defaultPaletteKey,
         _prefLocaleCode: prefs.getString(_prefLocaleCode) ?? 'ko',
+        _prefCalendarRangeMode:
+            prefs.getString(_prefCalendarRangeMode) ??
+            CalendarRangeSettings.modeToStorage(
+              CalendarRangeSettings.defaultValue.mode,
+            ),
+        _prefCalendarRangeAmount:
+            prefs.getInt(_prefCalendarRangeAmount) ??
+            CalendarRangeSettings.defaultValue.amount,
         _prefIcsUrl: prefs.getString(_prefIcsUrl),
         _prefIcsCacheEvents: prefs.getString(_prefIcsCacheEvents),
         _prefIcsLastSuccessAt: prefs.getString(_prefIcsLastSuccessAt),

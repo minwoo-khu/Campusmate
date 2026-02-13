@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import 'calendar_range_settings.dart';
 import 'center_notice.dart';
 import 'crash_reporting_service.dart';
 import 'data_backup_service.dart';
@@ -20,6 +21,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late int _startTab;
+  CalendarRangeConfig _calendarRange = CalendarRangeSettings.defaultValue;
   bool _busy = false;
   bool _hasBackupPin = false;
   bool _notifBusy = false;
@@ -30,11 +32,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _startTab = widget.currentStartTab;
+    _calendarRange = CalendarRangeSettings.notifier.value;
+    CalendarRangeSettings.notifier.addListener(_onCalendarRangeChanged);
+    CalendarRangeSettings.ensureLoaded();
     _loadBackupPinState();
     _refreshNotificationDiagnostics();
   }
 
+  @override
+  void dispose() {
+    CalendarRangeSettings.notifier.removeListener(_onCalendarRangeChanged);
+    super.dispose();
+  }
+
   String _t(String ko, String en) => context.tr(ko, en);
+
+  void _onCalendarRangeChanged() {
+    if (!mounted) return;
+    setState(() {
+      _calendarRange = CalendarRangeSettings.notifier.value;
+    });
+  }
 
   void _showNotice(String message, {bool error = false}) {
     if (!mounted) return;
@@ -128,6 +146,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       default:
         return '$index';
     }
+  }
+
+  String _calendarRangeModeLabel(CalendarRangeMode mode) {
+    switch (mode) {
+      case CalendarRangeMode.weeks:
+        return _t('주 기준', 'Weeks');
+      case CalendarRangeMode.months:
+        return _t('달 기준', 'Months');
+    }
+  }
+
+  String _calendarRangeAmountLabel(int amount, CalendarRangeMode mode) {
+    return mode == CalendarRangeMode.weeks
+        ? _t('$amount주', '$amount weeks')
+        : _t('$amount달', '$amount months');
   }
 
   Future<String?> _promptPin({
@@ -606,6 +639,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onSelected: (_) => setState(() => _startTab = index),
                         );
                       }),
+                    ),
+                    const SizedBox(height: 24),
+                    _SectionTitle(
+                      title: _t('캘린더 범위', 'Calendar range'),
+                      subtitle: _t(
+                        '현재 날짜 기준 표시 범위를 설정하세요',
+                        'Set visible range around current date',
+                      ),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: CalendarRangeMode.values.map((mode) {
+                        return ChoiceChip(
+                          label: Text(_calendarRangeModeLabel(mode)),
+                          selected: _calendarRange.mode == mode,
+                          onSelected: (_) async {
+                            await CalendarRangeSettings.setMode(mode);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children:
+                          CalendarRangeSettings.amountOptions(
+                            _calendarRange.mode,
+                          ).map((amount) {
+                            return ChoiceChip(
+                              label: Text(
+                                _calendarRangeAmountLabel(
+                                  amount,
+                                  _calendarRange.mode,
+                                ),
+                              ),
+                              selected: _calendarRange.amount == amount,
+                              onSelected: (_) async {
+                                await CalendarRangeSettings.setAmount(amount);
+                              },
+                            );
+                          }).toList(),
                     ),
                     const SizedBox(height: 24),
                     _SectionTitle(
