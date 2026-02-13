@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +25,7 @@ class RootShell extends StatefulWidget {
 
 class _RootShellState extends State<RootShell> {
   static const _prefKeyStartTab = 'start_tab_index';
+  static const _prefKeyLastTab = 'last_tab_index_v1';
   static const _prefKeyStartTabMigratedV2 = 'start_tab_home_migrated_v2';
   static const _prefKeyStartTabExplicit = 'start_tab_explicit_v1';
 
@@ -102,7 +105,7 @@ class _RootShellState extends State<RootShell> {
     if (id == null) return;
 
     if (mounted) {
-      setState(() => _currentIndex = _todoTab);
+      _setCurrentTab(_todoTab);
     }
   }
 
@@ -110,6 +113,7 @@ class _RootShellState extends State<RootShell> {
     final prefs = await SharedPreferences.getInstance();
 
     var saved = prefs.getInt(_prefKeyStartTab);
+    final lastTab = prefs.getInt(_prefKeyLastTab);
     final migrated = prefs.getBool(_prefKeyStartTabMigratedV2) ?? false;
     final explicit = prefs.getBool(_prefKeyStartTabExplicit) ?? false;
 
@@ -129,9 +133,18 @@ class _RootShellState extends State<RootShell> {
       await prefs.setInt(_prefKeyStartTab, _homeTab);
     }
 
+    final resolvedStartTab = (saved ?? _homeTab).clamp(_homeTab, _coursesTab);
+    final resolvedCurrentTab = (lastTab ?? resolvedStartTab).clamp(
+      _homeTab,
+      _coursesTab,
+    );
+    if (lastTab == null) {
+      await prefs.setInt(_prefKeyLastTab, resolvedCurrentTab);
+    }
+
     setState(() {
-      _startTabIndex = (saved ?? _homeTab).clamp(_homeTab, _coursesTab);
-      _currentIndex = _startTabIndex;
+      _startTabIndex = resolvedStartTab;
+      _currentIndex = resolvedCurrentTab;
       _loaded = true;
     });
   }
@@ -144,6 +157,19 @@ class _RootShellState extends State<RootShell> {
     }
   }
 
+  Future<void> _persistLastTab(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_prefKeyLastTab, index);
+  }
+
+  void _setCurrentTab(int index) {
+    final next = index.clamp(_homeTab, _coursesTab);
+    if (_currentIndex == next) return;
+
+    setState(() => _currentIndex = next);
+    unawaited(_persistLastTab(next));
+  }
+
   Future<void> _openSettings() async {
     final selected = await Navigator.of(context).push<int>(
       MaterialPageRoute(
@@ -153,10 +179,12 @@ class _RootShellState extends State<RootShell> {
 
     if (selected != null) {
       await _setStartTab(selected);
+      final tab = selected.clamp(_homeTab, _coursesTab);
       setState(() {
-        _startTabIndex = selected.clamp(_homeTab, _coursesTab);
-        _currentIndex = _startTabIndex;
+        _startTabIndex = tab;
+        _currentIndex = tab;
       });
+      unawaited(_persistLastTab(tab));
     }
   }
 
@@ -172,7 +200,7 @@ class _RootShellState extends State<RootShell> {
       HomeScreen(
         onOpenSettings: _openSettings,
         onNavigateToTab: (index) {
-          setState(() => _currentIndex = index.clamp(_homeTab, _coursesTab));
+          _setCurrentTab(index);
         },
       ),
       TodoScreen(highlightTodoIdListenable: _todoLink),
@@ -228,7 +256,7 @@ class _RootShellState extends State<RootShell> {
                       activeIcon: Icons.home,
                       label: context.tr('홈', 'Home'),
                       selected: _currentIndex == _homeTab,
-                      onTap: () => setState(() => _currentIndex = _homeTab),
+                      onTap: () => _setCurrentTab(_homeTab),
                       onLongPress: _openSettings,
                     ),
                   ),
@@ -238,7 +266,7 @@ class _RootShellState extends State<RootShell> {
                       activeIcon: Icons.check_circle,
                       label: context.tr('할 일', 'Todo'),
                       selected: _currentIndex == _todoTab,
-                      onTap: () => setState(() => _currentIndex = _todoTab),
+                      onTap: () => _setCurrentTab(_todoTab),
                       onLongPress: _openSettings,
                     ),
                   ),
@@ -248,7 +276,7 @@ class _RootShellState extends State<RootShell> {
                       activeIcon: Icons.calendar_month,
                       label: context.tr('캘린더', 'Calendar'),
                       selected: _currentIndex == _calendarTab,
-                      onTap: () => setState(() => _currentIndex = _calendarTab),
+                      onTap: () => _setCurrentTab(_calendarTab),
                       onLongPress: _openSettings,
                     ),
                   ),
@@ -258,8 +286,7 @@ class _RootShellState extends State<RootShell> {
                       activeIcon: Icons.image,
                       label: context.tr('시간표', 'Timetable'),
                       selected: _currentIndex == _timetableTab,
-                      onTap: () =>
-                          setState(() => _currentIndex = _timetableTab),
+                      onTap: () => _setCurrentTab(_timetableTab),
                       onLongPress: _openSettings,
                     ),
                   ),
@@ -269,7 +296,7 @@ class _RootShellState extends State<RootShell> {
                       activeIcon: Icons.menu_book,
                       label: context.tr('강의', 'Courses'),
                       selected: _currentIndex == _coursesTab,
-                      onTap: () => setState(() => _currentIndex = _coursesTab),
+                      onTap: () => _setCurrentTab(_coursesTab),
                       onLongPress: _openSettings,
                     ),
                   ),
