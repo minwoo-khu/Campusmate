@@ -278,7 +278,7 @@ class _CourseScreenState extends State<CourseScreen> {
         Text(
           _t(
             '첫 강의를 추가하면 PDF/메모를 과목별로 정리할 수 있어요.\n시간표 탭에서 이미지 업로드 후 자동 인식도 가능합니다.',
-            'Add your first course to organize PDFs and notes.\nYou can also import candidates from a timetable image.',
+            'Add your first course to organize PDFs and notes.',
           ),
           textAlign: TextAlign.center,
           style: TextStyle(color: cm.textTertiary, height: 1.4),

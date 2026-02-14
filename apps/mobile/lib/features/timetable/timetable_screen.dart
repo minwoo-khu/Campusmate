@@ -30,6 +30,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
   static const _managedTimetableDirName = 'timetable';
   static const _maxAutoCandidates = 24;
 
+  final bool _timetableCourseImportEnabled = false;
   bool _recognizingCourses = false;
   String? _imagePath;
   int _recognitionEpoch = 0;
@@ -507,6 +508,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
   }
 
   Future<void> _recognizeAndImportCourses(String imagePath) async {
+    if (!_timetableCourseImportEnabled) return;
     if (_recognizingCourses || kIsWeb) return;
 
     final courseBox = Hive.box<Course>('courses');
@@ -695,13 +697,15 @@ class _TimetableScreenState extends State<TimetableScreen> {
     if (!mounted) return;
     setState(() => _imagePath = storedPath);
 
-    unawaited(
-      Future<void>(() async {
-        await Future<void>.delayed(const Duration(milliseconds: 180));
-        if (!mounted || _imagePath != storedPath) return;
-        await _recognizeAndImportCourses(storedPath);
-      }),
-    );
+    if (_timetableCourseImportEnabled) {
+      unawaited(
+        Future<void>(() async {
+          await Future<void>.delayed(const Duration(milliseconds: 180));
+          if (!mounted || _imagePath != storedPath) return;
+          await _recognizeAndImportCourses(storedPath);
+        }),
+      );
+    }
   }
 
   Future<void> _clearImage() async {
