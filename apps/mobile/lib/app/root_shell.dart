@@ -42,6 +42,7 @@ class _RootShellState extends State<RootShell> {
   bool _loaded = false;
 
   final ValueNotifier<String?> _todoLink = AppLink.todoToOpen;
+  final ValueNotifier<int?> _tabLink = AppLink.tabToOpen;
   final ValueNotifier<int> _todoUiResetEpoch = ValueNotifier<int>(0);
   BannerAd? _bannerAd;
   bool _bannerReady = false;
@@ -50,6 +51,7 @@ class _RootShellState extends State<RootShell> {
   void initState() {
     super.initState();
     _todoLink.addListener(_onTodoDeepLink);
+    _tabLink.addListener(_onTabDeepLink);
     _loadStartTab();
     _loadBannerAd();
     _scheduleNotificationPermissionPrompt();
@@ -59,6 +61,7 @@ class _RootShellState extends State<RootShell> {
   void dispose() {
     _bannerAd?.dispose();
     _todoLink.removeListener(_onTodoDeepLink);
+    _tabLink.removeListener(_onTabDeepLink);
     _todoUiResetEpoch.dispose();
     super.dispose();
   }
@@ -128,6 +131,15 @@ class _RootShellState extends State<RootShell> {
     if (mounted) {
       _setCurrentTab(_todoTab);
     }
+  }
+
+  void _onTabDeepLink() {
+    final index = _tabLink.value;
+    if (index == null) return;
+    if (mounted) {
+      _setCurrentTab(index);
+    }
+    AppLink.clearTab();
   }
 
   Future<void> _loadStartTab() async {

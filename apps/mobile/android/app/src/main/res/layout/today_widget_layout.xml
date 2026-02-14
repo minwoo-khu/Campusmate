@@ -24,45 +24,63 @@
         android:textColor="#FF64748B"
         android:textSize="12sp" />
 
-    <TextView
-        android:id="@+id/widget_todo_count"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/widget_todo_section"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
-        android:text="TODO 0"
-        android:textColor="#FF1D4ED8"
-        android:textSize="13sp"
-        android:textStyle="bold" />
+        android:orientation="vertical"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
 
-    <TextView
-        android:id="@+id/widget_todo_lines"
+        <TextView
+            android:id="@+id/widget_todo_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TODO 0"
+            android:textColor="#FF1D4ED8"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_todo_lines"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:maxLines="3"
+            android:text="- No urgent todos"
+            android:textColor="#FF334155"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/widget_timetable_section"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:maxLines="3"
-        android:text="- No urgent todos"
-        android:textColor="#FF334155"
-        android:textSize="12sp" />
-
-    <TextView
-        android:id="@+id/widget_timetable_count"
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="TIMETABLE 0"
-        android:textColor="#FF0EA5A4"
-        android:textSize="13sp"
-        android:textStyle="bold" />
+        android:orientation="vertical"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
 
-    <TextView
-        android:id="@+id/widget_timetable_lines"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:maxLines="2"
-        android:text="- No courses yet"
-        android:textColor="#FF334155"
-        android:textSize="12sp" />
+        <TextView
+            android:id="@+id/widget_timetable_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="TIMETABLE 0"
+            android:textColor="#FF0EA5A4"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_timetable_lines"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:maxLines="2"
+            android:text="- No courses yet"
+            android:textColor="#FF334155"
+            android:textSize="12sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_complete_action"
@@ -85,6 +103,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
         android:text="School events 0"
         android:textColor="#FF7C3AED"
         android:textSize="12sp" />

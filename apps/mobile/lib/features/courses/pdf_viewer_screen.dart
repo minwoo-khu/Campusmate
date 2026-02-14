@@ -126,7 +126,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       final tags = _sanitizeTags(data.tags);
       if (text.isEmpty && tags.isEmpty) continue;
 
-      out[page] = _PageMemoData(text: text, tags: tags);
+      final anchorY = data.anchorY?.clamp(0.0, 1.0).toDouble();
+      out[page] = _PageMemoData(text: text, tags: tags, anchorY: anchorY);
       if (out.length >= SafetyLimits.maxPageMemosPerMaterial) break;
     }
 
@@ -183,8 +184,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             ? _sanitizeTags(tagsRaw.whereType<String>())
             : const <String>[];
 
+        final anchorRaw = value['anchorY'];
+        double? anchorY;
+        if (anchorRaw is num) {
+          anchorY = anchorRaw.toDouble();
+        } else if (anchorRaw is String) {
+          anchorY = double.tryParse(anchorRaw);
+        }
+
         if (text.isNotEmpty || tags.isNotEmpty) {
-          out[page] = _PageMemoData(text: text, tags: tags);
+          out[page] = _PageMemoData(text: text, tags: tags, anchorY: anchorY);
         }
       }
 
@@ -199,10 +208,17 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     String encoded = '{}';
 
     while (true) {
-      final map = <String, dynamic>{
-        for (final e in safeMemos.entries)
-          e.key.toString(): {'text': e.value.text, 'tags': e.value.tags},
-      };
+      final map = <String, dynamic>{};
+      for (final e in safeMemos.entries) {
+        final payload = <String, dynamic>{
+          'text': e.value.text,
+          'tags': e.value.tags,
+        };
+        if (e.value.anchorY != null) {
+          payload['anchorY'] = e.value.anchorY;
+        }
+        map[e.key.toString()] = payload;
+      }
 
       encoded = jsonEncode(map);
       if (encoded.length <= SafetyLimits.maxPageMemoPayloadChars ||
@@ -232,6 +248,75 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
     await _pageMemoBox.put(_pageMemoKey(), encoded);
     _pageMemos = safeMemos;
+  }
+
+  double? _captureAnchorYForPage(int page) {
+    final controller = _controller;
+    if (controller == null || page <= 0) return null;
+
+    try {
+      final pageRect = controller.getPageRect(page);
+      if (pageRect == null || pageRect.height <= 0) return null;
+      final viewRect = controller.viewRect;
+      final focusY = viewRect.top + (viewRect.height * 0.42);
+      final anchor = ((focusY - pageRect.top) / pageRect.height).clamp(
+        0.0,
+        1.0,
+      );
+      return anchor.toDouble();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _anchorPositionLabel(double anchorY) {
+    if (anchorY < 0.33) return _t('상단', 'Top');
+    if (anchorY < 0.66) return _t('중간', 'Middle');
+    return _t('하단', 'Bottom');
+  }
+
+  Future<void> _goToPage(int page) async {
+    final controller = _controller;
+    if (controller == null || page <= 0) return;
+    await controller.animateToPage(
+      pageNumber: page,
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  Future<void> _goToPageWithAnchor(int page, {double? anchorY}) async {
+    await _goToPage(page);
+    if (anchorY == null) return;
+
+    final controller = _controller;
+    if (controller == null) return;
+
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    try {
+      final pageRect = controller.getPageRect(page);
+      if (pageRect == null || pageRect.height <= 0) return;
+
+      final viewRect = controller.viewRect;
+      final maxTop = pageRect.bottom - viewRect.height;
+      final rawTop =
+          pageRect.top +
+          (pageRect.height * anchorY.clamp(0.0, 1.0).toDouble()) -
+          (viewRect.height * 0.35);
+      final targetTop = maxTop <= pageRect.top
+          ? pageRect.top
+          : rawTop.clamp(pageRect.top, maxTop).toDouble();
+
+      final matrix = controller.value.clone();
+      matrix.setEntry(1, 3, -targetTop);
+      await controller.goTo(
+        destination: matrix,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    } catch (_) {
+      // Ignore if viewer metrics are not ready.
+    }
   }
 
   Future<void> _editOverallNote() async {
@@ -318,6 +403,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   Future<void> _editPageMemo(int page) async {
     final memos = Map<int, _PageMemoData>.from(_pageMemos);
     final current = memos[page] ?? _PageMemoData.empty();
+    final currentAnchorY = _captureAnchorYForPage(page) ?? current.anchorY;
     final cm = context.cmColors;
 
     final textController = TextEditingController(text: current.text);
@@ -404,6 +490,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                           color: cm.textPrimary,
                         ),
                       ),
+                      if (currentAnchorY != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          _t(
+                            '기준 위치: ${_anchorPositionLabel(currentAnchorY)}',
+                            'Anchor: ${_anchorPositionLabel(currentAnchorY)}',
+                          ),
+                          style: TextStyle(fontSize: 12, color: cm.textHint),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       TextField(
                         controller: textController,
@@ -558,7 +654,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           );
           return;
         }
-        memos[page] = _PageMemoData(text: text, tags: tags);
+        memos[page] = _PageMemoData(
+          text: text,
+          tags: tags,
+          anchorY: _captureAnchorYForPage(page) ?? currentAnchorY,
+        );
       }
 
       await _savePageMemos(memos);
@@ -573,16 +673,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       if (!mounted) return;
       setState(() {});
     }
-  }
-
-  void _goToPage(int page) {
-    final controller = _controller;
-    if (controller == null || page <= 0) return;
-    controller.animateToPage(
-      pageNumber: page,
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
-    );
   }
 
   void _openPageMemoList() {
@@ -732,6 +822,17 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       if (preview.isNotEmpty) Text(preview),
+                                      if (data.anchorY != null)
+                                        Text(
+                                          _t(
+                                            '위치: ${_anchorPositionLabel(data.anchorY!)}',
+                                            'Position: ${_anchorPositionLabel(data.anchorY!)}',
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: cm.textHint,
+                                          ),
+                                        ),
                                       if (data.tags.isNotEmpty)
                                         Wrap(
                                           spacing: 6,
@@ -754,15 +855,21 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                         ),
                                     ],
                                   ),
-                                  onTap: () {
+                                  onTap: () async {
                                     Navigator.of(context).pop();
-                                    _goToPage(page);
+                                    await _goToPageWithAnchor(
+                                      page,
+                                      anchorY: data.anchorY,
+                                    );
                                   },
                                   trailing: IconButton(
                                     icon: const Icon(Icons.edit_outlined),
                                     onPressed: () async {
                                       Navigator.of(context).pop();
-                                      _goToPage(page);
+                                      await _goToPageWithAnchor(
+                                        page,
+                                        anchorY: data.anchorY,
+                                      );
                                       await _editPageMemo(page);
                                     },
                                   ),
@@ -891,10 +998,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 class _PageMemoData {
   final String text;
   final List<String> tags;
+  final double? anchorY;
 
-  const _PageMemoData({required this.text, required this.tags});
+  const _PageMemoData({required this.text, required this.tags, this.anchorY});
 
-  factory _PageMemoData.empty() => const _PageMemoData(text: '', tags: []);
+  factory _PageMemoData.empty() =>
+      const _PageMemoData(text: '', tags: [], anchorY: null);
 }
 
 enum _PageMemoResultKind { save, delete }

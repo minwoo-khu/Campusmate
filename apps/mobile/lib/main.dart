@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -39,6 +40,7 @@ Future<void> main() async {
 
   await Hive.openBox<int>('notif');
   await NotificationService.I.init();
+  await HomeWidgetService.syncLocaleCode('ko');
   await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
   await HomeWidgetService.syncTimetableSummary(
     Hive.box<Course>('courses').values,
@@ -51,9 +53,11 @@ Future<void> main() async {
 abstract class CampusMateAppController {
   ThemeMode get themeMode;
   String get themePresetKey;
+  CampusMateCustomPalette get customThemePalette;
   String get localeCode;
   Future<void> setThemeMode(ThemeMode mode);
   Future<void> setThemePresetKey(String key);
+  Future<void> setCustomThemePalette(CampusMateCustomPalette palette);
   Future<void> setLocaleCode(String code);
 }
 
@@ -71,21 +75,26 @@ class _CampusMateAppState extends State<CampusMateApp>
     implements CampusMateAppController {
   static const _prefKeyThemeMode = 'theme_mode';
   static const _prefKeyThemePreset = 'theme_preset_key';
+  static const _prefKeyThemeCustomPalette = 'theme_custom_palette_v1';
   static const _prefKeyLocaleCode = 'locale_code';
 
   ThemeMode _themeMode = ThemeMode.system;
   String _themePresetKey = CampusMateTheme.defaultPaletteKey;
+  CampusMateCustomPalette _customThemePalette =
+      CampusMateCustomPalette.defaults;
   Locale _locale = const Locale('ko');
   StreamSubscription<Uri?>? _widgetLaunchSub;
   StreamSubscription<BoxEvent>? _courseBoxSub;
   Timer? _courseWidgetSyncDebounce;
   String? _lastHandledWidgetUri;
+  DateTime? _lastHandledWidgetUriAt;
 
   @override
   void initState() {
     super.initState();
     _loadThemeMode();
     _loadThemePresetKey();
+    _loadThemeCustomPalette();
     _loadLocaleCode();
     _bindWidgetLaunchEvents();
     _bindCourseWidgetSync();
@@ -128,11 +137,31 @@ class _CampusMateAppState extends State<CampusMateApp>
     setState(() => _themePresetKey = normalized);
   }
 
+  Future<void> _loadThemeCustomPalette() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_prefKeyThemeCustomPalette);
+    var parsed = CampusMateCustomPalette.defaults;
+    if (raw != null && raw.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          parsed = CampusMateCustomPalette.fromStorageMap(decoded);
+        }
+      } catch (_) {
+        parsed = CampusMateCustomPalette.defaults;
+      }
+    }
+    if (!mounted) return;
+    setState(() => _customThemePalette = parsed);
+  }
+
   Future<void> _loadLocaleCode() async {
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString(_prefKeyLocaleCode) ?? 'ko';
+    final locale = _parseLocale(code);
+    unawaited(HomeWidgetService.syncLocaleCode(locale.languageCode));
     if (!mounted) return;
-    setState(() => _locale = _parseLocale(code));
+    setState(() => _locale = locale);
   }
 
   Future<void> _bindWidgetLaunchEvents() async {
@@ -160,26 +189,39 @@ class _CampusMateAppState extends State<CampusMateApp>
     if (uri == null) return;
 
     final uriText = uri.toString();
-    if (_lastHandledWidgetUri == uriText) return;
+    final now = DateTime.now();
+    if (_lastHandledWidgetUri == uriText &&
+        _lastHandledWidgetUriAt != null &&
+        now.difference(_lastHandledWidgetUriAt!) <
+            const Duration(milliseconds: 900)) {
+      return;
+    }
     _lastHandledWidgetUri = uriText;
+    _lastHandledWidgetUriAt = now;
 
     final todoId = HomeWidgetService.extractCompleteTodoId(uri);
-    if (todoId == null) return;
-
-    final box = Hive.box<TodoItem>('todos');
-    TodoItem? target;
-    for (final item in box.values) {
-      if (item.id == todoId) {
-        target = item;
-        break;
+    if (todoId != null) {
+      final box = Hive.box<TodoItem>('todos');
+      TodoItem? target;
+      for (final item in box.values) {
+        if (item.id == todoId) {
+          target = item;
+          break;
+        }
       }
-    }
-    if (target == null) return;
+      if (target == null) return;
 
-    if (!target.completed) {
-      await todoRepo.toggle(target);
+      if (!target.completed) {
+        await todoRepo.toggle(target);
+      }
+      AppLink.openTodo(target.id);
+      return;
     }
-    AppLink.openTodo(target.id);
+
+    final tabToOpen = HomeWidgetService.extractTabToOpen(uri);
+    if (tabToOpen != null) {
+      AppLink.openTab(tabToOpen);
+    }
   }
 
   @override
@@ -200,17 +242,32 @@ class _CampusMateAppState extends State<CampusMateApp>
   }
 
   @override
+  Future<void> setCustomThemePalette(CampusMateCustomPalette palette) async {
+    setState(() => _customThemePalette = palette);
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = jsonEncode(palette.toStorageMap());
+    await prefs.setString(_prefKeyThemeCustomPalette, encoded);
+  }
+
+  @override
   Future<void> setLocaleCode(String code) async {
     final locale = _parseLocale(code);
     setState(() => _locale = locale);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefKeyLocaleCode, locale.languageCode);
+    await HomeWidgetService.syncLocaleCode(locale.languageCode);
+    await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
+    await HomeWidgetService.syncTimetableSummary(
+      Hive.box<Course>('courses').values,
+    );
   }
 
   @override
   ThemeMode get themeMode => _themeMode;
   @override
   String get themePresetKey => _themePresetKey;
+  @override
+  CampusMateCustomPalette get customThemePalette => _customThemePalette;
   @override
   String get localeCode => _locale.languageCode;
 
@@ -245,8 +302,14 @@ class _CampusMateAppState extends State<CampusMateApp>
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'CampusMate',
-      theme: CampusMateTheme.light(paletteKey: _themePresetKey),
-      darkTheme: CampusMateTheme.dark(paletteKey: _themePresetKey),
+      theme: CampusMateTheme.light(
+        paletteKey: _themePresetKey,
+        customPalette: _customThemePalette,
+      ),
+      darkTheme: CampusMateTheme.dark(
+        paletteKey: _themePresetKey,
+        customPalette: _customThemePalette,
+      ),
       themeMode: _themeMode,
       locale: _locale,
       supportedLocales: const [Locale('ko'), Locale('en')],

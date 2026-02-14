@@ -336,23 +336,89 @@ extension CampusMateThemeX on BuildContext {
       Theme.of(this).extension<CampusMateColors>() ?? CampusMateColors.light;
 }
 
+@immutable
+class CampusMateCustomPalette {
+  final Color primary;
+  final Color soft;
+  final Color banner;
+  final Color danger;
+
+  const CampusMateCustomPalette({
+    required this.primary,
+    required this.soft,
+    required this.banner,
+    required this.danger,
+  });
+
+  static const defaults = CampusMateCustomPalette(
+    primary: Color(0xFF5FA8E8),
+    soft: Color(0xFFEEF3FA),
+    banner: Color(0xFFEDF3FF),
+    danger: Color(0xFFD83A3A),
+  );
+
+  CampusMateCustomPalette copyWith({
+    Color? primary,
+    Color? soft,
+    Color? banner,
+    Color? danger,
+  }) {
+    return CampusMateCustomPalette(
+      primary: primary ?? this.primary,
+      soft: soft ?? this.soft,
+      banner: banner ?? this.banner,
+      danger: danger ?? this.danger,
+    );
+  }
+
+  Map<String, int> toStorageMap() {
+    return {
+      'primary': primary.toARGB32(),
+      'soft': soft.toARGB32(),
+      'banner': banner.toARGB32(),
+      'danger': danger.toARGB32(),
+    };
+  }
+
+  static CampusMateCustomPalette fromStorageMap(Map<dynamic, dynamic>? raw) {
+    if (raw == null) return defaults;
+    return CampusMateCustomPalette(
+      primary: _parseColor(raw['primary'], defaults.primary),
+      soft: _parseColor(raw['soft'], defaults.soft),
+      banner: _parseColor(raw['banner'], defaults.banner),
+      danger: _parseColor(raw['danger'], defaults.danger),
+    );
+  }
+
+  static Color _parseColor(dynamic raw, Color fallback) {
+    final value = raw is int ? raw : int.tryParse(raw?.toString() ?? '');
+    if (value == null) return fallback;
+    return Color(value & 0xFFFFFFFF);
+  }
+}
+
 // ── ThemeData builders ──────────────────────────────────────────────────────
 class CampusMateTheme {
   CampusMateTheme._();
 
   static const String defaultPaletteKey = 'slate_blue_gray';
+  static const String customPaletteKey = 'custom';
   static const List<String> paletteKeys = [
     'slate_blue_gray',
     'sky_peach',
     'powder_mint',
     'periwinkle_lavender',
+    customPaletteKey,
   ];
 
   static bool isValidPaletteKey(String key) => paletteKeys.contains(key);
 
-  static ThemeData light({String paletteKey = defaultPaletteKey}) {
-    final colors = _resolveLightColors(paletteKey);
-    final seed = _resolveSeedColor(paletteKey);
+  static ThemeData light({
+    String paletteKey = defaultPaletteKey,
+    CampusMateCustomPalette customPalette = CampusMateCustomPalette.defaults,
+  }) {
+    final colors = _resolveLightColors(paletteKey, customPalette);
+    final seed = _resolveSeedColor(paletteKey, customPalette);
     return _buildTheme(
       colors: colors,
       seed: seed,
@@ -360,9 +426,12 @@ class CampusMateTheme {
     );
   }
 
-  static ThemeData dark({String paletteKey = defaultPaletteKey}) {
-    final colors = _resolveDarkColors(paletteKey);
-    final seed = _resolveSeedColor(paletteKey);
+  static ThemeData dark({
+    String paletteKey = defaultPaletteKey,
+    CampusMateCustomPalette customPalette = CampusMateCustomPalette.defaults,
+  }) {
+    final colors = _resolveDarkColors(paletteKey, customPalette);
+    final seed = _resolveSeedColor(paletteKey, customPalette);
     return _buildTheme(colors: colors, seed: seed, brightness: Brightness.dark);
   }
 
@@ -425,7 +494,13 @@ class CampusMateTheme {
     );
   }
 
-  static Color _resolveSeedColor(String paletteKey) {
+  static Color _resolveSeedColor(
+    String paletteKey,
+    CampusMateCustomPalette customPalette,
+  ) {
+    if (paletteKey == customPaletteKey) {
+      return customPalette.primary;
+    }
     switch (paletteKey) {
       case 'powder_mint':
         return const Color(0xFF8ED8CF);
@@ -439,8 +514,14 @@ class CampusMateTheme {
     }
   }
 
-  static CampusMateColors _resolveLightColors(String paletteKey) {
+  static CampusMateColors _resolveLightColors(
+    String paletteKey,
+    CampusMateCustomPalette customPalette,
+  ) {
     final base = CampusMateColors.light;
+    if (paletteKey == customPaletteKey) {
+      return _buildCustomLightColors(base, customPalette);
+    }
     switch (paletteKey) {
       case 'powder_mint':
         return base.copyWith(
@@ -556,8 +637,14 @@ class CampusMateTheme {
     }
   }
 
-  static CampusMateColors _resolveDarkColors(String paletteKey) {
+  static CampusMateColors _resolveDarkColors(
+    String paletteKey,
+    CampusMateCustomPalette customPalette,
+  ) {
     final base = CampusMateColors.dark;
+    if (paletteKey == customPaletteKey) {
+      return _buildCustomDarkColors(base, customPalette);
+    }
     switch (paletteKey) {
       case 'powder_mint':
         return base.copyWith(
@@ -600,4 +687,66 @@ class CampusMateTheme {
         return base;
     }
   }
+
+  static CampusMateColors _buildCustomLightColors(
+    CampusMateColors base,
+    CampusMateCustomPalette customPalette,
+  ) {
+    final primary = customPalette.primary;
+    final soft = customPalette.soft;
+    final banner = customPalette.banner;
+    final danger = customPalette.danger;
+
+    return base.copyWith(
+      navActive: primary,
+      navInactive: _mix(base.navInactive, primary, 0.2),
+      inputBg: soft,
+      chipBg: _mix(soft, Colors.white, 0.4),
+      chipBorder: _mix(soft, Colors.black, 0.08),
+      iconButtonBg: _mix(soft, Colors.white, 0.3),
+      tileHighlightBorder: _mix(primary, Colors.white, 0.45),
+      checkActive: primary,
+      priorityLow: primary,
+      pdfBadgeText: _mix(primary, Colors.black, 0.12),
+      memoBadgeBg: _mix(soft, Colors.white, 0.35),
+      memoBadgeText: _mix(base.memoBadgeText, primary, 0.16),
+      tipBannerBg: banner,
+      tipBannerBorder: _mix(banner, Colors.black, 0.08),
+      tipBannerTitle: _mix(primary, Colors.black, 0.12),
+      tipBannerBody: _mix(base.tipBannerBody, primary, 0.2),
+      deleteBg: danger,
+      priorityHigh: danger,
+    );
+  }
+
+  static CampusMateColors _buildCustomDarkColors(
+    CampusMateColors base,
+    CampusMateCustomPalette customPalette,
+  ) {
+    final primary = _mix(customPalette.primary, Colors.white, 0.2);
+    final soft = _mix(customPalette.soft, Colors.black, 0.78);
+    final banner = _mix(customPalette.banner, Colors.black, 0.72);
+    final danger = _mix(customPalette.danger, Colors.white, 0.12);
+
+    return base.copyWith(
+      navActive: primary,
+      navInactive: _mix(base.navInactive, primary, 0.22),
+      inputBg: soft,
+      chipBg: _mix(soft, Colors.black, 0.18),
+      chipBorder: _mix(soft, Colors.white, 0.12),
+      iconButtonBg: _mix(soft, Colors.black, 0.18),
+      tileHighlightBorder: primary,
+      checkActive: primary,
+      priorityLow: primary,
+      pdfBadgeText: _mix(primary, Colors.white, 0.3),
+      tipBannerBg: banner,
+      tipBannerBorder: _mix(banner, Colors.white, 0.16),
+      tipBannerTitle: _mix(primary, Colors.white, 0.3),
+      tipBannerBody: _mix(base.tipBannerBody, primary, 0.18),
+      deleteBg: danger,
+      priorityHigh: danger,
+    );
+  }
+
+  static Color _mix(Color a, Color b, double t) => Color.lerp(a, b, t)!;
 }

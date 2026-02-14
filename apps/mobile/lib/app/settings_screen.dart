@@ -101,25 +101,183 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _t('페리윙클 라벤더', 'Periwinkle Lavender');
       case 'slate_blue_gray':
         return _t('슬레이트 블루', 'Slate Blue Gray');
+      case CampusMateTheme.customPaletteKey:
+        return _t('사용자 지정', 'Custom');
       case 'sky_peach':
       default:
         return _t('스카이 피치', 'Sky Blue + Peach');
     }
   }
 
-  CampusMateColors _paletteColors(String key) {
-    final theme = CampusMateTheme.light(paletteKey: key);
+  CampusMateColors _paletteColors(
+    String key,
+    CampusMateCustomPalette customPalette,
+  ) {
+    final theme = CampusMateTheme.light(
+      paletteKey: key,
+      customPalette: customPalette,
+    );
     return theme.extension<CampusMateColors>() ?? CampusMateColors.light;
   }
 
-  List<Color> _palettePreviewColors(String key) {
-    final colors = _paletteColors(key);
+  List<Color> _palettePreviewColors(
+    String key,
+    CampusMateCustomPalette customPalette,
+  ) {
+    final colors = _paletteColors(key, customPalette);
     return [
       colors.navActive,
       colors.inputBg,
       colors.tipBannerBg,
       colors.deleteBg,
     ];
+  }
+
+  String _colorRoleLabel(String role) {
+    switch (role) {
+      case 'primary':
+        return _t('강조색', 'Primary');
+      case 'soft':
+        return _t('입력 배경', 'Input bg');
+      case 'banner':
+        return _t('배너 배경', 'Banner bg');
+      case 'danger':
+        return _t('경고/삭제', 'Danger');
+      default:
+        return role;
+    }
+  }
+
+  String _hex(Color color) {
+    final value = color.toARGB32() & 0xFFFFFF;
+    return '#${value.toRadixString(16).padLeft(6, '0').toUpperCase()}';
+  }
+
+  Color? _parseHexColor(String raw) {
+    final hex = raw.trim().replaceAll('#', '');
+    if (!RegExp(r'^[0-9a-fA-F]{6}$').hasMatch(hex)) return null;
+    final rgb = int.parse(hex, radix: 16);
+    return Color(0xFF000000 | rgb);
+  }
+
+  Future<Color?> _pickColor({
+    required Color initial,
+    required String title,
+  }) async {
+    final controller = TextEditingController(text: _hex(initial));
+    var selected = initial;
+    final swatches = const <Color>[
+      Color(0xFF5FA8E8),
+      Color(0xFF7EAEF8),
+      Color(0xFF8FA4FF),
+      Color(0xFF6DBEB2),
+      Color(0xFF34C759),
+      Color(0xFFF59E0B),
+      Color(0xFFE8A81E),
+      Color(0xFFE04A4A),
+      Color(0xFFD83A3A),
+      Color(0xFF8B5CF6),
+      Color(0xFFF3F6FB),
+      Color(0xFFEEF3FA),
+      Color(0xFFF2EEFF),
+      Color(0xFFEAF8F4),
+      Color(0xFFEDF3FF),
+      Color(0xFFFFFAF6),
+    ];
+
+    final picked = await showDialog<Color>(
+      context: context,
+      builder: (dialogContext) {
+        final cm = dialogContext.cmColors;
+        return StatefulBuilder(
+          builder: (dialogContext, setLocal) {
+            return AlertDialog(
+              title: Text(title),
+              content: SizedBox(
+                width: 320,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: selected,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: cm.cardBorder),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            decoration: InputDecoration(
+                              hintText: '#RRGGBB',
+                              isDense: true,
+                              border: const OutlineInputBorder(),
+                            ),
+                            onChanged: (value) {
+                              final parsed = _parseHexColor(value);
+                              if (parsed == null) return;
+                              setLocal(() => selected = parsed);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: swatches.map((color) {
+                        final active = color.toARGB32() == selected.toARGB32();
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(99),
+                          onTap: () {
+                            controller.text = _hex(color);
+                            setLocal(() => selected = color);
+                          },
+                          child: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: active ? cm.navActive : cm.cardBorder,
+                                width: active ? 2 : 1,
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(_t('취소', 'Cancel')),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final parsed = _parseHexColor(controller.text);
+                    Navigator.of(dialogContext).pop(parsed ?? selected);
+                  },
+                  child: Text(_t('적용', 'Apply')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    return picked;
   }
 
   Future<String?> _promptPin({
@@ -414,6 +572,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       final appState = CampusMateApp.of(context);
       await appState?.setThemeMode(_parseThemeMode(result.themeMode));
+      await appState?.setCustomThemePalette(result.customThemePalette);
       await appState?.setThemePresetKey(result.themePresetKey);
       await appState?.setLocaleCode(result.localeCode);
 
@@ -454,6 +613,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentMode = appState?.themeMode ?? ThemeMode.system;
     final currentPaletteKey =
         appState?.themePresetKey ?? CampusMateTheme.defaultPaletteKey;
+    final currentCustomPalette =
+        appState?.customThemePalette ?? CampusMateCustomPalette.defaults;
     final currentLocaleCode = appState?.localeCode ?? 'ko';
     final cm = context.cmColors;
     final paletteFirstRowKeys = _paletteKeys
@@ -464,8 +625,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (_paletteKeys.contains('periwinkle_lavender')) 'periwinkle_lavender',
     ];
 
+    Future<void> editCustomColor({
+      required String role,
+      required Color current,
+    }) async {
+      if (appState == null) return;
+      final picked = await _pickColor(
+        initial: current,
+        title: _colorRoleLabel(role),
+      );
+      if (picked == null) return;
+
+      final updated = switch (role) {
+        'primary' => currentCustomPalette.copyWith(primary: picked),
+        'soft' => currentCustomPalette.copyWith(soft: picked),
+        'banner' => currentCustomPalette.copyWith(banner: picked),
+        'danger' => currentCustomPalette.copyWith(danger: picked),
+        _ => currentCustomPalette,
+      };
+      await appState.setCustomThemePalette(updated);
+      await appState.setThemePresetKey(CampusMateTheme.customPaletteKey);
+      if (mounted) setState(() {});
+    }
+
     Widget paletteChip(String key) {
-      final previewColors = _palettePreviewColors(key);
+      final previewColors = _palettePreviewColors(key, currentCustomPalette);
       return ChoiceChip(
         showCheckmark: false,
         label: Row(
@@ -499,6 +683,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
           await appState?.setThemePresetKey(key);
           if (mounted) setState(() {});
         },
+      );
+    }
+
+    Widget customColorRow({required String role, required Color color}) {
+      return Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: cm.cardBorder),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${_colorRoleLabel(role)}  ${_hex(color)}',
+              style: TextStyle(
+                color: cm.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          OutlinedButton(
+            style: _outlinedStyle(context),
+            onPressed: () => editCustomColor(role: role, current: color),
+            child: Text(_t('변경', 'Edit')),
+          ),
+        ],
       );
     }
 
@@ -556,6 +771,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: paletteSecondRowKeys
                             .map(paletteChip)
                             .toList(),
+                      ),
+                    ],
+                    if (currentPaletteKey ==
+                        CampusMateTheme.customPaletteKey) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cm.inputBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: cm.cardBorder),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _t('사용자 지정 색상', 'Custom colors'),
+                              style: TextStyle(
+                                color: cm.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            customColorRow(
+                              role: 'primary',
+                              color: currentCustomPalette.primary,
+                            ),
+                            const SizedBox(height: 8),
+                            customColorRow(
+                              role: 'soft',
+                              color: currentCustomPalette.soft,
+                            ),
+                            const SizedBox(height: 8),
+                            customColorRow(
+                              role: 'banner',
+                              color: currentCustomPalette.banner,
+                            ),
+                            const SizedBox(height: 8),
+                            customColorRow(
+                              role: 'danger',
+                              color: currentCustomPalette.danger,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),

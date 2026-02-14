@@ -48,6 +48,7 @@ class BackupImportResult {
   final int startTab;
   final String themeMode;
   final String themePresetKey;
+  final CampusMateCustomPalette customThemePalette;
   final String localeCode;
   final bool encrypted;
 
@@ -56,6 +57,7 @@ class BackupImportResult {
     required this.startTab,
     required this.themeMode,
     required this.themePresetKey,
+    required this.customThemePalette,
     required this.localeCode,
     required this.encrypted,
   });
@@ -70,6 +72,7 @@ class DataBackupService {
   static const _prefStartTab = 'start_tab_index';
   static const _prefThemeMode = 'theme_mode';
   static const _prefThemePreset = 'theme_preset_key';
+  static const _prefThemeCustomPalette = 'theme_custom_palette_v1';
   static const _prefLocaleCode = 'locale_code';
   static const _prefCalendarRangeMode = CalendarRangeSettings.prefKeyMode;
   static const _prefCalendarRangeAmount = CalendarRangeSettings.prefKeyAmount;
@@ -411,6 +414,9 @@ class DataBackupService {
     final themePresetKey = CampusMateTheme.isValidPaletteKey(rawThemePreset)
         ? rawThemePreset
         : CampusMateTheme.defaultPaletteKey;
+    final customThemePalette = CampusMateCustomPalette.fromStorageMap(
+      _asMap(settingsRaw[_prefThemeCustomPalette]),
+    );
     final localeCode = settingsRaw[_prefLocaleCode]?.toString() ?? 'ko';
     final calendarRangeMode = CalendarRangeSettings.parseMode(
       settingsRaw[_prefCalendarRangeMode]?.toString(),
@@ -423,6 +429,10 @@ class DataBackupService {
     await prefs.setInt(_prefStartTab, startTab);
     await prefs.setString(_prefThemeMode, themeMode);
     await prefs.setString(_prefThemePreset, themePresetKey);
+    await prefs.setString(
+      _prefThemeCustomPalette,
+      jsonEncode(customThemePalette.toStorageMap()),
+    );
     await prefs.setString(_prefLocaleCode, localeCode);
     await prefs.setString(
       _prefCalendarRangeMode,
@@ -482,7 +492,9 @@ class DataBackupService {
       await todoRepo.update(item, logAction: false);
     }
 
+    await HomeWidgetService.syncLocaleCode(localeCode);
     await HomeWidgetService.syncTodoSummary(todoBox.values);
+    await HomeWidgetService.syncTimetableSummary(courseBox.values);
 
     await ChangeHistoryService.log(
       'Backup restored',
@@ -497,6 +509,7 @@ class DataBackupService {
       startTab: startTab,
       themeMode: themeMode,
       themePresetKey: themePresetKey,
+      customThemePalette: customThemePalette,
       localeCode: localeCode,
       encrypted: encrypted,
     );
@@ -707,6 +720,7 @@ class DataBackupService {
         _prefThemePreset:
             prefs.getString(_prefThemePreset) ??
             CampusMateTheme.defaultPaletteKey,
+        _prefThemeCustomPalette: _readCustomPalettePref(prefs).toStorageMap(),
         _prefLocaleCode: prefs.getString(_prefLocaleCode) ?? 'ko',
         _prefCalendarRangeMode:
             prefs.getString(_prefCalendarRangeMode) ??
@@ -877,6 +891,24 @@ class DataBackupService {
     if (value is int) return value;
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  static CampusMateCustomPalette _readCustomPalettePref(
+    SharedPreferences prefs,
+  ) {
+    final raw = prefs.getString(_prefThemeCustomPalette);
+    if (raw == null || raw.trim().isEmpty) {
+      return CampusMateCustomPalette.defaults;
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        return CampusMateCustomPalette.fromStorageMap(decoded);
+      }
+    } catch (_) {
+      // Fall through to defaults.
+    }
+    return CampusMateCustomPalette.defaults;
   }
 
   static String? _normalizeHttpsUrl(dynamic value) {
