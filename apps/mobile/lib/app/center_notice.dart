@@ -8,6 +8,7 @@ import 'theme.dart';
 class CenterNotice {
   CenterNotice._();
 
+  static const bool _enabled = false;
   static OverlayEntry? _entry;
   static Timer? _timer;
 
@@ -17,7 +18,7 @@ class CenterNotice {
     Duration duration = const Duration(seconds: 2),
     bool error = false,
   }) {
-    if (!context.mounted || message.trim().isEmpty) return;
+    if (!_enabled || !context.mounted || message.trim().isEmpty) return;
 
     _timer?.cancel();
     _removeEntry();
@@ -98,7 +99,7 @@ class CenterNotice {
     required Future<void> Function() onAction,
     String? cancelLabel,
   }) async {
-    if (!context.mounted) return;
+    if (!_enabled || !context.mounted) return;
     _timer?.cancel();
     _removeEntry();
 

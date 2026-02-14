@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 import '../../app/center_notice.dart';
-import '../../app/l10n.dart';
-import '../../app/theme.dart';
 import '../../app/change_history_service.dart';
+import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
+import '../../app/theme.dart';
 import 'course.dart';
 
 class CourseAddScreen extends StatefulWidget {
@@ -19,6 +19,10 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
   final _nameController = TextEditingController();
   final _memoController = TextEditingController();
   final _tagsController = TextEditingController();
+
+  void _dismissKeyboard() {
+    FocusScope.of(context).unfocus();
+  }
 
   @override
   void dispose() {
@@ -89,46 +93,51 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
 
     return Scaffold(
       appBar: AppBar(title: Text(context.tr('강의 추가', 'Add Course'))),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            TextField(
-              controller: _nameController,
-              maxLength: SafetyLimits.maxCourseNameChars,
-              decoration: InputDecoration(
-                labelText: context.tr('강의명', 'Course name'),
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _tagsController,
-              maxLength:
-                  SafetyLimits.maxCourseTagsPerCourse *
-                  SafetyLimits.maxCourseTagChars,
-              decoration: InputDecoration(
-                labelText: context.tr('태그', 'Tags'),
-                hintText: context.tr(
-                  '쉼표로 구분 (예: 전공, 프로젝트)',
-                  'Comma separated (ex: major, project)',
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _dismissKeyboard,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              TextField(
+                controller: _nameController,
+                maxLength: SafetyLimits.maxCourseNameChars,
+                decoration: InputDecoration(
+                  labelText: context.tr('강의명', 'Course name'),
+                  border: const OutlineInputBorder(),
                 ),
-                border: const OutlineInputBorder(),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _memoController,
-              maxLength: SafetyLimits.maxCourseMemoChars,
-              minLines: 3,
-              maxLines: 6,
-              decoration: InputDecoration(
-                labelText: context.tr('강의 메모', 'Course memo'),
-                border: const OutlineInputBorder(),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _tagsController,
+                maxLength:
+                    SafetyLimits.maxCourseTagsPerCourse *
+                    SafetyLimits.maxCourseTagChars,
+                decoration: InputDecoration(
+                  labelText: context.tr('태그', 'Tags'),
+                  hintText: context.tr(
+                    '쉼표로 구분 (예: 전공, 프로젝트)',
+                    'Comma separated (ex: major, project)',
+                  ),
+                  border: const OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 90),
-          ],
+              const SizedBox(height: 8),
+              TextField(
+                controller: _memoController,
+                maxLength: SafetyLimits.maxCourseMemoChars,
+                minLines: 3,
+                maxLines: 6,
+                decoration: InputDecoration(
+                  labelText: context.tr('강의 메모', 'Course memo'),
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 90),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: SafeArea(

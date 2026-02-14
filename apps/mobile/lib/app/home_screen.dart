@@ -83,6 +83,35 @@ class HomeScreen extends StatelessWidget {
                   .where((c) => c.tags.isNotEmpty || c.memo.trim().isNotEmpty)
                   .length;
 
+              final recommendation = () {
+                if (courses.isEmpty) {
+                  return _t(
+                    context,
+                    '강의를 추가하면 과목별 자료/메모를 정리할 수 있어요.',
+                    'Add a course to organize materials and notes by subject.',
+                  );
+                }
+                if (activeTodos.isEmpty) {
+                  return _t(
+                    context,
+                    '오늘 할 일을 추가해서 하루 계획을 시작해 보세요.',
+                    'Add a todo to start planning your day.',
+                  );
+                }
+                if (totalPdfCount == 0) {
+                  return _t(
+                    context,
+                    '강의 탭에서 PDF를 추가해 수업 자료를 모아보세요.',
+                    'Upload PDFs in Courses to keep your class materials together.',
+                  );
+                }
+                return _t(
+                  context,
+                  '캘린더 탭에서 마감 일정과 학교 일정을 함께 확인해 보세요.',
+                  'Check due dates and school events together in Calendar.',
+                );
+              }();
+
               return ListView(
                 children: [
                   Row(
@@ -119,13 +148,7 @@ class HomeScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: cm.cardBg,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: cm.cardBorder),
-                    ),
+                  _SectionCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -178,13 +201,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: cm.cardBg,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: cm.cardBorder),
-                    ),
+                  _SectionCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -239,13 +256,43 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: cm.cardBg,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: cm.cardBorder),
+                  _SectionCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _t(context, '홈에 넣을 추천 정보', 'Suggested for home'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: cm.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.bolt_rounded,
+                              size: 16,
+                              color: cm.navActive,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                recommendation,
+                                style: TextStyle(
+                                  color: cm.textTertiary,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  _SectionCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -285,6 +332,26 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  final Widget child;
+
+  const _SectionCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final cm = context.cmColors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: cm.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cm.cardBorder),
+      ),
+      child: child,
     );
   }
 }

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
@@ -253,9 +252,6 @@ class _CourseScreenState extends State<CourseScreen> {
     final deletedName = course.name;
     await course.delete();
     await ChangeHistoryService.log('Course deleted', detail: deletedName);
-
-    if (!context.mounted) return;
-    CenterNotice.show(context, message: _t('강의를 삭제했습니다.', 'Course deleted.'));
   }
 
   Widget _buildFirstCourseEmptyState(BuildContext context) {
@@ -734,6 +730,22 @@ class _CourseScreenState extends State<CourseScreen> {
                                               ),
                                             ),
                                             PopupMenuButton<_CourseMenu>(
+                                              color: cm.cardBg,
+                                              surfaceTintColor:
+                                                  Colors.transparent,
+                                              shadowColor: cm.navBarShadow,
+                                              elevation: 8,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                                side: BorderSide(
+                                                  color: cm.cardBorder,
+                                                ),
+                                              ),
+                                              menuPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 6,
+                                                  ),
                                               icon: Icon(
                                                 Icons.more_horiz,
                                                 color: cm.textHint,
@@ -755,12 +767,24 @@ class _CourseScreenState extends State<CourseScreen> {
                                               itemBuilder: (_) => [
                                                 PopupMenuItem(
                                                   value: _CourseMenu.edit,
-                                                  child: Text(_t('수정', 'Edit')),
+                                                  child: Text(
+                                                    _t('수정', 'Edit'),
+                                                    style: TextStyle(
+                                                      color: cm.textPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                                  ),
                                                 ),
                                                 PopupMenuItem(
                                                   value: _CourseMenu.delete,
                                                   child: Text(
                                                     _t('삭제', 'Delete'),
+                                                    style: TextStyle(
+                                                      color: cm.deleteBg,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
                                                   ),
                                                 ),
                                               ],

@@ -301,47 +301,9 @@ class _TodoScreenState extends State<TodoScreen> {
     return rows;
   }
 
-  TodoItem _cloneTodo(TodoItem source) {
-    return TodoItem(
-      id: source.id,
-      title: source.title,
-      dueAt: source.dueAt,
-      remindAt: source.remindAt,
-      repeatRule: source.repeatRule,
-      completed: source.completed,
-      priorityLevel: source.priorityLevel,
-    );
-  }
-
-  Future<void> _deleteTodoWithUndo(TodoItem item) async {
-    final backup = _cloneTodo(item);
+  Future<void> _deleteTodo(TodoItem item) async {
     await todoRepo.remove(item, logAction: false);
-    await ChangeHistoryService.log('Todo deleted', detail: backup.title);
-
-    if (!mounted) return;
-
-    await CenterNotice.showActionDialog(
-      context,
-      title: _t('할 일 삭제됨', 'Todo deleted'),
-      message: _t(
-        '"${backup.title}"을(를) 삭제했습니다.',
-        'Deleted "${backup.title}".',
-      ),
-      actionLabel: _t('실행 취소', 'Undo'),
-      onAction: () async {
-        try {
-          await todoRepo.add(backup, logAction: false);
-          await ChangeHistoryService.log('Todo restored', detail: backup.title);
-          if (!mounted) return;
-          CenterNotice.show(
-            context,
-            message: _t('"${backup.title}" 복원됨', 'Restored "${backup.title}"'),
-          );
-        } on TodoDailyLimitExceededException catch (e) {
-          _showDailyLimitMessage(e);
-        }
-      },
-    );
+    await ChangeHistoryService.log('Todo deleted', detail: item.title);
   }
 
   Future<void> _quickAdd() async {
@@ -845,7 +807,7 @@ class _TodoScreenState extends State<TodoScreen> {
           ),
           child: const Icon(Icons.delete_outline, color: Colors.white),
         ),
-        onDismissed: (_) async => _deleteTodoWithUndo(item),
+        onDismissed: (_) async => _deleteTodo(item),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           decoration: BoxDecoration(
@@ -906,7 +868,7 @@ class _TodoScreenState extends State<TodoScreen> {
                 if (menu == _TodoMenu.edit) {
                   await _openEdit(context, item);
                 } else if (menu == _TodoMenu.delete) {
-                  await _deleteTodoWithUndo(item);
+                  await _deleteTodo(item);
                 } else if (menu == _TodoMenu.setReminder) {
                   await _setReminder(item);
                 } else if (menu == _TodoMenu.clearReminder) {
