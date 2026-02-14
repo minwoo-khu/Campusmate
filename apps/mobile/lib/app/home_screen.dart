@@ -161,21 +161,26 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _StatChip(
-                              label: _t(context, '진행 중', 'Active'),
-                              value: '${activeTodos.length}',
+                            Expanded(
+                              child: _StatChip(
+                                label: _t(context, '진행 중', 'Active'),
+                                value: '${activeTodos.length}',
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            _StatChip(
-                              label: _t(context, '오늘 마감', 'Due today'),
-                              value: '$dueToday',
+                            Expanded(
+                              child: _StatChip(
+                                label: _t(context, '오늘 마감', 'Due today'),
+                                value: '$dueToday',
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            _StatChip(
-                              label: _t(context, '기한 지남', 'Overdue'),
-                              value: '$overdue',
+                            Expanded(
+                              child: _StatChip(
+                                label: _t(context, '기한 지남', 'Overdue'),
+                                value: '$overdue',
+                              ),
                             ),
                           ],
                         ),
@@ -305,21 +310,34 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _StatChip(
-                              label: _t(context, '완료한 할 일', 'Completed todos'),
-                              value: '$completedTodos',
+                            Expanded(
+                              child: _StatChip(
+                                label: _t(
+                                  context,
+                                  '완료한 할 일',
+                                  'Completed todos',
+                                ),
+                                value: '$completedTodos',
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            _StatChip(
-                              label: _t(context, '등록 PDF', 'PDF files'),
-                              value: '$totalPdfCount',
+                            Expanded(
+                              child: _StatChip(
+                                label: _t(context, '등록 PDF', 'PDF files'),
+                                value: '$totalPdfCount',
+                              ),
                             ),
                             const SizedBox(width: 8),
-                            _StatChip(
-                              label: _t(context, '메모/태그 강의', 'Tagged courses'),
-                              value: '$taggedCourseCount',
+                            Expanded(
+                              child: _StatChip(
+                                label: _t(
+                                  context,
+                                  '메모/태그 강의',
+                                  'Tagged courses',
+                                ),
+                                value: '$taggedCourseCount',
+                              ),
                             ),
                           ],
                         ),
@@ -365,35 +383,33 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: cm.inputBg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: cm.textPrimary,
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: cm.inputBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: cm.textPrimary,
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 10, color: cm.textTertiary),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10, color: cm.textTertiary),
+          ),
+        ],
       ),
     );
   }
