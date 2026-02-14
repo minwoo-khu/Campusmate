@@ -774,9 +774,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           Text(
                             _monthLabel(_focusedDay),
                             style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.4,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: -0.3,
                               color: cm.textPrimary,
                             ),
                           ),
