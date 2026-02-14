@@ -690,7 +690,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   }
 
   void _openPageMemoList() {
-    final memos = _pageMemos;
+    final memos = Map<int, _PageMemoData>.from(_pageMemos);
     final pagesAll = memos.keys.toList()..sort();
 
     showModalBottomSheet(
@@ -883,16 +883,37 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                       anchorY: data.anchorY,
                                     );
                                   },
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.edit_outlined),
-                                    onPressed: () async {
-                                      Navigator.of(context).pop();
-                                      await _goToPageWithAnchor(
-                                        page,
-                                        anchorY: data.anchorY,
-                                      );
-                                      await _editPageMemo(page);
-                                    },
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: _t('수정', 'Edit'),
+                                        icon: const Icon(Icons.edit_outlined),
+                                        onPressed: () async {
+                                          Navigator.of(context).pop();
+                                          await _goToPageWithAnchor(
+                                            page,
+                                            anchorY: data.anchorY,
+                                          );
+                                          await _editPageMemo(page);
+                                        },
+                                      ),
+                                      IconButton(
+                                        tooltip: _t('삭제', 'Delete'),
+                                        icon: Icon(
+                                          Icons.delete_outline,
+                                          color: cm.deleteBg,
+                                        ),
+                                        onPressed: () async {
+                                          memos.remove(page);
+                                          pagesAll.remove(page);
+                                          await _savePageMemos(memos);
+                                          if (!mounted) return;
+                                          setState(() {});
+                                          setLocal(() {});
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
