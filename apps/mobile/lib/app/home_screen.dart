@@ -59,6 +59,7 @@ class HomeScreen extends StatelessWidget {
               final today = _ymd(now);
 
               final activeTodos = todos.where((t) => !t.completed).toList();
+              final completedTodos = todos.where((t) => t.completed).length;
               final overdue = activeTodos.where((t) {
                 final due = t.dueAt;
                 if (due == null) return false;
@@ -77,42 +78,10 @@ class HomeScreen extends StatelessWidget {
                 return withDue.isEmpty ? null : withDue.first;
               }();
 
-              final recos = <String>[];
-              if (overdue > 0) {
-                recos.add(
-                  _t(
-                    context,
-                    '기한 지난 할 일 $overdue개를 먼저 정리해 보세요.',
-                    'Handle $overdue overdue todos first.',
-                  ),
-                );
-              }
-              if (dueToday > 0) {
-                recos.add(
-                  _t(
-                    context,
-                    '오늘 마감 할 일이 $dueToday개 있어요.',
-                    '$dueToday todos are due today.',
-                  ),
-                );
-              }
-              if (courses.isEmpty) {
-                recos.add(
-                  _t(
-                    context,
-                    '강의를 추가하면 과목별 자료/메모를 모아볼 수 있어요.',
-                    'Add your first course to organize materials and notes.',
-                  ),
-                );
-              } else if (materials.isEmpty) {
-                recos.add(
-                  _t(
-                    context,
-                    '강의 자료 PDF를 올리고 페이지 메모를 시작해 보세요.',
-                    'Upload course PDFs and start page-level notes.',
-                  ),
-                );
-              }
+              final totalPdfCount = materials.length;
+              final taggedCourseCount = courses
+                  .where((c) => c.tags.isNotEmpty || c.memo.trim().isNotEmpty)
+                  .length;
 
               return ListView(
                 children: [
@@ -191,7 +160,7 @@ class HomeScreen extends StatelessWidget {
                           nextTodo == null
                               ? _t(
                                   context,
-                                  '예정된 마감 일정이 없어요.',
+                                  '다가오는 마감 할 일이 없습니다.',
                                   'No upcoming due todo.',
                                 )
                               : _t(
@@ -280,48 +249,31 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _t(context, '홈에 넣을 추천 정보', 'Suggested home content'),
+                          _t(context, '학습 현황', 'Study status'),
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: cm.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        if (recos.isEmpty)
-                          Text(
-                            _t(
-                              context,
-                              '오늘은 추천 항목이 없어요. 지금 페이스를 유지해 보세요.',
-                              'No recommendations for now. You are on track.',
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            _StatChip(
+                              label: _t(context, '완료한 할 일', 'Completed todos'),
+                              value: '$completedTodos',
                             ),
-                            style: TextStyle(color: cm.textTertiary),
-                          )
-                        else
-                          ...recos.map(
-                            (text) => Padding(
-                              padding: const EdgeInsets.only(bottom: 6),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 3),
-                                    child: Icon(
-                                      Icons.bolt,
-                                      size: 14,
-                                      color: cm.navActive,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      text,
-                                      style: TextStyle(color: cm.textTertiary),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            const SizedBox(width: 8),
+                            _StatChip(
+                              label: _t(context, '등록 PDF', 'PDF files'),
+                              value: '$totalPdfCount',
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            _StatChip(
+                              label: _t(context, '메모/태그 강의', 'Tagged courses'),
+                              value: '$taggedCourseCount',
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

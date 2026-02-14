@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image/image.dart' as img;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -31,6 +32,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
   bool _loaded = false;
   bool _recognizingCourses = false;
   String? _imagePath;
+  int _recognitionEpoch = 0;
 
   @override
   void initState() {
@@ -66,21 +68,44 @@ class _TimetableScreenState extends State<TimetableScreen> {
   String _courseKey(String text) =>
       text.toLowerCase().replaceAll(RegExp(r'\s+'), '').trim();
 
+  bool _containsLetterLike(String value) {
+    for (final rune in value.runes) {
+      final isAsciiLetter =
+          (rune >= 0x41 && rune <= 0x5A) || (rune >= 0x61 && rune <= 0x7A);
+      final isHangulSyllable = rune >= 0xAC00 && rune <= 0xD7A3;
+      final isHangulJamo = rune >= 0x3131 && rune <= 0x318E;
+      if (isAsciiLetter || isHangulSyllable || isHangulJamo) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _containsDigit(String value) {
+    for (final rune in value.runes) {
+      if (rune >= 0x30 && rune <= 0x39) return true;
+    }
+    return false;
+  }
+
   String _cleanCandidate(String raw) {
-    var value = raw.trim().replaceAll(RegExp(r'\s+'), ' ');
+    var value = raw.trim();
+    if (value.isEmpty) return '';
+
+    value = value.replaceAll(RegExp(r'[\r\n\t]+'), ' ');
     value = value.replaceAll(
       RegExp(r'\b\d{1,2}[:.]\d{2}\s*[-~]\s*\d{1,2}[:.]\d{2}\b'),
       ' ',
     );
     value = value.replaceAll(RegExp(r'\b\d{1,2}\s*교시\b'), ' ');
     value = value.replaceAll(
-      RegExp(
-        r'\(([^)]*(교수|강의실|분반|room|professor)[^)]*)\)',
-        caseSensitive: false,
-      ),
+      RegExp(r'\(([^)]*(교수|분반|room|professor)[^)]*)\)', caseSensitive: false),
       ' ',
     );
+    value = value.replaceAll(RegExp(r'^[\-•·]+'), '');
+    value = value.replaceAll(RegExp(r'[:\-•·]+$'), '');
     value = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+
     if (value.length > SafetyLimits.maxCourseNameChars) {
       value = value.substring(0, SafetyLimits.maxCourseNameChars).trim();
     }
@@ -88,7 +113,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
   }
 
   bool _isLikelyNoise(String value) {
-    if (!RegExp(r'[A-Za-z가-힣]').hasMatch(value)) return true;
+    if (!_containsLetterLike(value)) return true;
 
     final compact = _courseKey(value);
     if (compact.isEmpty || compact.length < 2) return true;
@@ -122,7 +147,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
       'online',
       'zoom',
       'room',
-      '강의실',
+      '강의명',
       '과목명',
       '교수',
       '교시',
@@ -134,6 +159,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
     if (RegExp(r'^[0-9:~./-]+$').hasMatch(compact)) return true;
     if (RegExp(r'^\d{1,2}(교시)?$').hasMatch(compact)) return true;
     if (RegExp(r'^\d{1,2}[:.]\d{2}$').hasMatch(compact)) return true;
+    if (!_containsLetterLike(compact) && _containsDigit(compact)) return true;
 
     return false;
   }
@@ -141,13 +167,17 @@ class _TimetableScreenState extends State<TimetableScreen> {
   List<String> _extractCourseCandidates(List<String> rawLines) {
     final byKey = <String, String>{};
 
-    for (final line in rawLines) {
-      final chunks = line
-          .split(RegExp(r'[/|,;·•]+'))
-          .map((e) => _cleanCandidate(e))
-          .where((e) => e.isNotEmpty);
+    for (final rawLine in rawLines) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
 
-      for (final candidate in chunks) {
+      final splitChunks = line
+          .split(RegExp(r'[/|,;·•+]'))
+          .expand((chunk) => chunk.split(RegExp(r'\s{2,}')))
+          .map(_cleanCandidate)
+          .where((value) => value.isNotEmpty);
+
+      for (final candidate in splitChunks) {
         if (_isLikelyNoise(candidate)) continue;
         final key = _courseKey(candidate);
         if (key.isEmpty || byKey.containsKey(key)) continue;
@@ -161,21 +191,72 @@ class _TimetableScreenState extends State<TimetableScreen> {
     return byKey.values.toList();
   }
 
-  Future<List<String>> _readCourseCandidatesFromImage(String imagePath) async {
-    final textRecognizer = TextRecognizer(script: TextRecognitionScript.korean);
+  Future<String> _buildOcrImagePath(String sourcePath) async {
     try {
-      final input = InputImage.fromFilePath(imagePath);
-      final recognizedText = await textRecognizer.processImage(input);
-      final lines = <String>[];
-      for (final block in recognizedText.blocks) {
-        for (final line in block.lines) {
-          lines.add(line.text);
-        }
+      final sourceBytes = await File(sourcePath).readAsBytes();
+      final decoded = img.decodeImage(sourceBytes);
+      if (decoded == null) return sourcePath;
+
+      const maxEdge = 2200;
+      if (decoded.width <= maxEdge && decoded.height <= maxEdge) {
+        return sourcePath;
       }
-      return _extractCourseCandidates(lines);
-    } finally {
-      await textRecognizer.close();
+
+      final resized = img.copyResize(
+        decoded,
+        width: decoded.width >= decoded.height ? maxEdge : null,
+        height: decoded.height > decoded.width ? maxEdge : null,
+        interpolation: img.Interpolation.average,
+      );
+
+      final tempDir = await getTemporaryDirectory();
+      final ocrPath = p.join(tempDir.path, 'timetable_ocr.jpg');
+      await File(
+        ocrPath,
+      ).writeAsBytes(img.encodeJpg(resized, quality: 88), flush: true);
+      return ocrPath;
+    } catch (_) {
+      return sourcePath;
     }
+  }
+
+  Future<List<String>> _readCourseCandidatesFromImage(String imagePath) async {
+    final optimizedPath = await _buildOcrImagePath(imagePath);
+    final input = InputImage.fromFilePath(optimizedPath);
+    final byKey = <String, String>{};
+    const scripts = <TextRecognitionScript>[
+      TextRecognitionScript.korean,
+      TextRecognitionScript.latin,
+    ];
+
+    for (final script in scripts) {
+      final textRecognizer = TextRecognizer(script: script);
+      try {
+        final recognizedText = await textRecognizer.processImage(input);
+        final lines = <String>[];
+        for (final block in recognizedText.blocks) {
+          for (final line in block.lines) {
+            lines.add(line.text);
+          }
+        }
+
+        final candidates = _extractCourseCandidates(lines);
+        for (final candidate in candidates) {
+          final key = _courseKey(candidate);
+          if (key.isEmpty || byKey.containsKey(key)) continue;
+          byKey[key] = candidate;
+          if (byKey.length >= _maxAutoCandidates) {
+            return byKey.values.toList();
+          }
+        }
+      } catch (_) {
+        // Continue with the next script.
+      } finally {
+        await textRecognizer.close();
+      }
+    }
+
+    return byKey.values.toList();
   }
 
   Future<List<String>?> _showCourseImportSheet(List<String> candidates) {
@@ -213,7 +294,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                       const SizedBox(height: 6),
                       Text(
                         _t(
-                          '추가할 강의를 선택하세요. 필요 없는 항목은 체크 해제하면 됩니다.',
+                          '추가할 강의를 선택해 주세요. 필요 없는 항목은 체크 해제하면 됩니다.',
                           'Choose courses to add. Uncheck anything you do not need.',
                         ),
                         style: TextStyle(color: cm.textHint, height: 1.35),
@@ -312,19 +393,22 @@ class _TimetableScreenState extends State<TimetableScreen> {
     if (courseBox.length >= SafetyLimits.maxCourses) {
       _showError(
         _t(
-          '강의 한도(${SafetyLimits.maxCourses}개)에 도달해 자동 등록을 건너뜁니다.',
+          '강의 수가 최대치(${SafetyLimits.maxCourses}개)에 도달해 자동 추가를 건너뜁니다.',
           'Course limit reached (${SafetyLimits.maxCourses}). Skipping auto import.',
         ),
       );
       return;
     }
 
+    final runEpoch = ++_recognitionEpoch;
     if (!mounted) return;
     setState(() => _recognizingCourses = true);
 
     try {
-      final candidates = await _readCourseCandidatesFromImage(imagePath);
-      if (!mounted) return;
+      final candidates = await _readCourseCandidatesFromImage(
+        imagePath,
+      ).timeout(const Duration(seconds: 30));
+      if (!mounted || runEpoch != _recognitionEpoch) return;
 
       if (candidates.isEmpty) {
         CenterNotice.show(
@@ -348,7 +432,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
         CenterNotice.show(
           context,
           message: _t(
-            '이미 등록된 강의만 인식되었어요.',
+            '이미 등록된 강의만 인식됐어요.',
             'Detected courses are already registered.',
           ),
         );
@@ -356,13 +440,14 @@ class _TimetableScreenState extends State<TimetableScreen> {
       }
 
       final selected = await _showCourseImportSheet(newCandidates);
-      if (!mounted || selected == null || selected.isEmpty) return;
+      if (!mounted || runEpoch != _recognitionEpoch) return;
+      if (selected == null || selected.isEmpty) return;
 
       final remaining = SafetyLimits.maxCourses - courseBox.length;
       if (remaining <= 0) {
         _showError(
           _t(
-            '강의 한도(${SafetyLimits.maxCourses}개)에 도달했습니다.',
+            '강의 수가 최대치(${SafetyLimits.maxCourses}개)에 도달했습니다.',
             'Course limit reached (${SafetyLimits.maxCourses}).',
           ),
         );
@@ -370,13 +455,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
       }
 
       final toAdd = selected.take(remaining).toList();
+      final baseId = DateTime.now().microsecondsSinceEpoch;
       for (var i = 0; i < toAdd.length; i++) {
-        await courseBox.add(
-          Course(
-            id: '${DateTime.now().microsecondsSinceEpoch}_$i',
-            name: toAdd[i],
-          ),
-        );
+        await courseBox.add(Course(id: '${baseId}_$i', name: toAdd[i]));
       }
 
       if (toAdd.isNotEmpty) {
@@ -388,7 +469,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
           'Courses imported from timetable',
           detail: detail,
         );
-        if (!mounted) return;
+        if (!mounted || runEpoch != _recognitionEpoch) return;
         CenterNotice.show(
           context,
           message: _t(
@@ -402,11 +483,18 @@ class _TimetableScreenState extends State<TimetableScreen> {
         CenterNotice.show(
           context,
           message: _t(
-            '강의 한도(${SafetyLimits.maxCourses}개)로 일부만 추가했어요.',
+            '강의 수 제한(${SafetyLimits.maxCourses}개)으로 일부만 추가했어요.',
             'Only some courses were added due to course limit.',
           ),
         );
       }
+    } on TimeoutException {
+      _showError(
+        _t(
+          '시간표 인식 시간이 길어져 중단했어요. 더 선명한 이미지를 다시 시도해 주세요.',
+          'Recognition timed out. Please retry with a clearer image.',
+        ),
+      );
     } catch (_) {
       _showError(
         _t(
@@ -415,7 +503,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
         ),
       );
     } finally {
-      if (mounted) {
+      if (mounted && runEpoch == _recognitionEpoch) {
         setState(() => _recognizingCourses = false);
       }
     }
@@ -451,7 +539,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
     } catch (_) {
       _showError(
         _t(
-          '이미지 파일을 읽을 수 없습니다. 다시 시도해주세요.',
+          '이미지 파일을 읽을 수 없습니다. 다시 시도해 주세요.',
           'Failed to read the image file. Please try again.',
         ),
       );
@@ -490,16 +578,22 @@ class _TimetableScreenState extends State<TimetableScreen> {
     if (!mounted) return;
     setState(() => _imagePath = targetPath);
 
-    if (!mounted) return;
     CenterNotice.show(
       context,
       message: _t('시간표 이미지를 저장했습니다.', 'Timetable image saved.'),
     );
 
-    unawaited(_recognizeAndImportCourses(targetPath));
+    unawaited(
+      Future<void>(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 180));
+        if (!mounted || _imagePath != targetPath) return;
+        await _recognizeAndImportCourses(targetPath);
+      }),
+    );
   }
 
   Future<void> _removeImage() async {
+    _recognitionEpoch++;
     try {
       final path = _imagePath;
       if (path != null && !kIsWeb) {
@@ -517,9 +611,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
     }
 
     if (!mounted) return;
-    setState(() => _imagePath = null);
+    setState(() {
+      _imagePath = null;
+      _recognizingCourses = false;
+    });
 
-    if (!mounted) return;
     CenterNotice.show(
       context,
       message: _t('시간표 이미지를 삭제했습니다.', 'Timetable image removed.'),
@@ -558,72 +654,50 @@ class _TimetableScreenState extends State<TimetableScreen> {
   Widget _buildPlaceholder() {
     final cm = context.cmColors;
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: IgnorePointer(
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: 60,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 6,
-                childAspectRatio: 1,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.image_outlined, size: 56, color: cm.checkInactive),
+            const SizedBox(height: 14),
+            Text(
+              _t('시간표 이미지가 없습니다', 'No timetable image'),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: cm.textSecondary,
               ),
-              itemBuilder: (_, index) {
-                return Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: cm.gridBorder, width: 0.6),
-                  ),
-                );
-              },
             ),
-          ),
-        ),
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.image_outlined, size: 56, color: cm.checkInactive),
-                const SizedBox(height: 14),
-                Text(
-                  _t('시간표 이미지가 없습니다', 'No timetable image'),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: cm.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _t(
-                    '갤러리에서 이번 학기 시간표 이미지를 선택해\n확대/축소해서 확인해 보세요.',
-                    'Pick your semester timetable image\nand zoom in/out to review.',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: cm.textHint, height: 1.4),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _recognizingCourses ? null : _pickAndSaveImage,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: cm.navActive,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(_t('이미지 업로드 (로컬 저장)', 'Upload image (local)')),
-                ),
-              ],
+            const SizedBox(height: 8),
+            Text(
+              _t(
+                '갤러리에서 이번 학기 시간표 이미지를 선택해 확대/축소해서 확인해 보세요.',
+                'Pick your semester timetable image from gallery and zoom in/out to review.',
+              ),
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: cm.textHint, height: 1.4),
             ),
-          ),
+            const SizedBox(height: 16),
+            FilledButton(
+              onPressed: _recognizingCourses ? null : _pickAndSaveImage,
+              style: FilledButton.styleFrom(
+                backgroundColor: cm.navActive,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 26,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(_t('이미지 업로드', 'Upload image')),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -634,7 +708,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
     }
 
     final cm = context.cmColors;
-    final hasImage = _imagePath != null && !kIsWeb;
+    final hasImage =
+        _imagePath != null && !kIsWeb && File(_imagePath!).existsSync();
 
     return Scaffold(
       backgroundColor: cm.scaffoldBg,
@@ -648,8 +723,8 @@ class _TimetableScreenState extends State<TimetableScreen> {
                   Text(
                     _t('시간표', 'Timetable'),
                     style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
                       color: cm.textPrimary,
                     ),
                   ),

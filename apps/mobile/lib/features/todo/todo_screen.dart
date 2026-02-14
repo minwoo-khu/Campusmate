@@ -637,32 +637,43 @@ class _TodoScreenState extends State<TodoScreen> {
               },
             ),
             const SizedBox(height: 8),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '${_t('우선순위', 'Priority')}: ',
                   style: TextStyle(color: cm.textTertiary, fontSize: 12),
                 ),
-                const SizedBox(width: 8),
-                ...TodoPriority.values.map((p) {
-                  final selected = _quickPriority == p;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: Text(_priorityLabel(p)),
-                      selected: selected,
-                      onSelected: (_) => setState(() => _quickPriority = p),
-                      avatar: p == TodoPriority.none
-                          ? null
-                          : Icon(
-                              Icons.flag,
-                              size: 14,
-                              color: _priorityColor(p, cm),
-                            ),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  );
-                }),
+                const SizedBox(height: 6),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: TodoPriority.values.map((p) {
+                      final selected = _quickPriority == p;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(_priorityLabel(p)),
+                          selected: selected,
+                          onSelected: (_) => setState(() => _quickPriority = p),
+                          avatar: p == TodoPriority.none
+                              ? null
+                              : Icon(
+                                  Icons.flag,
+                                  size: 14,
+                                  color: _priorityColor(p, cm),
+                                ),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                          labelPadding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
               ],
             ),
           ],
@@ -1019,8 +1030,8 @@ class _TodoScreenState extends State<TodoScreen> {
                       Text(
                         _t('할 일', 'Todo'),
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
                           color: cm.textPrimary,
                           letterSpacing: -0.3,
                         ),

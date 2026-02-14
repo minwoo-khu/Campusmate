@@ -321,6 +321,10 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _save,
+            style: FilledButton.styleFrom(
+              backgroundColor: cm.navActive,
+              foregroundColor: Colors.white,
+            ),
             icon: const Icon(Icons.save),
             label: Text(context.tr('저장', 'Save')),
           ),

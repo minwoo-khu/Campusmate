@@ -204,7 +204,10 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.tr('할 일 수정', 'Edit Todo')),
+        title: Text(
+          context.tr('할 일 수정', 'Edit Todo'),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
         actions: [
           IconButton(
             tooltip: context.tr('삭제', 'Delete'),
@@ -331,6 +334,10 @@ class _TodoEditScreenState extends State<TodoEditScreen> {
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _save,
+            style: FilledButton.styleFrom(
+              backgroundColor: cm.navActive,
+              foregroundColor: Colors.white,
+            ),
             icon: const Icon(Icons.save),
             label: Text(context.tr('저장', 'Save')),
           ),

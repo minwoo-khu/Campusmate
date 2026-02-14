@@ -2,12 +2,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
-import 'calendar_range_settings.dart';
 import 'center_notice.dart';
-import 'crash_reporting_service.dart';
 import 'data_backup_service.dart';
 import 'l10n.dart';
-import 'notification_service.dart';
 import 'theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -21,38 +18,17 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late int _startTab;
-  CalendarRangeConfig _calendarRange = CalendarRangeSettings.defaultValue;
   bool _busy = false;
   bool _hasBackupPin = false;
-  bool _notifBusy = false;
-  bool _crashBusy = false;
-  NotificationDiagnostics? _notifDiagnostics;
 
   @override
   void initState() {
     super.initState();
     _startTab = widget.currentStartTab;
-    _calendarRange = CalendarRangeSettings.notifier.value;
-    CalendarRangeSettings.notifier.addListener(_onCalendarRangeChanged);
-    CalendarRangeSettings.ensureLoaded();
     _loadBackupPinState();
-    _refreshNotificationDiagnostics();
-  }
-
-  @override
-  void dispose() {
-    CalendarRangeSettings.notifier.removeListener(_onCalendarRangeChanged);
-    super.dispose();
   }
 
   String _t(String ko, String en) => context.tr(ko, en);
-
-  void _onCalendarRangeChanged() {
-    if (!mounted) return;
-    setState(() {
-      _calendarRange = CalendarRangeSettings.notifier.value;
-    });
-  }
 
   void _showNotice(String message, {bool error = false}) {
     if (!mounted) return;
@@ -144,21 +120,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       colors.tipBannerBg,
       colors.deleteBg,
     ];
-  }
-
-  String _calendarRangeModeLabel(CalendarRangeMode mode) {
-    switch (mode) {
-      case CalendarRangeMode.weeks:
-        return _t('주 기준', 'Weeks');
-      case CalendarRangeMode.months:
-        return _t('달 기준', 'Months');
-    }
-  }
-
-  String _calendarRangeAmountLabel(int amount, CalendarRangeMode mode) {
-    return mode == CalendarRangeMode.weeks
-        ? _t('$amount주', '$amount weeks')
-        : _t('$amount달', '$amount months');
   }
 
   Future<String?> _promptPin({
@@ -487,80 +448,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  String _boolStatus(bool? value) {
-    if (value == null) return _t('알 수 없음', 'Unknown');
-    return value ? _t('허용', 'Allowed') : _t('거부', 'Denied');
-  }
-
-  Future<void> _refreshNotificationDiagnostics() async {
-    setState(() => _notifBusy = true);
-    try {
-      final diagnostics = await NotificationService.I.diagnostics();
-      if (!mounted) return;
-      setState(() => _notifDiagnostics = diagnostics);
-    } finally {
-      if (mounted) {
-        setState(() => _notifBusy = false);
-      }
-    }
-  }
-
-  Future<void> _requestNotificationPermission() async {
-    setState(() => _notifBusy = true);
-    try {
-      await NotificationService.I.requestPermissions();
-      await _refreshNotificationDiagnostics();
-      if (!mounted) return;
-      _showNotice(
-        _t('알림 권한 요청을 실행했습니다.', 'Notification permission requested.'),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _notifBusy = false);
-      }
-    }
-  }
-
-  Future<void> _requestExactAlarmPermission() async {
-    setState(() => _notifBusy = true);
-    try {
-      final canExact = await NotificationService.I
-          .requestExactAlarmPermission();
-      await _refreshNotificationDiagnostics();
-      if (!mounted) return;
-      final message = canExact == true
-          ? _t('정확 알람 권한이 허용되었습니다.', 'Exact alarm permission is allowed.')
-          : _t(
-              '정확 알람 권한이 아직 허용되지 않았습니다.',
-              'Exact alarm permission is still denied.',
-            );
-      _showNotice(message, error: canExact != true);
-    } finally {
-      if (mounted) {
-        setState(() => _notifBusy = false);
-      }
-    }
-  }
-
-  Future<void> _sendCrashReportingSmokeTest() async {
-    if (!CrashReportingService.I.isEnabled) return;
-    setState(() => _crashBusy = true);
-    try {
-      await CrashReportingService.I.captureTestEvent();
-      if (!mounted) return;
-      _showNotice(
-        _t(
-          '크래시 리포팅 테스트 이벤트를 전송했습니다.',
-          'Crash reporting smoke test event sent.',
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _crashBusy = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final appState = CampusMateApp.of(context);
@@ -616,60 +503,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(_t('설정', 'Settings'))),
+      appBar: AppBar(
+        title: Text(
+          _t('설정', 'Settings'),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+      ),
       body: IgnorePointer(
         ignoring: _busy,
         child: SafeArea(
           top: false,
+          bottom: true,
           child: Column(
             children: [
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   children: [
-                    _SectionTitle(
-                      title: _t('캘린더 범위', 'Calendar range'),
-                      subtitle: _t(
-                        '현재 날짜 기준 표시 범위를 설정하세요',
-                        'Set visible range around current date',
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: CalendarRangeMode.values.map((mode) {
-                        return ChoiceChip(
-                          label: Text(_calendarRangeModeLabel(mode)),
-                          selected: _calendarRange.mode == mode,
-                          onSelected: (_) async {
-                            await CalendarRangeSettings.setMode(mode);
-                          },
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children:
-                          CalendarRangeSettings.amountOptions(
-                            _calendarRange.mode,
-                          ).map((amount) {
-                            return ChoiceChip(
-                              label: Text(
-                                _calendarRangeAmountLabel(
-                                  amount,
-                                  _calendarRange.mode,
-                                ),
-                              ),
-                              selected: _calendarRange.amount == amount,
-                              onSelected: (_) async {
-                                await CalendarRangeSettings.setAmount(amount);
-                              },
-                            );
-                          }).toList(),
-                    ),
-                    const SizedBox(height: 24),
                     _SectionTitle(
                       title: _t('화면 테마', 'Appearance'),
                       subtitle: _t('테마 모드를 선택하세요', 'Choose theme mode'),
@@ -813,154 +663,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    _SectionTitle(
-                      title: _t('알림 점검', 'Notification health'),
-                      subtitle: _t(
-                        '권한과 정확 알람 상태를 확인합니다',
-                        'Check permission and exact alarm status',
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: cm.inputBg,
-                        border: Border.all(color: cm.cardBorder),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${_t('알림 권한', 'Notification permission')}: ${_boolStatus(_notifDiagnostics?.notificationsEnabled)}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${_t('정확 알람', 'Exact alarms')}: ${_boolStatus(_notifDiagnostics?.canScheduleExactNotifications)}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${_t('대기 알림 수', 'Pending notifications')}: ${_notifDiagnostics?.pendingCount ?? 0}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton(
-                                  style: _outlinedStyle(context),
-                                  onPressed: _notifBusy
-                                      ? null
-                                      : _requestNotificationPermission,
-                                  child: Text(
-                                    _t('권한 요청', 'Request permission'),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: OutlinedButton(
-                                  style: _outlinedStyle(context),
-                                  onPressed: _notifBusy
-                                      ? null
-                                      : _requestExactAlarmPermission,
-                                  child: Text(_t('정확 알람', 'Exact alarm')),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Spacer(),
-                              OutlinedButton(
-                                style: _outlinedStyle(context),
-                                onPressed: _notifBusy
-                                    ? null
-                                    : _refreshNotificationDiagnostics,
-                                child: Icon(
-                                  Icons.refresh,
-                                  color: cm.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            height: 2,
-                            child: AnimatedOpacity(
-                              opacity: _notifBusy ? 1 : 0,
-                              duration: const Duration(milliseconds: 180),
-                              curve: Curves.easeOut,
-                              child: const LinearProgressIndicator(
-                                minHeight: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _SectionTitle(
-                      title: _t('크래시 리포팅', 'Crash reporting'),
-                      subtitle: _t(
-                        'Sentry 연동 상태와 테스트 이벤트',
-                        'Sentry integration status and test event',
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: cm.inputBg,
-                        border: Border.all(color: cm.cardBorder),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            CrashReportingService.I.isEnabled
-                                ? _t('상태: 활성화', 'Status: enabled')
-                                : _t('상태: 비활성화', 'Status: disabled'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            _t(
-                              '활성화 조건: --dart-define=ENABLE_SENTRY=true 와 SENTRY_DSN 설정',
-                              'Enable with --dart-define=ENABLE_SENTRY=true and SENTRY_DSN',
-                            ),
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(color: cm.textHint),
-                          ),
-                          const SizedBox(height: 10),
-                          FilledButton(
-                            style: _filledStyle(context),
-                            onPressed:
-                                (_crashBusy ||
-                                    !CrashReportingService.I.isEnabled)
-                                ? null
-                                : _sendCrashReportingSmokeTest,
-                            child: Text(_t('테스트 이벤트 전송', 'Send test event')),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            height: 2,
-                            child: AnimatedOpacity(
-                              opacity: _crashBusy ? 1 : 0,
-                              duration: const Duration(milliseconds: 180),
-                              curve: Curves.easeOut,
-                              child: const LinearProgressIndicator(
-                                minHeight: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     if (_busy) ...[
                       const SizedBox(height: 12),
                       const LinearProgressIndicator(minHeight: 2),
@@ -971,22 +673,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Container(
+                child: SizedBox(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: cm.navBarBg,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cm.navBarShadow,
-                        blurRadius: 20,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
                   child: FilledButton(
-                    style: _filledStyle(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: cm.navActive,
+                      foregroundColor: Colors.white,
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                     onPressed: () => Navigator.of(context).pop(_startTab),
                     child: Text(_t('저장', 'Save')),
                   ),
@@ -1016,7 +711,10 @@ class _SectionTitle extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(height: 2),
           Text(
             subtitle,

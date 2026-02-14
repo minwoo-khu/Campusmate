@@ -307,6 +307,10 @@ class _CourseScreenState extends State<CourseScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 40),
           child: FilledButton.icon(
             onPressed: () => _openAdd(context),
+            style: FilledButton.styleFrom(
+              backgroundColor: cm.navActive,
+              foregroundColor: Colors.white,
+            ),
             icon: const Icon(Icons.add),
             label: Text(_t('첫 강의 추가', 'Add first course')),
           ),
@@ -367,8 +371,8 @@ class _CourseScreenState extends State<CourseScreen> {
                       Text(
                         _t('내 강의', 'Courses'),
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
                           color: cm.textPrimary,
                         ),
                       ),
