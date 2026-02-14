@@ -538,7 +538,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                               selectedColor: cm.navActive.withValues(
                                 alpha: 0.18,
                               ),
-                              checkmarkColor: cm.navActive,
+                              checkmarkColor: cm.textPrimary,
                               backgroundColor: cm.inputBg,
                               side: BorderSide(color: cm.cardBorder),
                               onSelected: (_) => setLocal(() => toggleTag(t)),
@@ -551,7 +551,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                               selectedColor: cm.navActive.withValues(
                                 alpha: 0.18,
                               ),
-                              checkmarkColor: cm.navActive,
+                              checkmarkColor: cm.textPrimary,
                               backgroundColor: cm.inputBg,
                               side: BorderSide(color: cm.cardBorder),
                               onSelected: (_) => setLocal(() => toggleTag(t)),
