@@ -42,6 +42,7 @@ class _RootShellState extends State<RootShell> {
   bool _loaded = false;
 
   final ValueNotifier<String?> _todoLink = AppLink.todoToOpen;
+  final ValueNotifier<int> _todoUiResetEpoch = ValueNotifier<int>(0);
   BannerAd? _bannerAd;
   bool _bannerReady = false;
 
@@ -58,6 +59,7 @@ class _RootShellState extends State<RootShell> {
   void dispose() {
     _bannerAd?.dispose();
     _todoLink.removeListener(_onTodoDeepLink);
+    _todoUiResetEpoch.dispose();
     super.dispose();
   }
 
@@ -187,6 +189,10 @@ class _RootShellState extends State<RootShell> {
     final next = index.clamp(_homeTab, _coursesTab);
     if (_currentIndex == next) return;
 
+    if (_currentIndex == _todoTab && next != _todoTab) {
+      _todoUiResetEpoch.value++;
+    }
+
     setState(() => _currentIndex = next);
     unawaited(_persistLastTab(next));
   }
@@ -234,7 +240,10 @@ class _RootShellState extends State<RootShell> {
           _setCurrentTab(index);
         },
       ),
-      TodoScreen(highlightTodoIdListenable: _todoLink),
+      TodoScreen(
+        highlightTodoIdListenable: _todoLink,
+        resetUiListenable: _todoUiResetEpoch,
+      ),
       const CalendarScreen(),
       const TimetableScreen(),
       const CourseScreen(),

@@ -16,8 +16,13 @@ import 'todo_repo.dart';
 
 class TodoScreen extends StatefulWidget {
   final ValueListenable<String?>? highlightTodoIdListenable;
+  final ValueListenable<int>? resetUiListenable;
 
-  const TodoScreen({super.key, this.highlightTodoIdListenable});
+  const TodoScreen({
+    super.key,
+    this.highlightTodoIdListenable,
+    this.resetUiListenable,
+  });
 
   @override
   State<TodoScreen> createState() => _TodoScreenState();
@@ -41,6 +46,7 @@ class _TodoScreenState extends State<TodoScreen> {
   void initState() {
     super.initState();
     widget.highlightTodoIdListenable?.addListener(_onHighlightChanged);
+    widget.resetUiListenable?.addListener(_onResetUiRequested);
     _highlightId = widget.highlightTodoIdListenable?.value;
     _quickDueAt = _defaultQuickDue();
   }
@@ -48,6 +54,7 @@ class _TodoScreenState extends State<TodoScreen> {
   @override
   void dispose() {
     widget.highlightTodoIdListenable?.removeListener(_onHighlightChanged);
+    widget.resetUiListenable?.removeListener(_onResetUiRequested);
     _quickTitleController.dispose();
     _scroll.dispose();
     super.dispose();
@@ -67,6 +74,14 @@ class _TodoScreenState extends State<TodoScreen> {
       _highlightUntil = DateTime.now().add(const Duration(milliseconds: 2500));
       _filter = _TodoViewFilter.all;
     });
+  }
+
+  void _onResetUiRequested() {
+    if (!mounted || !_quickExpanded) return;
+    setState(() {
+      _quickExpanded = false;
+    });
+    FocusManager.instance.primaryFocus?.unfocus();
   }
 
   String _two(int x) => x.toString().padLeft(2, '0');
