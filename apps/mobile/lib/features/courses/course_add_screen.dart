@@ -91,61 +91,57 @@ class _CourseAddScreenState extends State<CourseAddScreen> {
       appBar: AppBar(title: Text(context.tr('강의 추가', 'Add Course'))),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: ListView(
           children: [
-            Expanded(
-              child: ListView(
-                children: [
-                  TextField(
-                    controller: _nameController,
-                    maxLength: SafetyLimits.maxCourseNameChars,
-                    decoration: InputDecoration(
-                      labelText: context.tr('강의명', 'Course name'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _tagsController,
-                    maxLength:
-                        SafetyLimits.maxCourseTagsPerCourse *
-                        SafetyLimits.maxCourseTagChars,
-                    decoration: InputDecoration(
-                      labelText: context.tr('태그', 'Tags'),
-                      hintText: context.tr(
-                        '쉼표로 구분 (예: 전공, 프로젝트)',
-                        'Comma separated (ex: major, project)',
-                      ),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _memoController,
-                    maxLength: SafetyLimits.maxCourseMemoChars,
-                    minLines: 3,
-                    maxLines: 6,
-                    decoration: InputDecoration(
-                      labelText: context.tr('강의 메모', 'Course memo'),
-                      border: const OutlineInputBorder(),
-                    ),
-                  ),
-                ],
+            TextField(
+              controller: _nameController,
+              maxLength: SafetyLimits.maxCourseNameChars,
+              decoration: InputDecoration(
+                labelText: context.tr('강의명', 'Course name'),
+                border: const OutlineInputBorder(),
               ),
             ),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: cm.navActive,
-                  foregroundColor: Colors.white,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _tagsController,
+              maxLength:
+                  SafetyLimits.maxCourseTagsPerCourse *
+                  SafetyLimits.maxCourseTagChars,
+              decoration: InputDecoration(
+                labelText: context.tr('태그', 'Tags'),
+                hintText: context.tr(
+                  '쉼표로 구분 (예: 전공, 프로젝트)',
+                  'Comma separated (ex: major, project)',
                 ),
-                onPressed: _save,
-                child: Text(context.tr('저장', 'Save')),
+                border: const OutlineInputBorder(),
               ),
             ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _memoController,
+              maxLength: SafetyLimits.maxCourseMemoChars,
+              minLines: 3,
+              maxLines: 6,
+              decoration: InputDecoration(
+                labelText: context.tr('강의 메모', 'Course memo'),
+                border: const OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 90),
           ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: cm.navActive,
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          onPressed: _save,
+          child: Text(context.tr('저장', 'Save')),
         ),
       ),
     );
