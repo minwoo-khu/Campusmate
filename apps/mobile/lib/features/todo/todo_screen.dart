@@ -5,7 +5,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../app/app_link.dart';
 import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
-import '../../app/change_history_sheet.dart';
 import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
@@ -1049,15 +1048,6 @@ class _TodoScreenState extends State<TodoScreen> {
                           fontWeight: FontWeight.w600,
                           color: cm.textPrimary,
                           letterSpacing: -0.3,
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: _t('최근 변경', 'Recent changes'),
-                        onPressed: () => showChangeHistorySheet(context),
-                        icon: const Icon(Icons.history),
-                        style: IconButton.styleFrom(
-                          backgroundColor: cm.iconButtonBg,
                         ),
                       ),
                     ],
