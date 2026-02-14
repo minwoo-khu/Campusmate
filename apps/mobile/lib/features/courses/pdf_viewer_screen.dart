@@ -139,6 +139,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     CenterNotice.show(context, message: message);
   }
 
+  void _dismissKeyboard() {
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
   void _refreshMemoCache() {
     final note = _noteBox.get(_noteKey()) ?? '';
     _hasOverallNote = note.trim().isNotEmpty;
@@ -471,160 +475,168 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             final customTags = currentCustomTags();
 
             final mq = MediaQuery.of(context);
-            return SafeArea(
-              top: false,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  left: 16,
-                  right: 16,
-                  top: 16,
-                  bottom: mq.viewInsets.bottom + mq.viewPadding.bottom + 16,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _t('페이지 메모 (p.$page)', 'Page memo (p.$page)'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: cm.textPrimary,
-                        ),
-                      ),
-                      if (currentAnchorY != null) ...[
-                        const SizedBox(height: 4),
+            return GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: _dismissKeyboard,
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: 16,
+                    bottom: mq.viewInsets.bottom + mq.viewPadding.bottom + 16,
+                  ),
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          _t(
-                            '기준 위치: ${_anchorPositionLabel(currentAnchorY)}',
-                            'Anchor: ${_anchorPositionLabel(currentAnchorY)}',
-                          ),
-                          style: TextStyle(fontSize: 12, color: cm.textHint),
-                        ),
-                      ],
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: textController,
-                        maxLines: 5,
-                        maxLength: SafetyLimits.maxPageMemoTextChars,
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          filled: true,
-                          fillColor: cm.inputBg,
-                          hintText: _t(
-                            '이 페이지의 핵심 내용을 메모하세요',
-                            'Write key points for this page',
+                          _t('페이지 메모 (p.$page)', 'Page memo (p.$page)'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: cm.textPrimary,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _t('태그', 'Tags'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: cm.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          for (final t in _presetTags)
-                            FilterChip(
-                              label: Text(_tagLabel(t)),
-                              labelStyle: TextStyle(color: cm.textPrimary),
-                              selected: selectedTags.contains(t),
-                              selectedColor: cm.navActive.withValues(
-                                alpha: 0.18,
-                              ),
-                              checkmarkColor: cm.textPrimary,
-                              backgroundColor: cm.inputBg,
-                              side: BorderSide(color: cm.cardBorder),
-                              onSelected: (_) => setLocal(() => toggleTag(t)),
+                        if (currentAnchorY != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            _t(
+                              '기준 위치: ${_anchorPositionLabel(currentAnchorY)}',
+                              'Anchor: ${_anchorPositionLabel(currentAnchorY)}',
                             ),
-                          for (final t in customTags)
-                            FilterChip(
-                              label: Text(t),
-                              labelStyle: TextStyle(color: cm.textPrimary),
-                              selected: true,
-                              selectedColor: cm.navActive.withValues(
-                                alpha: 0.18,
-                              ),
-                              checkmarkColor: cm.textPrimary,
-                              backgroundColor: cm.inputBg,
-                              side: BorderSide(color: cm.cardBorder),
-                              onSelected: (_) => setLocal(() => toggleTag(t)),
-                            ),
+                            style: TextStyle(fontSize: 12, color: cm.textHint),
+                          ),
                         ],
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: tagInputController,
-                              maxLength: SafetyLimits.maxPageMemoTagChars,
-                              decoration: InputDecoration(
-                                border: const OutlineInputBorder(),
-                                filled: true,
-                                fillColor: cm.inputBg,
-                                hintText: _t(
-                                  '태그 추가 (예: 중간고사)',
-                                  'Add tag (example: midterm)',
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: textController,
+                          maxLines: 5,
+                          maxLength: SafetyLimits.maxPageMemoTextChars,
+                          onTapOutside: (_) => _dismissKeyboard(),
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            filled: true,
+                            fillColor: cm.inputBg,
+                            hintText: _t(
+                              '이 페이지의 핵심 내용을 메모하세요',
+                              'Write key points for this page',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _t('태그', 'Tags'),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: cm.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            for (final t in _presetTags)
+                              FilterChip(
+                                label: Text(_tagLabel(t)),
+                                labelStyle: TextStyle(color: cm.textPrimary),
+                                selected: selectedTags.contains(t),
+                                selectedColor: cm.navActive.withValues(
+                                  alpha: 0.18,
                                 ),
+                                checkmarkColor: cm.textPrimary,
+                                backgroundColor: cm.inputBg,
+                                side: BorderSide(color: cm.cardBorder),
+                                onSelected: (_) => setLocal(() => toggleTag(t)),
                               ),
-                              onSubmitted: (v) {
+                            for (final t in customTags)
+                              FilterChip(
+                                label: Text(t),
+                                labelStyle: TextStyle(color: cm.textPrimary),
+                                selected: true,
+                                selectedColor: cm.navActive.withValues(
+                                  alpha: 0.18,
+                                ),
+                                checkmarkColor: cm.textPrimary,
+                                backgroundColor: cm.inputBg,
+                                side: BorderSide(color: cm.cardBorder),
+                                onSelected: (_) => setLocal(() => toggleTag(t)),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: tagInputController,
+                                maxLength: SafetyLimits.maxPageMemoTagChars,
+                                onTapOutside: (_) => _dismissKeyboard(),
+                                decoration: InputDecoration(
+                                  border: const OutlineInputBorder(),
+                                  filled: true,
+                                  fillColor: cm.inputBg,
+                                  hintText: _t(
+                                    '태그 추가 (예: 중간고사)',
+                                    'Add tag (example: midterm)',
+                                  ),
+                                ),
+                                onSubmitted: (v) {
+                                  setLocal(() {
+                                    addCustomTag(v);
+                                    tagInputController.clear();
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: cm.navActive,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () {
                                 setLocal(() {
-                                  addCustomTag(v);
+                                  addCustomTag(tagInputController.text);
                                   tagInputController.clear();
                                 });
                               },
+                              child: Text(_t('추가', 'Add')),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: cm.navActive,
-                              foregroundColor: Colors.white,
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: cm.deleteBg,
+                                side: BorderSide(color: cm.deleteBg),
+                              ),
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pop(_PageMemoResult.delete),
+                              child: Text(_t('삭제', 'Delete')),
                             ),
-                            onPressed: () {
-                              setLocal(() {
-                                addCustomTag(tagInputController.text);
-                                tagInputController.clear();
-                              });
-                            },
-                            child: Text(_t('추가', 'Add')),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: cm.deleteBg,
-                              side: BorderSide(color: cm.deleteBg),
+                            const Spacer(),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: cm.navActive,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () => Navigator.of(
+                                context,
+                              ).pop(_PageMemoResult.saveWith(selectedTags)),
+                              child: Text(_t('저장', 'Save')),
                             ),
-                            onPressed: () => Navigator.of(
-                              context,
-                            ).pop(_PageMemoResult.delete),
-                            child: Text(_t('삭제', 'Delete')),
-                          ),
-                          const Spacer(),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: cm.navActive,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () => Navigator.of(
-                              context,
-                            ).pop(_PageMemoResult.saveWith(selectedTags)),
-                            child: Text(_t('저장', 'Save')),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
