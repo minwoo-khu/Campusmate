@@ -32,7 +32,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _showNotice(String message, {bool error = false}) {
     if (!mounted) return;
-    CenterNotice.show(context, message: message, error: error);
+    if (CenterNotice.isEnabled) {
+      CenterNotice.show(context, message: message, error: error);
+      return;
+    }
+
+    final cm = context.cmColors;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (messenger == null) return;
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+        backgroundColor: error ? cm.deleteBg : cm.cardBg,
+        content: Text(
+          message,
+          style: TextStyle(
+            color: error ? Colors.white : cm.textPrimary,
+            fontWeight: FontWeight.w600,
+            height: 1.3,
+          ),
+        ),
+      ),
+    );
   }
 
   ButtonStyle _filledStyle(BuildContext context) {
@@ -284,58 +307,87 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String title,
     required String confirmLabel,
     String? message,
+    int? minLength,
   }) async {
+    final requiredLength = minLength ?? DataBackupService.pinMinLength;
     final controller = TextEditingController();
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
         final cm = dialogContext.cmColors;
-        return AlertDialog(
-          title: Text(title),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (message != null) ...[
-                Text(message),
-                const SizedBox(height: 10),
-              ],
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.number,
-                obscureText: true,
-                maxLength: 16,
-                decoration: InputDecoration(
-                  labelText: _t('PIN', 'PIN'),
-                  hintText: _t('숫자 6자리 이상', 'At least 6 digits'),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(color: cm.cardBorder),
+        String? localError;
+        return StatefulBuilder(
+          builder: (dialogContext, setLocal) {
+            return AlertDialog(
+              title: Text(title),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (message != null) ...[
+                    Text(message),
+                    const SizedBox(height: 10),
+                  ],
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    obscureText: true,
+                    maxLength: 16,
+                    decoration: InputDecoration(
+                      labelText: _t('PIN', 'PIN'),
+                      hintText: _t(
+                        '숫자 $requiredLength자리 이상',
+                        'At least $requiredLength digits',
+                      ),
+                      errorText: localError,
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(color: cm.cardBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: cm.navActive, width: 1.6),
+                      ),
+                      filled: true,
+                      fillColor: cm.inputBg,
+                      counterText: '',
+                    ),
+                    onChanged: (_) {
+                      if (localError == null) return;
+                      setLocal(() => localError = null);
+                    },
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: cm.navActive, width: 1.6),
-                  ),
-                  filled: true,
-                  fillColor: cm.inputBg,
-                  counterText: '',
-                ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              style: _textStyle(dialogContext),
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: Text(_t('취소', 'Cancel')),
-            ),
-            FilledButton(
-              style: _filledStyle(dialogContext),
-              onPressed: () {
-                final value = controller.text.trim();
-                if (value.isEmpty) return;
-                Navigator.of(dialogContext).pop(value);
-              },
-              child: Text(confirmLabel),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  style: _textStyle(dialogContext),
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(_t('취소', 'Cancel')),
+                ),
+                FilledButton(
+                  style: _filledStyle(dialogContext),
+                  onPressed: () {
+                    final value = controller.text.trim();
+                    if (value.isEmpty) {
+                      setLocal(
+                        () => localError = _t('PIN을 입력하세요.', 'Enter PIN.'),
+                      );
+                      return;
+                    }
+                    if (value.length < requiredLength) {
+                      setLocal(
+                        () => localError = _t(
+                          'PIN은 최소 $requiredLength자리여야 합니다.',
+                          'PIN must be at least $requiredLength digits.',
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.of(dialogContext).pop(value);
+                  },
+                  child: Text(confirmLabel),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -344,10 +396,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _setOrChangeBackupPin() async {
-    if (_hasBackupPin) {
+    final hasPin = await DataBackupService.hasBackupPin();
+    if (!mounted) return;
+    if (hasPin != _hasBackupPin) {
+      setState(() => _hasBackupPin = hasPin);
+    }
+
+    if (hasPin) {
       final currentPin = await _promptPin(
         title: _t('현재 백업 PIN 확인', 'Verify current backup PIN'),
         confirmLabel: _t('확인', 'Verify'),
+        minLength: 1,
       );
       if (currentPin == null) return;
 
@@ -366,12 +425,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '백업 파일 암호화를 위해 사용할 PIN입니다.',
         'This PIN will encrypt backup files.',
       ),
+      minLength: DataBackupService.pinMinLength,
     );
     if (newPin == null) return;
 
     final confirmPin = await _promptPin(
       title: _t('새 PIN 다시 입력', 'Confirm new PIN'),
       confirmLabel: _t('저장', 'Save'),
+      minLength: DataBackupService.pinMinLength,
     );
     if (confirmPin == null) return;
 
@@ -384,7 +445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       await DataBackupService.setBackupPin(newPin);
       if (!mounted) return;
-      setState(() => _hasBackupPin = true);
+      await _loadBackupPinState();
       _showNotice(_t('백업 PIN이 설정되었습니다.', 'Backup PIN has been set.'));
     } on FormatException catch (e) {
       if (!mounted) return;
@@ -405,6 +466,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '현재 PIN을 입력하면 백업 암호화가 해제됩니다.',
         'Enter current PIN to disable backup encryption.',
       ),
+      minLength: 1,
     );
     if (pin == null) return;
 
@@ -417,7 +479,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     await DataBackupService.clearBackupPin();
     if (!mounted) return;
-    setState(() => _hasBackupPin = false);
+    await _loadBackupPinState();
     _showNotice(_t('백업 PIN이 해제되었습니다.', 'Backup PIN has been disabled.'));
   }
 
@@ -430,6 +492,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         '암호화 백업 생성을 위해 PIN을 입력하세요.',
         'Enter PIN to create encrypted backup.',
       ),
+      minLength: 1,
     );
     if (pin == null) return null;
 
@@ -444,8 +507,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _exportBackup() async {
+    final hasPin = await DataBackupService.hasBackupPin();
+    if (!mounted) return;
+    if (_hasBackupPin != hasPin) {
+      setState(() => _hasBackupPin = hasPin);
+    }
+
     String? pin;
-    if (_hasBackupPin) {
+    if (hasPin) {
       pin = await _resolvePinForExport();
       if (pin == null) return;
     }
@@ -476,12 +545,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _showNotice(
         result.encrypted
             ? _t(
-                '암호화 백업 완료 (${result.summary.todos}개 할 일)',
-                'Encrypted backup exported (${result.summary.todos} todos)',
+                '암호화 백업 완료 (${result.summary.todos}개 할 일)\n${result.filePath}',
+                'Encrypted backup exported (${result.summary.todos} todos)\n${result.filePath}',
               )
             : _t(
-                '백업 저장 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)',
-                'Backup exported (${result.summary.todos} todos, ${result.summary.courses} courses)',
+                '백업 저장 완료 (${result.summary.todos}개 할 일, ${result.summary.courses}개 강의)\n${result.filePath}',
+                'Backup exported (${result.summary.todos} todos, ${result.summary.courses} courses)\n${result.filePath}',
               ),
       );
     } on FormatException catch (e) {
@@ -558,6 +627,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           '선택한 백업 파일의 PIN을 입력하세요.',
           'Enter PIN for selected backup file.',
         ),
+        minLength: 1,
       );
       if (importPin == null) return;
     }

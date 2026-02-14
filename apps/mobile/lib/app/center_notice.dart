@@ -9,6 +9,7 @@ class CenterNotice {
   CenterNotice._();
 
   static const bool _enabled = false;
+  static bool get isEnabled => _enabled;
   static OverlayEntry? _entry;
   static Timer? _timer;
 

@@ -88,9 +88,11 @@ class DataBackupService {
 
   static const _kdfIterations = 120000;
   static const _kdfBits = 256;
-  static const _pinMinLength = 6;
+  static const _pinMinLength = 4;
   static const _legacyPinMinLength = 4;
   static const _pinHashPrefix = 'pbkdf2_sha256_v1:';
+
+  static int get pinMinLength => _pinMinLength;
 
   static Future<bool> hasBackupPin() async {
     final prefs = await SharedPreferences.getInstance();
@@ -102,7 +104,7 @@ class DataBackupService {
   static Future<void> setBackupPin(String pin) async {
     final normalized = pin.trim();
     if (normalized.length < _pinMinLength) {
-      throw const FormatException('PIN must be at least 6 digits.');
+      throw FormatException('PIN must be at least $_pinMinLength digits.');
     }
 
     final prefs = await SharedPreferences.getInstance();
