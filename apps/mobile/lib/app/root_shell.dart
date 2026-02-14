@@ -192,9 +192,6 @@ class _RootShellState extends State<RootShell> {
   }
 
   void _onBodyHorizontalDragEnd(DragEndDetails details) {
-    // Keep calendar swipe dedicated to month navigation.
-    if (_currentIndex == _calendarTab) return;
-
     final velocity = details.primaryVelocity;
     if (velocity == null || velocity.abs() < _swipeVelocityThreshold) return;
 
@@ -247,9 +244,7 @@ class _RootShellState extends State<RootShell> {
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: _dismissKeyboard,
-        onHorizontalDragEnd: _currentIndex == _calendarTab
-            ? null
-            : _onBodyHorizontalDragEnd,
+        onHorizontalDragEnd: _onBodyHorizontalDragEnd,
         child: IndexedStack(index: _currentIndex, children: tabs),
       ),
       bottomNavigationBar: Column(

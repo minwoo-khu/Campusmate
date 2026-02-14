@@ -26,10 +26,9 @@ class TimetableScreen extends StatefulWidget {
 }
 
 class _TimetableScreenState extends State<TimetableScreen> {
-  static const _prefKeyTimetablePath = 'timetable_image_path';
+  static const _legacyPrefKeyTimetablePath = 'timetable_image_path';
   static const _maxAutoCandidates = 24;
 
-  bool _loaded = false;
   bool _recognizingCourses = false;
   String? _imagePath;
   int _recognitionEpoch = 0;
@@ -37,7 +36,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSavedPath();
+    _cleanupLegacyTimetablePersistence();
   }
 
   String _t(String ko, String en) => context.tr(ko, en);
@@ -47,21 +46,10 @@ class _TimetableScreenState extends State<TimetableScreen> {
     CenterNotice.show(context, message: message, error: true);
   }
 
-  Future<void> _loadSavedPath() async {
+  Future<void> _cleanupLegacyTimetablePersistence() async {
     final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _imagePath = prefs.getString(_prefKeyTimetablePath);
-      _loaded = true;
-    });
-  }
-
-  Future<void> _savePath(String? path) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (path == null) {
-      await prefs.remove(_prefKeyTimetablePath);
-    } else {
-      await prefs.setString(_prefKeyTimetablePath, path);
+    if (prefs.containsKey(_legacyPrefKeyTimetablePath)) {
+      await prefs.remove(_legacyPrefKeyTimetablePath);
     }
   }
 
@@ -191,6 +179,53 @@ class _TimetableScreenState extends State<TimetableScreen> {
     return byKey.values.toList();
   }
 
+  String _normalizeBlockText(TextBlock block) {
+    final lines = block.lines
+        .map((line) => line.text.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+    if (lines.isEmpty) return '';
+
+    // Timetable cells often split one course into multiple lines.
+    // Join contiguous lines first, then trim trailing room-like tokens.
+    var merged = lines.join(' ');
+    merged = merged.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (merged.isEmpty) return '';
+
+    final parts = merged.split(' ');
+    if (parts.length >= 2) {
+      final tail = parts.last;
+      final looksRoomLike =
+          RegExp(r'^[A-Za-z가-힣]{1,4}\d{2,4}[A-Za-z]?$').hasMatch(tail) ||
+          RegExp(r'^[A-Za-z]?\d{2,4}[A-Za-z]?$').hasMatch(tail);
+      if (looksRoomLike) {
+        merged = parts.sublist(0, parts.length - 1).join(' ').trim();
+      }
+    }
+    return merged;
+  }
+
+  List<String> _collectOcrUnits(RecognizedText recognizedText) {
+    final out = <String>[];
+    for (final block in recognizedText.blocks) {
+      final normalized = _normalizeBlockText(block);
+      if (normalized.isNotEmpty) {
+        out.add(normalized);
+      }
+    }
+
+    if (out.isNotEmpty) return out;
+
+    // Fallback for images where blocks are sparse.
+    for (final block in recognizedText.blocks) {
+      for (final line in block.lines) {
+        final text = line.text.trim();
+        if (text.isNotEmpty) out.add(text);
+      }
+    }
+    return out;
+  }
+
   Future<String> _buildOcrImagePath(String sourcePath) async {
     try {
       final sourceBytes = await File(sourcePath).readAsBytes();
@@ -233,14 +268,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
       final textRecognizer = TextRecognizer(script: script);
       try {
         final recognizedText = await textRecognizer.processImage(input);
-        final lines = <String>[];
-        for (final block in recognizedText.blocks) {
-          for (final line in block.lines) {
-            lines.add(line.text);
-          }
-        }
-
-        final candidates = _extractCourseCandidates(lines);
+        final candidates = _extractCourseCandidates(
+          _collectOcrUnits(recognizedText),
+        );
         for (final candidate in candidates) {
           final key = _courseKey(candidate);
           if (key.isEmpty || byKey.containsKey(key)) continue;
@@ -559,115 +589,26 @@ class _TimetableScreenState extends State<TimetableScreen> {
       return;
     }
 
-    final ext = p.extension(pickedPath).toLowerCase();
-    final safeExt = (ext == '.png' || ext == '.jpg' || ext == '.jpeg')
-        ? ext
-        : '.png';
-
-    String targetPath;
-    try {
-      final appDir = await getApplicationDocumentsDirectory();
-      targetPath = p.join(appDir.path, 'timetable$safeExt');
-      await sourceFile.copy(targetPath);
-      await _savePath(targetPath);
-    } catch (_) {
-      _showError(_t('시간표 이미지 저장에 실패했습니다.', 'Failed to save timetable image.'));
-      return;
-    }
-
     if (!mounted) return;
-    setState(() => _imagePath = targetPath);
-
-    CenterNotice.show(
-      context,
-      message: _t('시간표 이미지를 저장했습니다.', 'Timetable image saved.'),
-    );
+    setState(() => _imagePath = pickedPath);
 
     unawaited(
       Future<void>(() async {
         await Future<void>.delayed(const Duration(milliseconds: 180));
-        if (!mounted || _imagePath != targetPath) return;
-        await _recognizeAndImportCourses(targetPath);
+        if (!mounted || _imagePath != pickedPath) return;
+        await _recognizeAndImportCourses(pickedPath);
       }),
     );
   }
 
-  Future<void> _removeImage() async {
+  Future<void> _clearImage() async {
     _recognitionEpoch++;
-    try {
-      final path = _imagePath;
-      if (path != null && !kIsWeb) {
-        final file = File(path);
-        if (await file.exists()) {
-          await file.delete();
-        }
-      }
-      await _savePath(null);
-    } catch (_) {
-      _showError(
-        _t('시간표 이미지 삭제에 실패했습니다.', 'Failed to remove timetable image.'),
-      );
-      return;
-    }
 
     if (!mounted) return;
     setState(() {
       _imagePath = null;
       _recognizingCourses = false;
     });
-
-    CenterNotice.show(
-      context,
-      message: _t('시간표 이미지를 삭제했습니다.', 'Timetable image removed.'),
-    );
-  }
-
-  Future<void> _confirmRemoveImage() async {
-    final ok =
-        await showDialog<bool>(
-          context: context,
-          builder: (dialogContext) {
-            final cm = dialogContext.cmColors;
-            return AlertDialog(
-              backgroundColor: cm.cardBg,
-              surfaceTintColor: Colors.transparent,
-              title: Text(
-                _t('시간표 이미지 삭제', 'Delete timetable image'),
-                style: TextStyle(
-                  color: cm.textPrimary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              content: Text(
-                _t(
-                  '시간표 이미지를 삭제할까요?\\n삭제하면 다시 업로드해야 합니다.',
-                  'Delete the timetable image?\\nYou will need to upload it again.',
-                ),
-                style: TextStyle(color: cm.textSecondary, height: 1.35),
-              ),
-              actions: [
-                TextButton(
-                  style: TextButton.styleFrom(
-                    foregroundColor: cm.textSecondary,
-                  ),
-                  onPressed: () => Navigator.of(dialogContext).pop(false),
-                  child: Text(_t('취소', 'Cancel')),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: cm.navActive,
-                    foregroundColor: Colors.white,
-                  ),
-                  onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(_t('삭제', 'Delete')),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-    if (!ok) return;
-    await _removeImage();
   }
 
   Widget _buildPlaceholder() {
@@ -722,10 +663,6 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_loaded) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     final cm = context.cmColors;
     final hasImage =
         _imagePath != null && !kIsWeb && File(_imagePath!).existsSync();
@@ -802,9 +739,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
-                    onPressed: _recognizingCourses ? null : _confirmRemoveImage,
+                    onPressed: _recognizingCourses ? null : _clearImage,
                     icon: const Icon(Icons.delete_outline),
-                    label: Text(_t('이미지 삭제', 'Delete image')),
+                    label: Text(_t('이미지 지우기', 'Clear image')),
                   ),
                 ),
               ],

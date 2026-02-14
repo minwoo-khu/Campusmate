@@ -8,6 +8,7 @@ import 'package:pdfx/pdfx.dart';
 import '../../app/center_notice.dart';
 import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
+import '../../app/theme.dart';
 
 class PdfViewerScreen extends StatefulWidget {
   final int materialKey;
@@ -236,50 +237,65 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   Future<void> _editOverallNote() async {
     final current = _noteBox.get(_noteKey()) ?? '';
     final controller = TextEditingController(text: current);
+    final cm = context.cmColors;
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) {
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _t('PDF 노트', 'PDF note'),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: controller,
-                maxLines: 6,
-                maxLength: SafetyLimits.maxOverallNoteChars,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  hintText: _t(
-                    '이 PDF 전체에 대한 메모를 작성하세요',
-                    'Write overall notes for this PDF',
+      backgroundColor: cm.scaffoldBg,
+      builder: (sheetContext) {
+        final mq = MediaQuery.of(sheetContext);
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: mq.viewInsets.bottom + mq.viewPadding.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _t('PDF 노트', 'PDF note'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: cm.textPrimary,
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => Navigator.of(context).pop(true),
-                      child: Text(_t('저장', 'Save')),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  maxLines: 6,
+                  maxLength: SafetyLimits.maxOverallNoteChars,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    filled: true,
+                    fillColor: cm.inputBg,
+                    hintText: _t(
+                      '이 PDF 전체에 대한 메모를 작성하세요',
+                      'Write overall notes for this PDF',
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: cm.navActive,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => Navigator.of(sheetContext).pop(true),
+                        child: Text(_t('저장', 'Save')),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -302,6 +318,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   Future<void> _editPageMemo(int page) async {
     final memos = Map<int, _PageMemoData>.from(_pageMemos);
     final current = memos[page] ?? _PageMemoData.empty();
+    final cm = context.cmColors;
 
     final textController = TextEditingController(text: current.text);
     final tagInputController = TextEditingController();
@@ -309,6 +326,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     final result = await showModalBottomSheet<_PageMemoResult>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: cm.scaffoldBg,
       builder: (_) {
         var selectedTags = _sanitizeTags(current.tags);
 
@@ -364,111 +382,152 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           builder: (context, setLocal) {
             final customTags = currentCustomTags();
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _t('페이지 메모 (p.$page)', 'Page memo (p.$page)'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: textController,
-                      maxLines: 5,
-                      maxLength: SafetyLimits.maxPageMemoTextChars,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        hintText: _t(
-                          '이 페이지의 핵심 내용을 메모하세요',
-                          'Write key points for this page',
+            final mq = MediaQuery.of(context);
+            return SafeArea(
+              top: false,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: mq.viewInsets.bottom + mq.viewPadding.bottom + 16,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _t('페이지 메모 (p.$page)', 'Page memo (p.$page)'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: cm.textPrimary,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _t('태그', 'Tags'),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final t in _presetTags)
-                          FilterChip(
-                            label: Text(_tagLabel(t)),
-                            selected: selectedTags.contains(t),
-                            onSelected: (_) => setLocal(() => toggleTag(t)),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: textController,
+                        maxLines: 5,
+                        maxLength: SafetyLimits.maxPageMemoTextChars,
+                        decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: cm.inputBg,
+                          hintText: _t(
+                            '이 페이지의 핵심 내용을 메모하세요',
+                            'Write key points for this page',
                           ),
-                        for (final t in customTags)
-                          FilterChip(
-                            label: Text(t),
-                            selected: true,
-                            onSelected: (_) => setLocal(() => toggleTag(t)),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: tagInputController,
-                            maxLength: SafetyLimits.maxPageMemoTagChars,
-                            decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              hintText: _t(
-                                '태그 추가 (예: 중간고사)',
-                                'Add tag (example: midterm)',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _t('태그', 'Tags'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: cm.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final t in _presetTags)
+                            FilterChip(
+                              label: Text(_tagLabel(t)),
+                              labelStyle: TextStyle(color: cm.textPrimary),
+                              selected: selectedTags.contains(t),
+                              selectedColor: cm.navActive.withValues(
+                                alpha: 0.18,
                               ),
+                              checkmarkColor: cm.navActive,
+                              backgroundColor: cm.inputBg,
+                              side: BorderSide(color: cm.cardBorder),
+                              onSelected: (_) => setLocal(() => toggleTag(t)),
                             ),
-                            onSubmitted: (v) {
+                          for (final t in customTags)
+                            FilterChip(
+                              label: Text(t),
+                              labelStyle: TextStyle(color: cm.textPrimary),
+                              selected: true,
+                              selectedColor: cm.navActive.withValues(
+                                alpha: 0.18,
+                              ),
+                              checkmarkColor: cm.navActive,
+                              backgroundColor: cm.inputBg,
+                              side: BorderSide(color: cm.cardBorder),
+                              onSelected: (_) => setLocal(() => toggleTag(t)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: tagInputController,
+                              maxLength: SafetyLimits.maxPageMemoTagChars,
+                              decoration: InputDecoration(
+                                border: const OutlineInputBorder(),
+                                filled: true,
+                                fillColor: cm.inputBg,
+                                hintText: _t(
+                                  '태그 추가 (예: 중간고사)',
+                                  'Add tag (example: midterm)',
+                                ),
+                              ),
+                              onSubmitted: (v) {
+                                setLocal(() {
+                                  addCustomTag(v);
+                                  tagInputController.clear();
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: cm.navActive,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () {
                               setLocal(() {
-                                addCustomTag(v);
+                                addCustomTag(tagInputController.text);
                                 tagInputController.clear();
                               });
                             },
+                            child: Text(_t('추가', 'Add')),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        FilledButton(
-                          onPressed: () {
-                            setLocal(() {
-                              addCustomTag(tagInputController.text);
-                              tagInputController.clear();
-                            });
-                          },
-                          child: Text(_t('추가', 'Add')),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        OutlinedButton(
-                          onPressed: () =>
-                              Navigator.of(context).pop(_PageMemoResult.delete),
-                          child: Text(_t('삭제', 'Delete')),
-                        ),
-                        const Spacer(),
-                        FilledButton(
-                          onPressed: () => Navigator.of(
-                            context,
-                          ).pop(_PageMemoResult.saveWith(selectedTags)),
-                          child: Text(_t('저장', 'Save')),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: cm.deleteBg,
+                              side: BorderSide(color: cm.deleteBg),
+                            ),
+                            onPressed: () => Navigator.of(
+                              context,
+                            ).pop(_PageMemoResult.delete),
+                            child: Text(_t('삭제', 'Delete')),
+                          ),
+                          const Spacer(),
+                          FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: cm.navActive,
+                              foregroundColor: Colors.white,
+                            ),
+                            onPressed: () => Navigator.of(
+                              context,
+                            ).pop(_PageMemoResult.saveWith(selectedTags)),
+                            child: Text(_t('저장', 'Save')),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -533,11 +592,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: context.cmColors.scaffoldBg,
       builder: (_) {
+        final cm = context.cmColors;
         if (pagesAll.isEmpty) {
           return Padding(
             padding: EdgeInsets.all(16),
-            child: Text(_t('아직 페이지 메모가 없습니다.', 'No page memos yet.')),
+            child: Text(
+              _t('아직 페이지 메모가 없습니다.', 'No page memos yet.'),
+              style: TextStyle(color: cm.textSecondary),
+            ),
           );
         }
 
@@ -582,7 +646,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   left: 12,
                   right: 12,
                   top: 12,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+                  bottom:
+                      MediaQuery.of(context).viewInsets.bottom +
+                      MediaQuery.of(context).viewPadding.bottom +
+                      12,
                 ),
                 child: Column(
                   children: [
@@ -590,6 +657,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.search),
                         border: const OutlineInputBorder(),
+                        filled: true,
+                        fillColor: cm.inputBg,
                         hintText: _t('메모 내용/태그 검색', 'Search memo content/tags'),
                       ),
                       onChanged: (v) => setLocal(() => query = v),
@@ -604,7 +673,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                             children: [
                               ChoiceChip(
                                 label: Text(_t('전체', 'All')),
+                                labelStyle: TextStyle(color: cm.textPrimary),
                                 selected: tagFilter == null,
+                                selectedColor: cm.navActive.withValues(
+                                  alpha: 0.18,
+                                ),
+                                backgroundColor: cm.inputBg,
+                                side: BorderSide(color: cm.cardBorder),
                                 onSelected: (_) =>
                                     setLocal(() => tagFilter = null),
                               ),
@@ -612,7 +687,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                               for (final t in tagList) ...[
                                 ChoiceChip(
                                   label: Text(t),
+                                  labelStyle: TextStyle(color: cm.textPrimary),
                                   selected: tagFilter == t,
+                                  selectedColor: cm.navActive.withValues(
+                                    alpha: 0.18,
+                                  ),
+                                  backgroundColor: cm.inputBg,
+                                  side: BorderSide(color: cm.cardBorder),
                                   onSelected: (_) =>
                                       setLocal(() => tagFilter = t),
                                 ),
@@ -659,6 +740,13 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                             for (final t in data.tags.take(6))
                                               Chip(
                                                 label: Text(t),
+                                                labelStyle: TextStyle(
+                                                  color: cm.textPrimary,
+                                                ),
+                                                backgroundColor: cm.inputBg,
+                                                side: BorderSide(
+                                                  color: cm.cardBorder,
+                                                ),
                                                 visualDensity:
                                                     VisualDensity.compact,
                                               ),

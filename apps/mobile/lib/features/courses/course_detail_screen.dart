@@ -69,7 +69,7 @@ class CourseDetailScreen extends StatelessWidget {
       _showError(
         context,
         context.tr(
-          'PDF ???뵬????뚯뱽 ????곷뮸??덈뼄. ??쇰뻻 ??뺣즲??곻폒?紐꾩뒄.',
+          'PDF 파일을 읽지 못했습니다. 다시 시도해 주세요.',
           'Failed to read PDF file. Please try again.',
         ),
       );
@@ -80,7 +80,7 @@ class CourseDetailScreen extends StatelessWidget {
       CenterNotice.show(
         context,
         message: context.tr(
-          'PDF ??몄쎗 ??뺣즲(${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB)???λ뜃???됰뮸??덈뼄.',
+          'PDF 파일 크기 한도(${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB)를 초과했습니다.',
           'PDF is too large (limit ${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
         ),
         error: true,
@@ -92,7 +92,7 @@ class CourseDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
       _showError(
         context,
-        context.tr('??而?몴?PDF ???뵬???袁⑤뻸??덈뼄.', 'Invalid PDF file format.'),
+        context.tr('올바른 PDF 파일 형식이 아닙니다.', 'Invalid PDF file format.'),
       );
       return;
     }
@@ -104,7 +104,7 @@ class CourseDetailScreen extends StatelessWidget {
       CenterNotice.show(
         context,
         message: context.tr(
-          '揶쏅벡?썼퉪?PDF ??뺣즲(${SafetyLimits.maxMaterialsPerCourse}揶????袁⑤뼎??됰뮸??덈뼄.',
+          '강의당 PDF 한도(${SafetyLimits.maxMaterialsPerCourse}개)에 도달했습니다.',
           'PDF limit reached for this course (${SafetyLimits.maxMaterialsPerCourse}).',
         ),
         error: true,
@@ -133,10 +133,7 @@ class CourseDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
       _showError(
         context,
-        context.tr(
-          'PDF ????餓???살첒揶쎛 獄쏆뮇源??됰뮸??덈뼄.',
-          'Failed to save the PDF file.',
-        ),
+        context.tr('PDF 파일 저장에 실패했습니다.', 'Failed to save the PDF file.'),
       );
       return;
     }
@@ -160,7 +157,7 @@ class CourseDetailScreen extends StatelessWidget {
       _showError(
         context,
         context.tr(
-          'PDF ?源낆쨯 餓???살첒揶쎛 獄쏆뮇源??됰뮸??덈뼄.',
+          '업로드한 PDF 등록에 실패했습니다.',
           'Failed to register the uploaded PDF.',
         ),
       );
@@ -175,7 +172,7 @@ class CourseDetailScreen extends StatelessWidget {
     if (!context.mounted) return;
     CenterNotice.show(
       context,
-      message: context.tr('PDF????낆쨮??쀫뻥??щ빍??', 'PDF uploaded.'),
+      message: context.tr('PDF를 업로드했습니다.', 'PDF uploaded.'),
     );
   }
 
@@ -250,20 +247,22 @@ class CourseDetailScreen extends StatelessWidget {
   ) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(context.tr('PDF瑜???젣?좉퉴??', 'Delete PDF?')),
-        content: Text(material.fileName),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(context.tr('痍⑥냼', 'Cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.tr('??젣', 'Delete')),
-          ),
-        ],
-      ),
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(dialogContext.tr('PDF를 삭제할까요?', 'Delete PDF?')),
+          content: Text(material.fileName),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(dialogContext.tr('취소', 'Cancel')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(dialogContext.tr('삭제', 'Delete')),
+            ),
+          ],
+        );
+      },
     );
 
     if (ok != true) return;
@@ -309,7 +308,7 @@ class CourseDetailScreen extends StatelessWidget {
             return Center(
               child: Text(
                 context.tr(
-                  '?袁⑹춦 PDF揶쎛 ??곷뮸??덈뼄. + 甕곌쑵???곗쨮 ??낆쨮??쀫릭?紐꾩뒄.',
+                  '아직 PDF가 없습니다. + 버튼으로 업로드해 보세요.',
                   'No PDFs yet. Tap + to upload.',
                 ),
               ),
@@ -329,9 +328,7 @@ class CourseDetailScreen extends StatelessWidget {
               return ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
                 title: Text(material.fileName),
-                subtitle: Text(
-                  context.tr('?곕떽??? $dateStr', 'Added: $dateStr'),
-                ),
+                subtitle: Text(context.tr('추가일: $dateStr', 'Added: $dateStr')),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () => _deleteMaterial(context, material),
