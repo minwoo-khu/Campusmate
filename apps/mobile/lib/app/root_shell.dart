@@ -246,12 +246,7 @@ class _RootShellState extends State<RootShell> {
     final cm = context.cmColors;
 
     final tabs = [
-      HomeScreen(
-        onOpenSettings: _openSettings,
-        onNavigateToTab: (index) {
-          _setCurrentTab(index);
-        },
-      ),
+      HomeScreen(onOpenSettings: _openSettings),
       TodoScreen(
         highlightTodoIdListenable: _todoLink,
         resetUiListenable: _todoUiResetEpoch,

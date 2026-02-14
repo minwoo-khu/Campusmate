@@ -327,6 +327,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: cm.scaffoldBg,
       builder: (sheetContext) {
         final mq = MediaQuery.of(sheetContext);
@@ -412,6 +413,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     final result = await showModalBottomSheet<_PageMemoResult>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: cm.scaffoldBg,
       builder: (_) {
         var selectedTags = _sanitizeTags(current.tags);
@@ -682,12 +684,19 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: context.cmColors.scaffoldBg,
       builder: (_) {
         final cm = context.cmColors;
         if (pagesAll.isEmpty) {
+          final mq = MediaQuery.of(context);
           return Padding(
-            padding: EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              mq.viewPadding.bottom + 20,
+            ),
             child: Text(
               _t('아직 페이지 메모가 없습니다.', 'No page memos yet.'),
               style: TextStyle(color: cm.textSecondary),
@@ -739,7 +748,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                   bottom:
                       MediaQuery.of(context).viewInsets.bottom +
                       MediaQuery.of(context).viewPadding.bottom +
-                      12,
+                      20,
                 ),
                 child: Column(
                   children: [

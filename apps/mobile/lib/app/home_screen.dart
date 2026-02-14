@@ -10,13 +10,8 @@ import 'theme.dart';
 
 class HomeScreen extends StatelessWidget {
   final VoidCallback onOpenSettings;
-  final ValueChanged<int> onNavigateToTab;
 
-  const HomeScreen({
-    super.key,
-    required this.onOpenSettings,
-    required this.onNavigateToTab,
-  });
+  const HomeScreen({super.key, required this.onOpenSettings});
 
   String _t(BuildContext context, String ko, String en) => context.tr(ko, en);
 
@@ -211,62 +206,7 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _t(context, '빠른 이동', 'Quick actions'),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: cm.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _QuickActionButton(
-                                icon: Icons.check_circle_outline,
-                                label: _t(context, '할 일', 'Todo'),
-                                onTap: () => onNavigateToTab(1),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _QuickActionButton(
-                                icon: Icons.calendar_month_outlined,
-                                label: _t(context, '캘린더', 'Calendar'),
-                                onTap: () => onNavigateToTab(2),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _QuickActionButton(
-                                icon: Icons.image_outlined,
-                                label: _t(context, '시간표', 'Timetable'),
-                                onTap: () => onNavigateToTab(3),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _QuickActionButton(
-                                icon: Icons.menu_book_outlined,
-                                label: _t(context, '강의', 'Courses'),
-                                onTap: () => onNavigateToTab(4),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _SectionCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _t(context, '홈에 넣을 추천 정보', 'Suggested for home'),
+                          _t(context, '오늘 팁', 'Today tip'),
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: cm.textPrimary,
@@ -410,33 +350,6 @@ class _StatChip extends StatelessWidget {
             style: TextStyle(fontSize: 10, color: cm.textTertiary),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _QuickActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final cm = context.cmColors;
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: cm.textSecondary,
-        side: BorderSide(color: cm.cardBorder),
-        backgroundColor: cm.inputBg,
       ),
     );
   }
