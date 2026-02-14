@@ -138,6 +138,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _StatChip(
                               label: _t(context, '진행 중', 'Active'),
@@ -257,6 +258,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             _StatChip(
                               label: _t(context, '완료한 할 일', 'Completed todos'),
@@ -304,6 +306,7 @@ class _StatChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               value,
@@ -314,7 +317,14 @@ class _StatChip extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 11, color: cm.textTertiary)),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 10, color: cm.textTertiary),
+            ),
           ],
         ),
       ),
