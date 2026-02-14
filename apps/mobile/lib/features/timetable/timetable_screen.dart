@@ -626,25 +626,44 @@ class _TimetableScreenState extends State<TimetableScreen> {
     final ok =
         await showDialog<bool>(
           context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(_t('시간표 이미지 삭제', 'Delete timetable image')),
-            content: Text(
-              _t(
-                '시간표 이미지를 삭제할까요?\n삭제하면 다시 업로드해야 합니다.',
-                'Delete the timetable image?\nYou will need to upload it again.',
+          builder: (dialogContext) {
+            final cm = dialogContext.cmColors;
+            return AlertDialog(
+              backgroundColor: cm.cardBg,
+              surfaceTintColor: Colors.transparent,
+              title: Text(
+                _t('시간표 이미지 삭제', 'Delete timetable image'),
+                style: TextStyle(
+                  color: cm.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(false),
-                child: Text(_t('취소', 'Cancel')),
+              content: Text(
+                _t(
+                  '시간표 이미지를 삭제할까요?\\n삭제하면 다시 업로드해야 합니다.',
+                  'Delete the timetable image?\\nYou will need to upload it again.',
+                ),
+                style: TextStyle(color: cm.textSecondary, height: 1.35),
               ),
-              FilledButton(
-                onPressed: () => Navigator.of(dialogContext).pop(true),
-                child: Text(_t('삭제', 'Delete')),
-              ),
-            ],
-          ),
+              actions: [
+                TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: cm.textSecondary,
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: Text(_t('취소', 'Cancel')),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: cm.navActive,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: Text(_t('삭제', 'Delete')),
+                ),
+              ],
+            );
+          },
         ) ??
         false;
     if (!ok) return;
