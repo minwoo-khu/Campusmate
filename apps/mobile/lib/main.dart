@@ -109,6 +109,7 @@ class _CampusMateAppState extends State<CampusMateApp>
   }
 
   void _bindCourseWidgetSync() {
+    if (!HomeWidgetService.isEnabled) return;
     final courseBox = Hive.box<Course>('courses');
     _courseBoxSub = courseBox.watch().listen((_) {
       _courseWidgetSyncDebounce?.cancel();
@@ -159,12 +160,15 @@ class _CampusMateAppState extends State<CampusMateApp>
     final prefs = await SharedPreferences.getInstance();
     final code = prefs.getString(_prefKeyLocaleCode) ?? 'ko';
     final locale = _parseLocale(code);
-    unawaited(HomeWidgetService.syncLocaleCode(locale.languageCode));
+    if (HomeWidgetService.isEnabled) {
+      unawaited(HomeWidgetService.syncLocaleCode(locale.languageCode));
+    }
     if (!mounted) return;
     setState(() => _locale = locale);
   }
 
   Future<void> _bindWidgetLaunchEvents() async {
+    if (!HomeWidgetService.isEnabled) return;
     try {
       final initial = await HomeWidget.initiallyLaunchedFromHomeWidget();
       await _handleWidgetLaunch(initial);

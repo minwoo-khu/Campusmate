@@ -6,6 +6,9 @@ import '../features/todo/todo_model.dart';
 class HomeWidgetService {
   HomeWidgetService._();
 
+  // Temporarily disabled until widget UX is refreshed.
+  static const bool isEnabled = false;
+
   static const _androidWidgetName = 'TodayWidgetProvider';
   static const _widgetLocaleCodeKey = 'widget_locale_code';
 
@@ -17,12 +20,14 @@ class HomeWidgetService {
   static DateTime _ymd(DateTime d) => DateTime(d.year, d.month, d.day);
 
   static Future<void> _refreshWidget() async {
+    if (!isEnabled) return;
     await HomeWidget.updateWidget(androidName: _androidWidgetName);
   }
 
   static int _clampedTab(int value) => value.clamp(0, 4).toInt();
 
   static Future<void> syncLocaleCode(String localeCode) async {
+    if (!isEnabled) return;
     try {
       final normalized = localeCode.toLowerCase().startsWith('en')
           ? 'en'
@@ -35,6 +40,7 @@ class HomeWidgetService {
   }
 
   static Future<void> syncTodoSummary(Iterable<TodoItem> todos) async {
+    if (!isEnabled) return;
     try {
       final now = DateTime.now();
       final today = _ymd(now);
@@ -82,6 +88,7 @@ class HomeWidgetService {
   }
 
   static Future<void> syncTimetableSummary(Iterable<Course> courses) async {
+    if (!isEnabled) return;
     try {
       final names =
           courses
@@ -103,6 +110,7 @@ class HomeWidgetService {
   }
 
   static Future<void> syncIcsTodayCount(Iterable<DateTime> starts) async {
+    if (!isEnabled) return;
     try {
       final today = _ymd(DateTime.now());
       final count = starts.where((s) => _ymd(s) == today).length;
@@ -114,6 +122,7 @@ class HomeWidgetService {
   }
 
   static String? extractCompleteTodoId(Uri? uri) {
+    if (!isEnabled) return null;
     if (uri == null) return null;
     if (uri.host != widgetCompleteHost) return null;
     if (uri.path != widgetCompletePath) return null;
@@ -124,6 +133,7 @@ class HomeWidgetService {
   }
 
   static int? extractTabToOpen(Uri? uri) {
+    if (!isEnabled) return null;
     if (uri == null) return null;
     if (uri.host != widgetNavigateHost) return null;
     if (uri.path != widgetNavigatePath) return null;
