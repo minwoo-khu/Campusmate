@@ -569,6 +569,116 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  String _fileNameFromPath(String path) {
+    final normalized = path.replaceAll('\\', '/');
+    final idx = normalized.lastIndexOf('/');
+    if (idx < 0 || idx >= normalized.length - 1) return normalized;
+    return normalized.substring(idx + 1);
+  }
+
+  Future<String?> _pickBackupPathForImport() async {
+    const externalChoice = '__external_file_picker__';
+    final localPaths = await DataBackupService.localBackupFilePaths();
+    if (!mounted) return null;
+
+    if (localPaths.isNotEmpty) {
+      final selected = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: context.cmColors.scaffoldBg,
+        builder: (sheetContext) {
+          final cm = sheetContext.cmColors;
+          final mq = MediaQuery.of(sheetContext);
+          return SizedBox(
+            height: mq.size.height * 0.72,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                12,
+                12,
+                12,
+                mq.viewPadding.bottom + 12,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _t('백업 파일 선택', 'Select backup file'),
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: cm.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _t(
+                      '앱 내부 백업 폴더에서 파일을 선택할 수 있습니다.',
+                      'Choose a file from the app backup folder.',
+                    ),
+                    style: TextStyle(color: cm.textTertiary),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: localPaths.length + 1,
+                      separatorBuilder: (_, index) => const Divider(height: 1),
+                      itemBuilder: (_, i) {
+                        if (i == localPaths.length) {
+                          return ListTile(
+                            leading: const Icon(Icons.folder_open_outlined),
+                            title: Text(
+                              _t('외부 파일에서 선택', 'Choose from external files'),
+                            ),
+                            onTap: () =>
+                                Navigator.of(sheetContext).pop(externalChoice),
+                          );
+                        }
+
+                        final path = localPaths[i];
+                        return ListTile(
+                          leading: const Icon(Icons.description_outlined),
+                          title: Text(
+                            _fileNameFromPath(path),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            path,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11, color: cm.textHint),
+                          ),
+                          onTap: () => Navigator.of(sheetContext).pop(path),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      if (selected == null) return null;
+      if (selected != externalChoice) return selected;
+    }
+
+    final picked = await FilePicker.platform.pickFiles(
+      dialogTitle: _t('백업 파일 선택', 'Select backup file'),
+      type: FileType.custom,
+      allowedExtensions: const ['json'],
+      allowMultiple: false,
+      withData: false,
+    );
+    if (picked == null || picked.files.isEmpty) return null;
+
+    final path = picked.files.single.path;
+    if (path == null || path.isEmpty) return null;
+    return path;
+  }
+
   Future<void> _importBackup() async {
     final shouldRestore =
         await showDialog<bool>(
@@ -606,16 +716,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (!shouldRestore) return;
 
-    final picked = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['json'],
-      allowMultiple: false,
-      withData: false,
-    );
-    if (picked == null || picked.files.isEmpty) return;
-
-    final path = picked.files.single.path;
-    if (path == null || path.isEmpty) return;
+    final path = await _pickBackupPathForImport();
+    if (path == null) return;
 
     String? importPin;
     final encrypted = await DataBackupService.isEncryptedBackupFile(path);

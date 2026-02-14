@@ -160,6 +160,40 @@ class DataBackupService {
     }
   }
 
+  static Future<String> localBackupDirectoryPath() async {
+    final dir = await _backupDirectory();
+    return dir.path;
+  }
+
+  static Future<List<String>> localBackupFilePaths() async {
+    final dir = await _backupDirectory();
+    if (!await dir.exists()) return const [];
+
+    final entities = await dir.list().toList();
+    final files = entities.whereType<File>().where((f) {
+      final name = p.basename(f.path).toLowerCase();
+      return name.startsWith('campusmate_backup_') && name.endsWith('.json');
+    }).toList();
+
+    files.sort((a, b) {
+      DateTime am;
+      DateTime bm;
+      try {
+        am = a.statSync().modified;
+      } catch (_) {
+        am = DateTime.fromMillisecondsSinceEpoch(0);
+      }
+      try {
+        bm = b.statSync().modified;
+      } catch (_) {
+        bm = DateTime.fromMillisecondsSinceEpoch(0);
+      }
+      return bm.compareTo(am);
+    });
+
+    return files.map((f) => f.path).toList();
+  }
+
   static Future<BackupExportResult> exportToFile({
     String? targetPath,
     String? pin,
@@ -926,14 +960,20 @@ class DataBackupService {
   }
 
   static Future<String> _defaultBackupPath() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final backupDir = Directory(p.join(appDir.path, 'backups'));
+    final backupDir = await _backupDirectory();
     await backupDir.create(recursive: true);
 
     final now = DateTime.now();
     final stamp =
         '${now.year}${_two(now.month)}${_two(now.day)}_${_two(now.hour)}${_two(now.minute)}${_two(now.second)}';
     return p.join(backupDir.path, 'campusmate_backup_$stamp.json');
+  }
+
+  static Future<Directory> _backupDirectory() async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final backupDir = Directory(p.join(appDir.path, 'backups'));
+    await backupDir.create(recursive: true);
+    return backupDir;
   }
 
   static Future<Directory> _materialRestoreRoot() async {
