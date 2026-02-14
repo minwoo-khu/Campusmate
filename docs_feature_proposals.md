@@ -63,3 +63,8 @@ This backlog is focused on **free Play Store release** constraints:
   - Current page memo entry is top-anchored; lower content on a page requires zooming to place/check notes.
   - Improve memo UX so users can add/check notes based on current viewport or tapped position (not only page top).
   - Keep this as a deferred UX enhancement after release.
+
+- Home widget UX refresh (temporarily disabled)
+  - Current widget experience is disabled for release stability.
+  - Rework widget layout/readability and interaction flow, then re-enable.
+  - Validate update timing, click actions, and consistency with in-app language/theme.
