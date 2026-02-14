@@ -225,6 +225,7 @@ class _CourseScreenState extends State<CourseScreen> {
   }
 
   Future<void> _deleteCourse(BuildContext context, Course course) async {
+    final cm = context.cmColors;
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -236,6 +237,10 @@ class _CourseScreenState extends State<CourseScreen> {
             child: Text(_t('취소', 'Cancel')),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: cm.deleteBg,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.of(context).pop(true),
             child: Text(_t('삭제', 'Delete')),
           ),

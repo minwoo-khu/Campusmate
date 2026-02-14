@@ -490,6 +490,36 @@ class CampusMateTheme {
         checkmarkColor: Colors.white,
       ),
       dividerTheme: DividerThemeData(color: colors.chipBorder),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: colors.navActive,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: colors.navActive.withValues(alpha: 0.45),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.72),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: colors.textSecondary,
+          side: BorderSide(color: colors.chipBorder),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: colors.navActive,
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
       extensions: [colors],
     );
   }

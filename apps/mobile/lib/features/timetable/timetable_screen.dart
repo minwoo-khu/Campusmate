@@ -685,7 +685,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
     } catch (_) {
       _showError(
         _t(
-          '?대?吏瑜???ν븷 ???놁뒿?덈떎. ?ㅼ떆 ?쒕룄??二쇱꽭??',
+          '이미지를 저장할 수 없습니다. 다시 시도해 주세요.',
           'Failed to save the image. Please try again.',
         ),
       );

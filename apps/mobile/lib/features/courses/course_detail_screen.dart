@@ -249,6 +249,7 @@ class CourseDetailScreen extends StatelessWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
+        final cm = dialogContext.cmColors;
         return AlertDialog(
           title: Text(dialogContext.tr('PDF를 삭제할까요?', 'Delete PDF?')),
           content: Text(material.fileName),
@@ -258,6 +259,10 @@ class CourseDetailScreen extends StatelessWidget {
               child: Text(dialogContext.tr('취소', 'Cancel')),
             ),
             FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: cm.deleteBg,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: Text(dialogContext.tr('삭제', 'Delete')),
             ),

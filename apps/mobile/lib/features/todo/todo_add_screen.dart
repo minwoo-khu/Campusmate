@@ -318,17 +318,22 @@ class _TodoAddScreenState extends State<TodoAddScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _save,
-            style: FilledButton.styleFrom(
-              backgroundColor: cm.navActive,
-              foregroundColor: Colors.white,
-            ),
-            icon: const Icon(Icons.save),
-            label: Text(context.tr('저장', 'Save')),
-          ),
+          const SizedBox(height: 8),
         ],
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        child: FilledButton.icon(
+          onPressed: _save,
+          style: FilledButton.styleFrom(
+            backgroundColor: cm.navActive,
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          icon: const Icon(Icons.save),
+          label: Text(context.tr('저장', 'Save')),
+        ),
       ),
     );
   }
