@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -249,9 +250,41 @@ class _CourseScreenState extends State<CourseScreen> {
 
     if (ok != true) return;
 
+    final materialBox = Hive.box<CourseMaterial>('course_materials');
+    final noteBox = Hive.box<String>('material_notes');
+    final pageMemoBox = Hive.box<String>('material_page_memos');
+    final linkedMaterials = materialBox.values
+        .where((m) => m.courseId == course.id)
+        .toList();
+
+    for (final material in linkedMaterials) {
+      final key = material.key;
+      if (key is int) {
+        await noteBox.delete('m:$key');
+        await pageMemoBox.delete('m:$key:pages');
+      }
+
+      final file = File(material.localPath);
+      try {
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {
+        // Ignore local file cleanup failures.
+      }
+
+      await material.delete();
+    }
+
     final deletedName = course.name;
     await course.delete();
-    await ChangeHistoryService.log('Course deleted', detail: deletedName);
+    final deletedPdfCount = linkedMaterials.length;
+    await ChangeHistoryService.log(
+      'Course deleted',
+      detail: deletedPdfCount > 0
+          ? '$deletedName (+$deletedPdfCount PDFs)'
+          : deletedName,
+    );
   }
 
   Widget _buildFirstCourseEmptyState(BuildContext context) {
