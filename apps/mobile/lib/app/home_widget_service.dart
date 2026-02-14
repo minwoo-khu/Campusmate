@@ -1,5 +1,6 @@
 import 'package:home_widget/home_widget.dart';
 
+import '../features/courses/course.dart';
 import '../features/todo/todo_model.dart';
 
 class HomeWidgetService {
@@ -55,6 +56,30 @@ class HomeWidgetService {
       await HomeWidget.saveWidgetData<String>(
         'widget_todo_primary_title',
         primary?.title ?? '',
+      );
+      await _refreshWidget();
+    } catch (_) {
+      // Ignore when widget host is unavailable.
+    }
+  }
+
+  static Future<void> syncTimetableSummary(Iterable<Course> courses) async {
+    try {
+      final names =
+          courses
+              .map((c) => c.name.trim())
+              .where((name) => name.isNotEmpty)
+              .toList()
+            ..sort();
+      final lines = names.take(3).map((name) => '- $name').join('\n');
+
+      await HomeWidget.saveWidgetData<int>(
+        'widget_timetable_count',
+        names.length,
+      );
+      await HomeWidget.saveWidgetData<String>(
+        'widget_timetable_lines',
+        lines.isEmpty ? '- No courses yet' : lines,
       );
       await _refreshWidget();
     } catch (_) {

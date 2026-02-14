@@ -26,6 +26,9 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             val primaryTodoId = widgetData.getString("widget_todo_primary_id", "") ?: ""
             val primaryTodoTitle = widgetData.getString("widget_todo_primary_title", "") ?: ""
             val icsCount = widgetData.getInt("widget_ics_count", 0)
+            val timetableCount = widgetData.getInt("widget_timetable_count", 0)
+            val timetableLines = widgetData.getString("widget_timetable_lines", "- No courses yet")
+                ?: "- No courses yet"
 
             val openAppIntent = HomeWidgetLaunchIntent.getActivity(
                 context,
@@ -36,6 +39,8 @@ class TodayWidgetProvider : HomeWidgetProvider() {
             views.setTextViewText(R.id.widget_date, date)
             views.setTextViewText(R.id.widget_todo_count, "TODO $todoCount")
             views.setTextViewText(R.id.widget_todo_lines, todoLines)
+            views.setTextViewText(R.id.widget_timetable_count, "TIMETABLE $timetableCount")
+            views.setTextViewText(R.id.widget_timetable_lines, timetableLines)
             views.setTextViewText(R.id.widget_ics_count, "School events $icsCount")
 
             if (primaryTodoId.isNotBlank()) {

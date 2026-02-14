@@ -40,6 +40,9 @@ Future<void> main() async {
   await Hive.openBox<int>('notif');
   await NotificationService.I.init();
   await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
+  await HomeWidgetService.syncTimetableSummary(
+    Hive.box<Course>('courses').values,
+  );
   await AdService.I.init();
 
   await CrashReportingService.I.runAppWithReporting(const CampusMateApp());
@@ -74,6 +77,8 @@ class _CampusMateAppState extends State<CampusMateApp>
   String _themePresetKey = CampusMateTheme.defaultPaletteKey;
   Locale _locale = const Locale('ko');
   StreamSubscription<Uri?>? _widgetLaunchSub;
+  StreamSubscription<BoxEvent>? _courseBoxSub;
+  Timer? _courseWidgetSyncDebounce;
   String? _lastHandledWidgetUri;
 
   @override
@@ -83,12 +88,25 @@ class _CampusMateAppState extends State<CampusMateApp>
     _loadThemePresetKey();
     _loadLocaleCode();
     _bindWidgetLaunchEvents();
+    _bindCourseWidgetSync();
   }
 
   @override
   void dispose() {
     _widgetLaunchSub?.cancel();
+    _courseBoxSub?.cancel();
+    _courseWidgetSyncDebounce?.cancel();
     super.dispose();
+  }
+
+  void _bindCourseWidgetSync() {
+    final courseBox = Hive.box<Course>('courses');
+    _courseBoxSub = courseBox.watch().listen((_) {
+      _courseWidgetSyncDebounce?.cancel();
+      _courseWidgetSyncDebounce = Timer(const Duration(milliseconds: 250), () {
+        unawaited(HomeWidgetService.syncTimetableSummary(courseBox.values));
+      });
+    });
   }
 
   Future<void> _loadThemeMode() async {
