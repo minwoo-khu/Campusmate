@@ -5,7 +5,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
-import '../../app/change_history_sheet.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../todo/todo_model.dart';
@@ -225,10 +224,7 @@ class _CourseScreenState extends State<CourseScreen> {
     return '${text.substring(0, max)}...';
   }
 
-  Future<void> _deleteCourseWithUndo(
-    BuildContext context,
-    Course course,
-  ) async {
+  Future<void> _deleteCourse(BuildContext context, Course course) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
@@ -249,32 +245,12 @@ class _CourseScreenState extends State<CourseScreen> {
 
     if (ok != true) return;
 
-    final backup = Course(
-      id: course.id,
-      name: course.name,
-      memo: course.memo,
-      tags: List<String>.from(course.tags),
-    );
+    final deletedName = course.name;
     await course.delete();
-    await ChangeHistoryService.log('Course deleted', detail: backup.name);
+    await ChangeHistoryService.log('Course deleted', detail: deletedName);
 
     if (!context.mounted) return;
-
-    await CenterNotice.showActionDialog(
-      context,
-      title: _t('강의 삭제됨', 'Course deleted'),
-      message: _t('"${backup.name}"을(를) 삭제했습니다.', 'Deleted "${backup.name}".'),
-      actionLabel: _t('실행 취소', 'Undo'),
-      onAction: () async {
-        await Hive.box<Course>('courses').add(backup);
-        await ChangeHistoryService.log('Course restored', detail: backup.name);
-        if (!context.mounted) return;
-        CenterNotice.show(
-          context,
-          message: _t('"${backup.name}" 복원됨', 'Restored "${backup.name}"'),
-        );
-      },
-    );
+    CenterNotice.show(context, message: _t('강의를 삭제했습니다.', 'Course deleted.'));
   }
 
   Widget _buildFirstCourseEmptyState(BuildContext context) {
@@ -379,13 +355,16 @@ class _CourseScreenState extends State<CourseScreen> {
                       const Spacer(),
                       IconButton(
                         tooltip: _t('최근 변경', 'Recent changes'),
-                        onPressed: () => showChangeHistorySheet(context),
-                        icon: const Icon(Icons.history),
+                        onPressed: null,
+                        icon: const SizedBox.shrink(),
                         style: IconButton.styleFrom(
-                          backgroundColor: cm.iconButtonBg,
+                          backgroundColor: Colors.transparent,
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 0),
                       IconButton(
                         onPressed: () => _openAdd(context),
                         icon: const Icon(Icons.add),
@@ -762,7 +741,7 @@ class _CourseScreenState extends State<CourseScreen> {
                                                   );
                                                 } else if (value ==
                                                     _CourseMenu.delete) {
-                                                  await _deleteCourseWithUndo(
+                                                  await _deleteCourse(
                                                     context,
                                                     course,
                                                   );

@@ -4,8 +4,22 @@ import 'change_history_service.dart';
 import 'l10n.dart';
 import 'theme.dart';
 
+const Set<String> _todoHistoryActions = <String>{
+  'Todo added',
+  'Todo completed',
+  'Todo reopened',
+  'Recurring todo scheduled',
+  'Todo updated',
+  'Todo snoozed',
+  'Todo deleted',
+  'Todo restored',
+};
+
 Future<void> showChangeHistorySheet(BuildContext context) {
-  final entries = ChangeHistoryService.recent(limit: 30);
+  final entries = ChangeHistoryService.recent(limit: 60)
+      .where((entry) => _todoHistoryActions.contains(entry.action))
+      .take(30)
+      .toList();
   String tr(String ko, String en) => context.tr(ko, en);
 
   if (entries.isEmpty) {
@@ -13,7 +27,7 @@ Future<void> showChangeHistorySheet(BuildContext context) {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(tr('최근 변경', 'Recent changes')),
-        content: Text(tr('최근 변경 내역이 없습니다.', 'No recent changes yet.')),
+        content: Text(tr('할 일 변경 이력이 없습니다.', 'No recent todo changes yet.')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
@@ -51,24 +65,6 @@ Future<void> showChangeHistorySheet(BuildContext context) {
             return tr('할 일 삭제', 'Todo deleted');
           case 'Todo restored':
             return tr('할 일 복원', 'Todo restored');
-          case 'Course added':
-            return tr('강의 추가', 'Course added');
-          case 'Course updated':
-            return tr('강의 수정', 'Course updated');
-          case 'Course deleted':
-            return tr('강의 삭제', 'Course deleted');
-          case 'Course restored':
-            return tr('강의 복원', 'Course restored');
-          case 'PDF uploaded':
-            return tr('PDF 업로드', 'PDF uploaded');
-          case 'PDF deleted':
-            return tr('PDF 삭제', 'PDF deleted');
-          case 'PDF restored':
-            return tr('PDF 복원', 'PDF restored');
-          case 'Backup exported':
-            return tr('백업 내보내기', 'Backup exported');
-          case 'Backup restored':
-            return tr('백업 복원', 'Backup restored');
           default:
             return action;
         }
@@ -95,7 +91,7 @@ Future<void> showChangeHistorySheet(BuildContext context) {
               ),
             );
           },
-          separatorBuilder: (_, separatorIndex) => const Divider(height: 1),
+          separatorBuilder: (_, index) => const Divider(height: 1),
           itemCount: entries.length,
         ),
       );

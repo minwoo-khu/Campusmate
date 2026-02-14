@@ -69,7 +69,7 @@ class CourseDetailScreen extends StatelessWidget {
       _showError(
         context,
         context.tr(
-          'PDF 파일을 읽을 수 없습니다. 다시 시도해주세요.',
+          'PDF ???뵬????뚯뱽 ????곷뮸??덈뼄. ??쇰뻻 ??뺣즲??곻폒?紐꾩뒄.',
           'Failed to read PDF file. Please try again.',
         ),
       );
@@ -80,7 +80,7 @@ class CourseDetailScreen extends StatelessWidget {
       CenterNotice.show(
         context,
         message: context.tr(
-          'PDF 용량 한도(${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB)를 초과했습니다.',
+          'PDF ??몄쎗 ??뺣즲(${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB)???λ뜃???됰뮸??덈뼄.',
           'PDF is too large (limit ${(SafetyLimits.maxCoursePdfBytes / (1024 * 1024)).toStringAsFixed(0)}MB).',
         ),
         error: true,
@@ -92,7 +92,7 @@ class CourseDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
       _showError(
         context,
-        context.tr('올바른 PDF 파일이 아닙니다.', 'Invalid PDF file format.'),
+        context.tr('??而?몴?PDF ???뵬???袁⑤뻸??덈뼄.', 'Invalid PDF file format.'),
       );
       return;
     }
@@ -104,7 +104,7 @@ class CourseDetailScreen extends StatelessWidget {
       CenterNotice.show(
         context,
         message: context.tr(
-          '강의별 PDF 한도(${SafetyLimits.maxMaterialsPerCourse}개)에 도달했습니다.',
+          '揶쏅벡?썼퉪?PDF ??뺣즲(${SafetyLimits.maxMaterialsPerCourse}揶????袁⑤뼎??됰뮸??덈뼄.',
           'PDF limit reached for this course (${SafetyLimits.maxMaterialsPerCourse}).',
         ),
         error: true,
@@ -133,7 +133,10 @@ class CourseDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
       _showError(
         context,
-        context.tr('PDF 저장 중 오류가 발생했습니다.', 'Failed to save the PDF file.'),
+        context.tr(
+          'PDF ????餓???살첒揶쎛 獄쏆뮇源??됰뮸??덈뼄.',
+          'Failed to save the PDF file.',
+        ),
       );
       return;
     }
@@ -157,7 +160,7 @@ class CourseDetailScreen extends StatelessWidget {
       _showError(
         context,
         context.tr(
-          'PDF 등록 중 오류가 발생했습니다.',
+          'PDF ?源낆쨯 餓???살첒揶쎛 獄쏆뮇源??됰뮸??덈뼄.',
           'Failed to register the uploaded PDF.',
         ),
       );
@@ -172,7 +175,7 @@ class CourseDetailScreen extends StatelessWidget {
     if (!context.mounted) return;
     CenterNotice.show(
       context,
-      message: context.tr('PDF를 업로드했습니다.', 'PDF uploaded.'),
+      message: context.tr('PDF????낆쨮??쀫뻥??щ빍??', 'PDF uploaded.'),
     );
   }
 
@@ -241,23 +244,23 @@ class CourseDetailScreen extends StatelessWidget {
     return candidate;
   }
 
-  Future<void> _deleteMaterialWithUndo(
+  Future<void> _deleteMaterial(
     BuildContext context,
     CourseMaterial material,
   ) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(context.tr('PDF를 삭제할까요?', 'Delete PDF?')),
+        title: Text(context.tr('PDF瑜???젣?좉퉴??', 'Delete PDF?')),
         content: Text(material.fileName),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: Text(context.tr('취소', 'Cancel')),
+            child: Text(context.tr('痍⑥냼', 'Cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.tr('삭제', 'Delete')),
+            child: Text(context.tr('??젣', 'Delete')),
           ),
         ],
       ),
@@ -265,85 +268,23 @@ class CourseDetailScreen extends StatelessWidget {
 
     if (ok != true) return;
 
-    final backup = CourseMaterial(
-      courseId: material.courseId,
-      fileName: material.fileName,
-      localPath: material.localPath,
-      addedAt: material.addedAt,
-    );
-
-    List<int>? bytes;
-    var undoAvailable = true;
+    final fileName = material.fileName;
     final f = File(material.localPath);
     try {
       if (await f.exists()) {
-        final fileBytes = await f.length();
-        if (fileBytes <= SafetyLimits.maxUndoPdfBytes) {
-          bytes = await f.readAsBytes();
-        } else {
-          undoAvailable = false;
-        }
         await f.delete();
-      } else {
-        undoAvailable = false;
       }
     } catch (_) {
-      undoAvailable = false;
+      // Ignore local file cleanup failures.
     }
 
     await material.delete();
-    await ChangeHistoryService.log('PDF deleted', detail: backup.fileName);
+    await ChangeHistoryService.log('PDF deleted', detail: fileName);
 
     if (!context.mounted) return;
-
-    if (!undoAvailable) {
-      CenterNotice.show(
-        context,
-        message: context.tr(
-          '"${backup.fileName}" 삭제됨 (용량이 커서 복원 불가)',
-          'Deleted "${backup.fileName}" (undo disabled for large file)',
-        ),
-      );
-      return;
-    }
-
-    await CenterNotice.showActionDialog(
+    CenterNotice.show(
       context,
-      title: context.tr('PDF 삭제됨', 'PDF deleted'),
-      message: context.tr(
-        '"${backup.fileName}"을(를) 삭제했습니다.',
-        'Deleted "${backup.fileName}".',
-      ),
-      actionLabel: context.tr('실행 취소', 'Undo'),
-      onAction: () async {
-        try {
-          if (bytes != null) {
-            final restoreFile = File(backup.localPath);
-            await restoreFile.parent.create(recursive: true);
-            await restoreFile.writeAsBytes(bytes);
-          }
-
-          await Hive.box<CourseMaterial>('course_materials').add(backup);
-          await ChangeHistoryService.log(
-            'PDF restored',
-            detail: backup.fileName,
-          );
-          if (!context.mounted) return;
-          CenterNotice.show(
-            context,
-            message: context.tr('PDF를 복원했습니다.', 'PDF restored.'),
-          );
-        } catch (_) {
-          if (!context.mounted) return;
-          _showError(
-            context,
-            context.tr(
-              'PDF 복원 중 오류가 발생했습니다.',
-              'Failed to restore the deleted PDF.',
-            ),
-          );
-        }
-      },
+      message: context.tr('"$fileName" PDF를 삭제했습니다.', 'Deleted "$fileName".'),
     );
   }
 
@@ -368,7 +309,7 @@ class CourseDetailScreen extends StatelessWidget {
             return Center(
               child: Text(
                 context.tr(
-                  '아직 PDF가 없습니다. + 버튼으로 업로드하세요.',
+                  '?袁⑹춦 PDF揶쎛 ??곷뮸??덈뼄. + 甕곌쑵???곗쨮 ??낆쨮??쀫릭?紐꾩뒄.',
                   'No PDFs yet. Tap + to upload.',
                 ),
               ),
@@ -388,10 +329,12 @@ class CourseDetailScreen extends StatelessWidget {
               return ListTile(
                 leading: const Icon(Icons.picture_as_pdf),
                 title: Text(material.fileName),
-                subtitle: Text(context.tr('추가일: $dateStr', 'Added: $dateStr')),
+                subtitle: Text(
+                  context.tr('?곕떽??? $dateStr', 'Added: $dateStr'),
+                ),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _deleteMaterialWithUndo(context, material),
+                  onPressed: () => _deleteMaterial(context, material),
                 ),
                 onTap: () {
                   final k = material.key;
