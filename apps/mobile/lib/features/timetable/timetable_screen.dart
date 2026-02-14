@@ -26,7 +26,8 @@ class TimetableScreen extends StatefulWidget {
 }
 
 class _TimetableScreenState extends State<TimetableScreen> {
-  static const _legacyPrefKeyTimetablePath = 'timetable_image_path';
+  static const _prefKeyTimetablePath = 'timetable_image_path';
+  static const _managedTimetableDirName = 'timetable';
   static const _maxAutoCandidates = 24;
 
   bool _recognizingCourses = false;
@@ -36,7 +37,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
   @override
   void initState() {
     super.initState();
-    _cleanupLegacyTimetablePersistence();
+    unawaited(_restoreSavedTimetableImage());
   }
 
   String _t(String ko, String en) => context.tr(ko, en);
@@ -46,10 +47,99 @@ class _TimetableScreenState extends State<TimetableScreen> {
     CenterNotice.show(context, message: message, error: true);
   }
 
-  Future<void> _cleanupLegacyTimetablePersistence() async {
+  Future<void> _restoreSavedTimetableImage() async {
+    if (kIsWeb) return;
     final prefs = await SharedPreferences.getInstance();
-    if (prefs.containsKey(_legacyPrefKeyTimetablePath)) {
-      await prefs.remove(_legacyPrefKeyTimetablePath);
+    final savedPath = prefs.getString(_prefKeyTimetablePath);
+    if (savedPath == null || savedPath.isEmpty) return;
+
+    final file = File(savedPath);
+    if (!await file.exists()) {
+      await prefs.remove(_prefKeyTimetablePath);
+      return;
+    }
+
+    var resolvedPath = savedPath;
+    if (!await _isPathInsideAppDocuments(savedPath)) {
+      resolvedPath = await _persistTimetableImage(file);
+    }
+
+    if (!mounted) return;
+    setState(() => _imagePath = resolvedPath);
+  }
+
+  Future<bool> _isPathInsideAppDocuments(String path) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final root = p.normalize(appDir.path);
+    final normalized = p.normalize(path);
+    return normalized == root || p.isWithin(root, normalized);
+  }
+
+  String _normalizeImageExtension(String path) {
+    final ext = p.extension(path).toLowerCase();
+    switch (ext) {
+      case '.jpg':
+      case '.jpeg':
+      case '.png':
+      case '.webp':
+      case '.bmp':
+        return ext;
+      default:
+        return '.jpg';
+    }
+  }
+
+  Future<void> _cleanupManagedTimetableFiles({
+    required Directory dir,
+    required String keepPath,
+  }) async {
+    final keepNormalized = p.normalize(keepPath);
+    if (!await dir.exists()) return;
+    await for (final entity in dir.list()) {
+      if (entity is! File) continue;
+      if (p.normalize(entity.path) == keepNormalized) continue;
+      try {
+        await entity.delete();
+      } catch (_) {
+        // Ignore best-effort cleanup failures.
+      }
+    }
+  }
+
+  Future<String> _persistTimetableImage(File sourceFile) async {
+    final appDir = await getApplicationDocumentsDirectory();
+    final dir = Directory(p.join(appDir.path, _managedTimetableDirName));
+    await dir.create(recursive: true);
+
+    final ext = _normalizeImageExtension(sourceFile.path);
+    final targetPath = p.join(dir.path, 'current$ext');
+    final sourcePath = p.normalize(sourceFile.path);
+    final normalizedTarget = p.normalize(targetPath);
+
+    if (sourcePath != normalizedTarget) {
+      await sourceFile.copy(targetPath);
+    }
+    await _cleanupManagedTimetableFiles(dir: dir, keepPath: normalizedTarget);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefKeyTimetablePath, targetPath);
+    return targetPath;
+  }
+
+  Future<void> _clearPersistedTimetablePath(String? imagePath) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefKeyTimetablePath);
+
+    if (imagePath == null || imagePath.isEmpty) return;
+    if (!await _isPathInsideAppDocuments(imagePath)) return;
+
+    final file = File(imagePath);
+    if (await file.exists()) {
+      try {
+        await file.delete();
+      } catch (_) {
+        // Ignore delete failures for best-effort cleanup.
+      }
     }
   }
 
@@ -589,26 +679,41 @@ class _TimetableScreenState extends State<TimetableScreen> {
       return;
     }
 
+    String storedPath;
+    try {
+      storedPath = await _persistTimetableImage(sourceFile);
+    } catch (_) {
+      _showError(
+        _t(
+          '?대?吏瑜???ν븷 ???놁뒿?덈떎. ?ㅼ떆 ?쒕룄??二쇱꽭??',
+          'Failed to save the image. Please try again.',
+        ),
+      );
+      return;
+    }
+
     if (!mounted) return;
-    setState(() => _imagePath = pickedPath);
+    setState(() => _imagePath = storedPath);
 
     unawaited(
       Future<void>(() async {
         await Future<void>.delayed(const Duration(milliseconds: 180));
-        if (!mounted || _imagePath != pickedPath) return;
-        await _recognizeAndImportCourses(pickedPath);
+        if (!mounted || _imagePath != storedPath) return;
+        await _recognizeAndImportCourses(storedPath);
       }),
     );
   }
 
   Future<void> _clearImage() async {
     _recognitionEpoch++;
+    final imagePath = _imagePath;
 
     if (!mounted) return;
     setState(() {
       _imagePath = null;
       _recognizingCourses = false;
     });
+    await _clearPersistedTimetablePath(imagePath);
   }
 
   Widget _buildPlaceholder() {
