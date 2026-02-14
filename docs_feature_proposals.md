@@ -1,70 +1,46 @@
-# CampusMate Feature Proposals (Local-first)
+# CampusMate Roadmap (Post v1.0.13+14)
 
-This backlog is focused on **free Play Store release** constraints:
+This roadmap keeps the same product constraints:
+- local-first by default
 - no mandatory backend
-- low operating cost
-- strong privacy by default
+- low release/operation cost
 
-## Priority A (high impact, low complexity)
-1. Quick Capture for Todo
-   - Add a persistent "+" FAB/input on Todo tab for one-line fast add.
-   - Optional smart defaults: due date = today, reminder = off.
+## Completed Baseline (already shipped)
 
-2. Overdue / Today sections in Todo
-   - Group list into `Overdue`, `Today`, `Upcoming`, `No due date`.
-   - Helps students triage work at a glance.
+- Todo quick input, reminder/repeat/priority, grouped list UX
+- Calendar month view + ICS feed integration
+- Timetable image upload and optional course name recognition
+- Course dashboard + PDF material management
+- PDF overall note + page memo/tags + memo search/edit/delete
+- Backup export/restore with optional PIN encryption
+- Korean/English language switch and theme preset system
 
-3. Calendar event detail bottom sheet
-   - Tap an event to see source (Todo/ICS), exact time, and actions (open/edit).
+## Next Priority (before/around next public updates)
 
-4. ICS sync reliability UX
-   - Per-feed last success/last failure timestamp.
-   - Manual refresh icon + lightweight “syncing...” indicator.
+1. Timetable OCR quality upgrade
+   - Improve recognition to read block/card units, not only line-level text chunks.
+   - Reduce wrong subject splits and duplicate detections.
 
-## Priority B (retention + usability)
-1. Course dashboard cards
-   - For each course: upcoming tasks count, last note date, latest material title.
+2. PDF memo position UX improvement
+   - Move from top-anchored behavior toward viewport/tapped-position based memo anchoring.
+   - Make lower-page memo authoring/checking faster on long pages.
 
-2. PDF note quality-of-life
-   - “Recent highlights/notes” list for current document.
-   - Jump-to-page from note list.
+3. ICS onboarding guidance
+   - Add first-run guidance for school ICS connection (where to get URL, HTTPS-only rule).
+   - Add reopenable help entry in Settings.
 
-3. Timetable usability
-   - Crop/rotate timetable image in-app.
-   - Optional dark overlay slider for readability.
+4. Copy/visual consistency pass
+   - Final Korean/English wording polish for store-facing release quality.
+   - Standardize spacing, chip/button emphasis, and empty-state wording.
 
-4. Backup / restore (device-local)
-   - Export Hive data to a JSON file and import it later.
-   - Keeps local-first model while reducing data-loss fear.
+## Deferred
 
-## Priority C (polish)
-1. Language consistency pass
-   - unify UI copy into one default language first.
+1. Home widget UX refresh (currently disabled)
+   - Rework layout/readability and click actions.
+   - Re-enable after quality pass on update timing and localization consistency.
 
-2. Empty-state UX
-   - Add contextual CTA buttons (e.g., “Add first Todo”, “Connect ICS feed”).
+2. Calendar range customization
+   - Revisit custom range options after core calendar readability improvements.
 
-3. Theme polishing
-   - Harmonize chip/button color tokens and spacing scale.
-
-## Suggested next sprint (1 week)
-- Day 1-2: Todo `Overdue/Today/Upcoming` grouping + quick add
-- Day 3: Calendar event detail sheet
-- Day 4: Course dashboard card summary
-- Day 5: Buffer + bug fixes
-
-## Deferred (requested for later)
-- ICS user guidance notice
-  - Add a one-time in-app notice/banner explaining how to connect school calendar via ICS.
-  - Explain where to get the school ICS URL and that only HTTPS ICS URLs are supported.
-  - Add a reopenable help entry in Settings (e.g., "How to connect ICS").
-
-- PDF page memo anchor/position improvement
-  - Current page memo entry is top-anchored; lower content on a page requires zooming to place/check notes.
-  - Improve memo UX so users can add/check notes based on current viewport or tapped position (not only page top).
-  - Keep this as a deferred UX enhancement after release.
-
-- Home widget UX refresh (temporarily disabled)
-  - Current widget experience is disabled for release stability.
-  - Rework widget layout/readability and interaction flow, then re-enable.
-  - Validate update timing, click actions, and consistency with in-app language/theme.
+3. Advanced theme customization
+   - Expand from presets toward richer user-defined palette controls with guardrails.

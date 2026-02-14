@@ -1,22 +1,61 @@
 # CampusMate
 
-University student app:
+CampusMate is a local-first campus planner for university students.
+It combines Todo, Calendar, Timetable, and Course materials in one app.
+
+## Current Features (v1.0.13+14)
+
+- Home dashboard
+  - Today overview (active / due today / overdue)
+  - Today tip
+  - Study status summary
 - Todo
-- Calendar (Todo due + ICS feeds)
-- Timetable (image first)
-- Courses (UI first, summary/quiz later)
+  - Quick input
+  - Due date, reminder, repeat, priority
+  - Active/completed filters and grouped list
+  - Reminder snooze actions
+- Calendar
+  - Monthly view with swipe month navigation
+  - Todo due dates + School ICS events in one timeline
+  - ICS settings screen (HTTPS-only feed URL)
+- Timetable
+  - Upload timetable image and view with zoom/pan
+  - Optional course name recognition from image with selectable import
+- Courses and PDF notes
+  - Course memo/tags
+  - PDF upload/view/delete per course
+  - PDF overall note + page memo/tags
+  - Page memo search/edit/delete
+- Settings and data
+  - Theme mode and color preset selection
+  - Korean/English language switch
+  - Local backup export/restore (JSON)
+  - Optional backup PIN encryption
+
+## Local-first & Privacy
+
+- User data is stored on device by default.
+- Network access is limited to features that need it:
+  - School ICS sync (when user adds an ICS URL)
+  - Ads/analytics/crash tooling if enabled in release config
+
+## Known Status
+
+- Home widget feature is temporarily disabled for release stability.
+  - It is planned to return after UX/interaction refresh.
 
 ## Roadmap
-- v0.1: App shell + settings (choose start tab)
-- v0.2: Todo CRUD
-- v0.3: Calendar + ICS feed sync
-- v0.4: Timetable image upload/view
-- v0.5: Course materials UI
-- v0.6+: Summary/Quiz backend integration
 
-## Local-first product direction
-- Primary goal: free Play Store release with minimal operating cost.
-- Keep core features fully offline-first; treat cloud features as optional future add-ons.
-- Prefer UX improvements that increase daily retention before backend-dependent features.
+Roadmap/backlog is maintained in `docs_feature_proposals.md`.
 
-For an implementation-ready feature backlog, see `docs_feature_proposals.md`.
+Current priority direction:
+- Improve timetable OCR block-level recognition quality
+- Improve PDF memo anchor UX (viewport-based memo positioning)
+- Add better ICS connection guidance in-app
+- Re-enable home widgets after UX refresh
+
+## Play Store Docs
+
+- Store listing draft: `docs/store_listing_ko.md`
+- Release checklist: `docs/play_store_release_checklist.md`
+- Privacy policy drafts: `docs/privacy_policy_ko.md`, `docs/privacy_policy_en.md`
