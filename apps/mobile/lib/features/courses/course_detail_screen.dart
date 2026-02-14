@@ -346,9 +346,12 @@ class CourseDetailScreen extends StatelessWidget {
                 leading: const Icon(Icons.picture_as_pdf),
                 title: Text(material.fileName),
                 subtitle: Text(context.tr('추가일: $dateStr', 'Added: $dateStr')),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline),
-                  onPressed: () => _deleteMaterial(context, material),
+                trailing: Transform.translate(
+                  offset: const Offset(6, 0),
+                  child: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _deleteMaterial(context, material),
+                  ),
                 ),
                 onTap: () {
                   final k = material.key;
