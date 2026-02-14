@@ -40,7 +40,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _loading = false;
   String? _message;
   CalendarRangeConfig _calendarRange = CalendarRangeSettings.defaultValue;
-  DateTime? _lastIcsSyncAt;
   DateTime? _lastIcsFailureAt;
   String? _lastIcsFailureReason;
   List<IcsEvent> _icsEvents = [];
@@ -299,9 +298,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (!mounted) return;
     setState(() {
       _icsEvents = cachedEvents;
-      _lastIcsSyncAt = _parseIsoLocal(
-        prefs.getString(_prefKeyIcsLastSuccessAt),
-      );
       _lastIcsFailureAt = _parseIsoLocal(
         prefs.getString(_prefKeyIcsLastFailureAt),
       );
@@ -351,7 +347,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       setState(() {
         _loading = false;
         _icsEvents = [];
-        _lastIcsSyncAt = null;
         _lastIcsFailureAt = null;
         _lastIcsFailureReason = null;
         _message = _t(
@@ -411,7 +406,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
       setState(() {
         _icsEvents = events;
         _loading = false;
-        _lastIcsSyncAt = now;
         _lastIcsFailureAt = null;
         _lastIcsFailureReason = null;
         if (events.isEmpty) {
@@ -949,46 +943,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           width: 14,
                           height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              _lastIcsSyncAt == null
-                                  ? context.tr(
-                                      '최근 성공: 없음',
-                                      'Last success: none',
-                                    )
-                                  : context.tr(
-                                      '최근 성공: ${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
-                                      'Last success: ${_fmtYmd(_lastIcsSyncAt!)} ${_fmtHm(_lastIcsSyncAt!)}',
-                                    ),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: cm.textHint,
-                              ),
-                            ),
-                            if (_lastIcsFailureAt != null)
-                              Text(
-                                context.tr(
-                                  '최근 실패: ${_fmtYmd(_lastIcsFailureAt!)} ${_fmtHm(_lastIcsFailureAt!)}',
-                                  'Last failure: ${_fmtYmd(_lastIcsFailureAt!)} ${_fmtHm(_lastIcsFailureAt!)}',
-                                ),
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: cm.deleteBg,
-                                ),
-                              ),
-                          ],
                         ),
-                      const SizedBox(width: 6),
-                      IconButton(
-                        onPressed: _loadIcs,
-                        icon: const Icon(Icons.refresh, size: 18),
-                        visualDensity: VisualDensity.compact,
-                        tooltip: context.tr('동기화', 'Sync'),
-                      ),
                     ],
                   ),
                 ),
