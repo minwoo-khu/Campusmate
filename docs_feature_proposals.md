@@ -58,3 +58,8 @@ This backlog is focused on **free Play Store release** constraints:
   - Add a one-time in-app notice/banner explaining how to connect school calendar via ICS.
   - Explain where to get the school ICS URL and that only HTTPS ICS URLs are supported.
   - Add a reopenable help entry in Settings (e.g., "How to connect ICS").
+
+- PDF page memo anchor/position improvement
+  - Current page memo entry is top-anchored; lower content on a page requires zooming to place/check notes.
+  - Improve memo UX so users can add/check notes based on current viewport or tapped position (not only page top).
+  - Keep this as a deferred UX enhancement after release.
