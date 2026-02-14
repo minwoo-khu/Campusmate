@@ -52,3 +52,9 @@ This backlog is focused on **free Play Store release** constraints:
 - Day 3: Calendar event detail sheet
 - Day 4: Course dashboard card summary
 - Day 5: Buffer + bug fixes
+
+## Deferred (requested for later)
+- ICS user guidance notice
+  - Add a one-time in-app notice/banner explaining how to connect school calendar via ICS.
+  - Explain where to get the school ICS URL and that only HTTPS ICS URLs are supported.
+  - Add a reopenable help entry in Settings (e.g., "How to connect ICS").
