@@ -10,6 +10,7 @@ import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
 import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
+import '../../app/theme.dart';
 import 'course_material.dart';
 import 'pdf_viewer_screen.dart';
 
@@ -289,10 +290,21 @@ class CourseDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cm = context.cmColors;
     final box = Hive.box<CourseMaterial>('course_materials');
 
     return Scaffold(
-      appBar: AppBar(title: Text(courseName)),
+      appBar: AppBar(
+        title: Text(
+          courseName,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+            color: cm.textPrimary,
+          ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _pickAndSavePdf(context),
         child: const Icon(Icons.upload_file),
