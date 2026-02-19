@@ -29,7 +29,7 @@ class AdService {
     if (!isEnabled) return null;
     final configured = _androidBannerUnitId.trim();
     if (configured.isNotEmpty) return configured;
-    return kReleaseMode ? null : _androidTestBannerUnitId;
+    return _androidTestBannerUnitId;
   }
 
   bool get canLoadBanner => bannerUnitId != null;
