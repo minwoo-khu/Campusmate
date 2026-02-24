@@ -33,3 +33,8 @@ python -m http.server 5173
 기본 주소:
 
 - `https://minwoo-khu.github.io/Campusmate/`
+
+## Download asset
+
+- Windows direct download file:
+  - `services/website/assets/downloads/CampusMate-Windows.zip`

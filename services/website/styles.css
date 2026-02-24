@@ -259,13 +259,6 @@ main {
   line-height: 1.58;
 }
 
-.download-actions {
-  margin-top: 14px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 .download-card .btn {
   margin-top: 14px;
 }
