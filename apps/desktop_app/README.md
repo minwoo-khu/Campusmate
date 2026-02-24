@@ -11,13 +11,27 @@ flutter run -d windows
 
 ## Release Build (Windows)
 
-`jni` native dependency needs a JDK path containing `include/jni.h`.
-
 ```powershell
-$env:JAVA_HOME="C:\path\to\jdk"
 flutter build windows --release
 ```
 
 Output:
 
 - `build/windows/x64/runner/Release/desktop_app.exe`
+
+## Install Like a Normal App (No Folder Copy)
+
+Run installer script:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install_desktop_app.ps1
+```
+
+Installed path:
+
+- `%LOCALAPPDATA%\Programs\CampusMate\CampusMate.exe`
+
+Shortcuts:
+
+- Start menu: `CampusMate`
+- Desktop: `CampusMate` (created by default)
