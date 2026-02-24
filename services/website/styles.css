@@ -216,10 +216,58 @@ main {
 
 .feature-strip article,
 .showcase,
-.value-card {
+.value-card,
+.download-card {
   border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.download-section {
+  margin-top: 44px;
+}
+
+.download-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.download-card {
+  border-radius: var(--radius-lg);
+  padding: 22px;
+}
+
+.platform {
+  margin: 0;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.download-card h3 {
+  margin: 10px 0 8px;
+  font-size: 1.2rem;
+}
+
+.download-card p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.58;
+}
+
+.download-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.download-card .btn {
+  margin-top: 14px;
 }
 
 .feature-strip article {
@@ -380,6 +428,7 @@ main {
 }
 
 @media (max-width: 900px) {
+  .download-grid,
   .feature-strip {
     grid-template-columns: 1fr;
   }
