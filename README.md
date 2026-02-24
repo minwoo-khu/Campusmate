@@ -3,7 +3,14 @@
 CampusMate is a local-first campus planner for university students.
 It combines Todo, Calendar, Timetable, and Course materials in one app.
 
-## Current Features (v1.0.13+14)
+## Workspace Layout
+
+- `packages/campusmate_core`: shared app logic/UI/data layer
+- `apps/mobile`: Android/iOS launcher app (Play Store release target)
+- `apps/desktop_app`: desktop launcher app (Windows/macOS/Linux)
+- `apps/web_app`: web launcher app (static hosting target)
+
+## Current Features (v1.0.15+16)
 
 - Home dashboard
   - Today overview (active / due today / overdue)
@@ -59,3 +66,15 @@ Current priority direction:
 - Store listing draft: `docs/store_listing_ko.md`
 - Release checklist: `docs/play_store_release_checklist.md`
 - Privacy policy drafts: `docs/privacy_policy_ko.md`, `docs/privacy_policy_en.md`
+
+## Quick Start
+
+- Mobile:
+  - `cd apps/mobile`
+  - `flutter run`
+- Desktop:
+  - `cd apps/desktop_app`
+  - `flutter run -d windows` (requires Visual Studio C++ workload)
+- Web:
+  - `cd apps/web_app`
+  - `flutter run -d chrome`

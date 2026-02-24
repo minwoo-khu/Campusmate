@@ -1,0 +1,45 @@
+name: campusmate_core
+description: "Shared CampusMate application core for mobile, desktop, and web launchers."
+version: 1.0.15
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.7
+  flutter: ">=3.32.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  shared_preferences: ^2.2.3
+  uuid: ^4.3.3
+  file_picker: ^8.0.0
+  path_provider: ^2.1.4
+  path: ^1.9.0
+  http: ^1.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  table_calendar: ^3.1.2
+  pdfx: ^2.6.0
+  cupertino_icons: ^1.0.8
+  flutter_local_notifications: ^20.0.0
+  timezone: ^0.10.1
+  flutter_timezone: ^5.0.1
+  home_widget: ^0.8.1
+  cryptography: ^2.7.0
+  sentry_flutter: ^9.12.0
+  google_mobile_ads: ^7.0.0
+  google_mlkit_text_recognition: ^0.15.1
+  image: ^4.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.11
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/campusmate_logo.png

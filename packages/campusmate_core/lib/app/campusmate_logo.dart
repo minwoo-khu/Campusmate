@@ -16,6 +16,7 @@ class CampusMateLogo extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.28),
         child: Image.asset(
           'assets/images/campusmate_logo.png',
+          package: 'campusmate_core',
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) =>
               _LogoFallback(size: size),

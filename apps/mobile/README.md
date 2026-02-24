@@ -1,6 +1,7 @@
 # CampusMate Mobile
 
-Flutter client for CampusMate.
+Flutter launcher app for CampusMate.
+Shared app logic/UI is provided by `../../packages/campusmate_core`.
 
 ## Release Build
 

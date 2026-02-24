@@ -1,5 +1,5 @@
-name: mobile
-description: "CampusMate mobile launcher app."
+name: web_app
+description: "CampusMate web launcher app."
 publish_to: 'none'
 version: 1.0.15+16
 
