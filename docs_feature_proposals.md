@@ -9,7 +9,7 @@ This roadmap keeps the same product constraints:
 
 - Todo quick input, reminder/repeat/priority, grouped list UX
 - Calendar month view + ICS feed integration
-- Timetable image upload and optional course name recognition
+- Timetable image upload and zoom/pan review
 - Course dashboard + PDF material management
 - PDF overall note + page memo/tags + memo search/edit/delete
 - Backup export/restore with optional PIN encryption
@@ -17,19 +17,15 @@ This roadmap keeps the same product constraints:
 
 ## Next Priority (before/around next public updates)
 
-1. Timetable OCR quality upgrade
-   - Improve recognition to read block/card units, not only line-level text chunks.
-   - Reduce wrong subject splits and duplicate detections.
-
-2. PDF memo position UX improvement
+1. PDF memo position UX improvement
    - Move from top-anchored behavior toward viewport/tapped-position based memo anchoring.
    - Make lower-page memo authoring/checking faster on long pages.
 
-3. ICS onboarding guidance
+2. ICS onboarding guidance
    - Add first-run guidance for school ICS connection (where to get URL, HTTPS-only rule).
    - Add reopenable help entry in Settings.
 
-4. Copy/visual consistency pass
+3. Copy/visual consistency pass
    - Final Korean/English wording polish for store-facing release quality.
    - Standardize spacing, chip/button emphasis, and empty-state wording.
 

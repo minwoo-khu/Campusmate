@@ -27,7 +27,6 @@ It combines Todo, Calendar, Timetable, and Course materials in one app.
   - ICS settings screen (HTTPS-only feed URL)
 - Timetable
   - Upload timetable image and view with zoom/pan
-  - Optional course name recognition from image with selectable import
 - Courses and PDF notes
   - Course memo/tags
   - PDF upload/view/delete per course
@@ -44,7 +43,7 @@ It combines Todo, Calendar, Timetable, and Course materials in one app.
 - User data is stored on device by default.
 - Network access is limited to features that need it:
   - School ICS sync (when user adds an ICS URL)
-  - Ads/analytics/crash tooling if enabled in release config
+  - Ads tooling if enabled in release config
 
 ## Known Status
 
@@ -56,7 +55,6 @@ It combines Todo, Calendar, Timetable, and Course materials in one app.
 Roadmap/backlog is maintained in `docs_feature_proposals.md`.
 
 Current priority direction:
-- Improve timetable OCR block-level recognition quality
 - Improve PDF memo anchor UX (viewport-based memo positioning)
 - Add better ICS connection guidance in-app
 - Re-enable home widgets after UX refresh
