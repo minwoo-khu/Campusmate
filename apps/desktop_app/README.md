@@ -1,16 +1,23 @@
-# desktop_app
+# CampusMate Desktop App
 
-A new Flutter project.
+Desktop launcher app for CampusMate.
+Shared app code is in `../../packages/campusmate_core`.
 
-## Getting Started
+## Run
 
-This project is a starting point for a Flutter application.
+```powershell
+flutter run -d windows
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Release Build (Windows)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+`jni` native dependency needs a JDK path containing `include/jni.h`.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```powershell
+$env:JAVA_HOME="C:\path\to\jdk"
+flutter build windows --release
+```
+
+Output:
+
+- `build/windows/x64/runner/Release/desktop_app.exe`

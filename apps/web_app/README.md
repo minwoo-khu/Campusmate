@@ -1,16 +1,20 @@
-# web_app
+# CampusMate Web App
 
-A new Flutter project.
+Web launcher app for CampusMate.
+Shared app code is in `../../packages/campusmate_core`.
 
-## Getting Started
+## Run
 
-This project is a starting point for a Flutter application.
+```powershell
+flutter run -d chrome
+```
 
-A few resources to get you started if this is your first Flutter project:
+## Release Build
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```powershell
+flutter build web --release
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Output:
+
+- `build/web`

@@ -75,6 +75,7 @@ Current priority direction:
 - Desktop:
   - `cd apps/desktop_app`
   - `flutter run -d windows` (requires Visual Studio C++ workload)
+  - Windows release builds require `JAVA_HOME` pointing to a JDK that contains `include/jni.h`
 - Web:
   - `cd apps/web_app`
   - `flutter run -d chrome`
