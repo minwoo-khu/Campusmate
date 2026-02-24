@@ -9,6 +9,7 @@ It combines Todo, Calendar, Timetable, and Course materials in one app.
 - `apps/mobile`: Android/iOS launcher app (Play Store release target)
 - `apps/desktop_app`: desktop launcher app (Windows/macOS/Linux)
 - `apps/web_app`: web launcher app (static hosting target)
+- `services/website`: static marketing website (landing page)
 
 ## Current Features (v1.0.15+16)
 
@@ -73,7 +74,8 @@ Current priority direction:
 - Desktop:
   - `cd apps/desktop_app`
   - `flutter run -d windows` (requires Visual Studio C++ workload)
-  - Windows release builds require `JAVA_HOME` pointing to a JDK that contains `include/jni.h`
 - Web:
   - `cd apps/web_app`
   - `flutter run -d chrome`
+- Website (static):
+  - Open `services/website/index.html` directly, or serve the folder with any static server
