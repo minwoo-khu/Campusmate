@@ -30,6 +30,17 @@ $startMenuDir = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Ca
 $startMenuShortcut = Join-Path $startMenuDir 'CampusMate.lnk'
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'CampusMate.lnk'
 
+function Stop-CampusMateProcesses {
+  $processes = Get-Process CampusMate -ErrorAction SilentlyContinue
+  if ($processes) {
+    Write-Host "Stopping running CampusMate process(es)..."
+    $processes | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 400
+  }
+}
+
+Stop-CampusMateProcesses
+
 Write-Host "[2/3] Installing to: $installDir"
 if (Test-Path $installDir) {
   Remove-Item -Recurse -Force $installDir
@@ -84,6 +95,8 @@ $ErrorActionPreference = "Stop"
 $installDir = Join-Path $env:LOCALAPPDATA "Programs\CampusMate"
 $startMenuDir = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\CampusMate"
 $desktopShortcut = Join-Path ([Environment]::GetFolderPath("Desktop")) "CampusMate.lnk"
+Get-Process CampusMate -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 400
 if (Test-Path $desktopShortcut) { Remove-Item -Force $desktopShortcut }
 if (Test-Path $startMenuDir) { Remove-Item -Recurse -Force $startMenuDir }
 if (Test-Path $installDir) { Remove-Item -Recurse -Force $installDir }
