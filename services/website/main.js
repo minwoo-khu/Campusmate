@@ -12,6 +12,7 @@ const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 let index = 0;
 let autoTimer = null;
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function renderDots() {
   if (!dotsWrap) return;
@@ -42,8 +43,9 @@ function step(delta) {
 }
 
 function restartAutoPlay() {
+  if (reduceMotion) return;
   if (autoTimer) clearInterval(autoTimer);
-  autoTimer = setInterval(() => step(1), 3200);
+  autoTimer = setInterval(() => step(1), 3600);
 }
 
 if (prevBtn) {
@@ -70,7 +72,7 @@ const observer = new IntersectionObserver(
       }
     });
   },
-  { threshold: 0.16 }
+  { threshold: 0.18 }
 );
 
 revealItems.forEach((item) => observer.observe(item));

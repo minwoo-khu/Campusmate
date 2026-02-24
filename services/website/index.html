@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CampusMate | Todo, Calendar, Timetable</title>
+  <title>CampusMate | Plan your semester with calm focus</title>
   <meta
     name="description"
-    content="CampusMate는 할 일, 캘린더, 시간표, 강의 자료를 한 곳에서 관리하는 로컬 중심 학습 플래너입니다."
+    content="CampusMate는 할 일, 캘린더, 시간표, 강의 PDF를 하나의 흐름으로 정리하는 대학생용 플래너입니다."
   />
   <link rel="icon" type="image/png" href="./assets/images/app_icon_512.png" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -17,97 +17,94 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="bg-orb orb-a"></div>
-  <div class="bg-orb orb-b"></div>
-  <div class="bg-orb orb-c"></div>
+  <div class="bg gradient-a"></div>
+  <div class="bg gradient-b"></div>
+  <div class="noise"></div>
 
-  <header class="site-header">
+  <header class="topbar">
     <a class="brand" href="#">
       <img src="./assets/images/app_icon_512.png" alt="CampusMate logo" />
       <span>CampusMate</span>
     </a>
-    <nav class="header-actions">
-      <a class="btn ghost" href="https://github.com/minwoo-khu/Campusmate" target="_blank" rel="noreferrer">GitHub</a>
-      <a class="btn solid" href="https://play.google.com/store/apps/details?id=com.campusmate" target="_blank" rel="noreferrer">Google Play</a>
+    <nav class="top-actions">
+      <a class="chip" href="#overview">Overview</a>
+      <a class="chip" href="#screens">Screens</a>
+      <a class="chip strong" href="https://play.google.com/store/apps/details?id=com.campusmate" target="_blank" rel="noreferrer">Get App</a>
     </nav>
   </header>
 
   <main>
-    <section class="hero reveal">
-      <div class="hero-copy">
-        <p class="eyebrow">University Planner</p>
-        <h1>
-          과제, 일정, 시간표,
-          <span>강의자료까지 한 화면에서</span>
-        </h1>
-        <p class="hero-desc">
-          CampusMate는 복잡한 학교 생활을 정리하기 위한 로컬 중심 플래너입니다.
-          빠른 입력, 캘린더 연동, 강의 PDF 관리까지 하나의 흐름으로 이어집니다.
-        </p>
-        <div class="hero-cta">
-          <a class="btn solid" href="https://play.google.com/store/apps/details?id=com.campusmate" target="_blank" rel="noreferrer">앱 설치하기</a>
-          <a class="btn ghost" href="#screens">화면 미리보기</a>
-        </div>
-      </div>
-      <div class="hero-visual">
-        <img
-          class="feature-graphic"
-          src="./assets/images/feature_graphic_1024x500.png"
-          alt="CampusMate feature graphic"
-        />
+    <section id="overview" class="hero reveal">
+      <p class="kicker">Campus Planner</p>
+      <h1>
+        한 학기 전체를
+        <span>단정한 한 화면으로.</span>
+      </h1>
+      <p class="hero-copy">
+        해야 할 일, 시험 일정, 수업 시간표, 강의 PDF를 분산된 앱이 아니라
+        한 흐름으로 묶어서 관리하세요. CampusMate는 빠르게 입력하고,
+        조용하게 정리되며, 필요한 순간에 바로 열립니다.
+      </p>
+      <div class="hero-cta">
+        <a class="btn solid" href="https://play.google.com/store/apps/details?id=com.campusmate" target="_blank" rel="noreferrer">Google Play 설치</a>
+        <a class="btn soft" href="https://github.com/minwoo-khu/Campusmate" target="_blank" rel="noreferrer">GitHub 보기</a>
       </div>
     </section>
 
-    <section id="screens" class="screen-section reveal">
-      <div class="section-head">
-        <h2>핵심 화면</h2>
-        <p>실제 앱 화면 흐름으로 바로 확인할 수 있습니다.</p>
+    <section class="feature-strip reveal">
+      <article>
+        <h3>Today Focus</h3>
+        <p>오늘 마감 항목을 먼저 보여주고, 우선순위를 빠르게 정리합니다.</p>
+      </article>
+      <article>
+        <h3>Calendar Flow</h3>
+        <p>월 단위 흐름과 날짜별 일정을 한 눈에 비교할 수 있습니다.</p>
+      </article>
+      <article>
+        <h3>Course Materials</h3>
+        <p>강의별 PDF와 메모를 모아 복습 동선을 단순하게 만듭니다.</p>
+      </article>
+    </section>
+
+    <section id="screens" class="showcase reveal">
+      <div class="showcase-head">
+        <h2>Designed for everyday use.</h2>
+        <p>실제 앱 화면으로 핵심 플로우를 바로 확인할 수 있습니다.</p>
       </div>
-      <div class="phone-stage">
-        <button class="arrow" id="prevBtn" aria-label="previous">‹</button>
-        <div class="phone-frame">
+      <div class="viewer">
+        <button class="arrow" id="prevBtn" aria-label="previous screen">‹</button>
+        <figure class="phone">
           <img id="screenImage" src="./assets/images/01_home.png" alt="CampusMate screen preview" />
+          <figcaption>CampusMate mobile preview</figcaption>
           <div class="screen-dots" id="screenDots"></div>
-        </div>
-        <button class="arrow" id="nextBtn" aria-label="next">›</button>
+        </figure>
+        <button class="arrow" id="nextBtn" aria-label="next screen">›</button>
       </div>
     </section>
 
-    <section class="feature-grid reveal">
-      <article class="feature-card">
-        <h3>할 일</h3>
-        <p>빠른 입력, 우선순위, 마감/리마인더로 당일 작업을 정리합니다.</p>
+    <section class="value-grid reveal">
+      <article class="value-card">
+        <h3>로컬 중심 저장</h3>
+        <p>개인 데이터는 기본적으로 기기 내에 저장됩니다.</p>
       </article>
-      <article class="feature-card">
-        <h3>캘린더</h3>
-        <p>월별 일정 흐름을 한 눈에 보고 필요한 날짜만 빠르게 확인합니다.</p>
+      <article class="value-card">
+        <h3>가벼운 구조</h3>
+        <p>필요한 기능 중심으로 구성해 학기 중에도 빠르게 동작합니다.</p>
       </article>
-      <article class="feature-card">
-        <h3>시간표</h3>
-        <p>학기 시간표 이미지를 업로드하고 확대/축소로 수업 시간을 확인합니다.</p>
+      <article class="value-card">
+        <h3>한국어/영어 지원</h3>
+        <p>언어 전환과 테마 프리셋으로 환경을 바로 맞출 수 있습니다.</p>
       </article>
-      <article class="feature-card">
-        <h3>강의 자료</h3>
-        <p>강의별 PDF를 정리하고 노트/페이지 메모로 복습 포인트를 남깁니다.</p>
+      <article class="value-card">
+        <h3>백업/복원</h3>
+        <p>JSON 내보내기/복원과 PIN 기반 암호화를 지원합니다.</p>
       </article>
-    </section>
-
-    <section class="roadmap reveal">
-      <div class="section-head">
-        <h2>진행 방향</h2>
-        <p>모바일 중심 기능을 웹/데스크탑까지 동일하게 확장 중입니다.</p>
-      </div>
-      <ul>
-        <li>웹 전용 화면 최적화</li>
-        <li>데스크탑 설치 경험 정리</li>
-        <li>클라우드 동기화 옵션 검토</li>
-      </ul>
     </section>
   </main>
 
-  <footer class="site-footer">
+  <footer class="footer">
     <p>CampusMate</p>
-    <p class="muted">Todo, Calendar, Timetable in one place</p>
+    <p>Todo, Calendar, Timetable, Course Notes in one place.</p>
   </footer>
 
   <script src="./main.js"></script>
