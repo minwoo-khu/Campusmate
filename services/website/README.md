@@ -21,3 +21,18 @@ Open:
 - `styles.css`
 - `main.js`
 - `assets/images/*`
+
+## Deploy (GitHub Pages)
+
+Workflow:
+
+- `.github/workflows/deploy-website.yml`
+
+Trigger:
+
+- Push to `main` with changes under `services/website/**`
+- Manual run via `workflow_dispatch`
+
+Repository setting:
+
+- `Settings > Pages > Build and deployment > Source` must be `GitHub Actions`
