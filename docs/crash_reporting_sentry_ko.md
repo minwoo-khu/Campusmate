@@ -1,35 +1,11 @@
-# Sentry 크래시 리포팅 설정
+# 크래시 리포팅 문서 상태
 
-최종 업데이트: 2026-02-12
+기준일: 2026-02-24
 
-CampusMate는 `sentry_flutter`를 기본 포함하고, 아래 조건에서만 활성화됩니다.
+현재 CampusMate는 Sentry를 사용하지 않습니다.
 
-- `--dart-define=ENABLE_SENTRY=true`
-- `--dart-define=SENTRY_DSN=...`
+- `sentry_flutter` 의존성 제거됨
+- `ENABLE_SENTRY`, `SENTRY_DSN` 설정 사용 안 함
+- 크래시 처리 로직은 앱 내부 fallback 훅 기반으로 유지
 
-## 1) 실행 예시
-
-```powershell
-cd apps/mobile
-flutter run --dart-define=ENABLE_SENTRY=true --dart-define=SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
-```
-
-릴리즈 빌드 예시:
-
-```powershell
-flutter build appbundle --release `
-  --dart-define=ENABLE_SENTRY=true `
-  --dart-define=SENTRY_DSN=https://<key>@o<org>.ingest.sentry.io/<project>
-```
-
-## 2) 앱 내 점검
-
-설정 > `크래시 리포팅` 섹션에서:
-- 상태(활성/비활성) 확인
-- 테스트 이벤트 전송 버튼 실행
-
-## 3) 권장 운영
-
-- 프로덕션 DSN은 CI/CD 비밀변수로 관리
-- 디버그/스테이징/프로덕션 프로젝트 분리
-- 릴리즈 태그와 Sentry release 버전 일치
+이 문서는 과거 Sentry 설정 문서의 대체 안내입니다.

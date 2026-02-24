@@ -1,6 +1,6 @@
 # Android 릴리즈 서명 가이드
 
-최종 업데이트: 2026-02-12
+기준일: 2026-02-24
 
 ## 1) 업로드 키스토어 생성
 
@@ -13,12 +13,12 @@ keytool -genkeypair -v `
   -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-생성된 `upload-keystore.jks` 파일은 Git에 올리지 말고 안전한 위치에 백업하세요.
+생성된 `upload-keystore.jks`는 Git에 커밋하지 않고, 안전한 위치에 백업합니다.
 
-## 2) key.properties 생성
+## 2) `key.properties` 작성
 
-`apps/mobile/android/key.properties.example`를 복사해서
-`apps/mobile/android/key.properties` 파일을 만듭니다.
+`apps/mobile/android/key.properties.example`를 복사해  
+`apps/mobile/android/key.properties`를 생성합니다.
 
 예시:
 
@@ -29,18 +29,19 @@ keyAlias=upload
 keyPassword=YOUR_KEY_PASSWORD
 ```
 
-## 3) 릴리즈 빌드
+## 3) AAB 빌드
 
 ```powershell
 cd apps/mobile
 flutter build appbundle --release
 ```
 
-성공 시 산출물:
+출력 파일:
+
 - `apps/mobile/build/app/outputs/bundle/release/app-release.aab`
 
 ## 4) 체크 포인트
 
-- `key.properties`/`.jks`는 절대 커밋 금지
-- 키스토어 파일 + 비밀번호를 오프라인 백업
-- 업로드 키 분실 대비 문서화
+- `.jks` / `key.properties`는 절대 저장소에 커밋하지 않기
+- 키스토어와 비밀번호는 오프라인 백업 유지
+- Play Console 업로드 전에 버전 증가 여부 확인

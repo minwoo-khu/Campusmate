@@ -1,42 +1,30 @@
-# CampusMate Roadmap (Post v1.0.13+14)
+# CampusMate 기능 제안/백로그
 
-This roadmap keeps the same product constraints:
-- local-first by default
-- no mandatory backend
-- low release/operation cost
+기준일: 2026-02-24
 
-## Completed Baseline (already shipped)
+## 완료된 기반 기능
 
-- Todo quick input, reminder/repeat/priority, grouped list UX
-- Calendar month view + ICS feed integration
-- Timetable image upload and zoom/pan review
-- Course dashboard + PDF material management
-- PDF overall note + page memo/tags + memo search/edit/delete
-- Backup export/restore with optional PIN encryption
-- Korean/English language switch and theme preset system
+- 할 일: 빠른 입력, 마감/리마인더/반복/우선순위, 필터
+- 캘린더: 월간 보기, Todo/ICS 일정 통합
+- 시간표: 이미지 업로드 + 확대/축소 확인
+- 강의: PDF 관리, 전체 메모, 페이지 메모/태그, 메모 검색
+- 설정: 테마, 언어 전환, 백업 내보내기/복원, PIN 암호화
 
-## Next Priority (before/around next public updates)
+## 다음 우선순위
 
-1. PDF memo position UX improvement
-   - Move from top-anchored behavior toward viewport/tapped-position based memo anchoring.
-   - Make lower-page memo authoring/checking faster on long pages.
+1. PDF 페이지 메모 UX 개선
+   - 긴 PDF 하단 페이지에서도 메모 작성/확인이 자연스럽도록 위치 기준 개선
+2. ICS 연결 안내 UX
+   - 학교 ICS URL 발급/입력 방법을 앱 내에서 다시 볼 수 있게 안내
+3. 카피/디자인 일관성 마무리
+   - 한국어/영어 문구 톤 통일
+   - 버튼/칩/여백 스타일 일관화
 
-2. ICS onboarding guidance
-   - Add first-run guidance for school ICS connection (where to get URL, HTTPS-only rule).
-   - Add reopenable help entry in Settings.
+## 나중에 진행
 
-3. Copy/visual consistency pass
-   - Final Korean/English wording polish for store-facing release quality.
-   - Standardize spacing, chip/button emphasis, and empty-state wording.
-
-## Deferred
-
-1. Home widget UX refresh (currently disabled)
-   - Rework layout/readability and click actions.
-   - Re-enable after quality pass on update timing and localization consistency.
-
-2. Calendar range customization
-   - Revisit custom range options after core calendar readability improvements.
-
-3. Advanced theme customization
-   - Expand from presets toward richer user-defined palette controls with guardrails.
+1. 홈 위젯 재도입
+   - 현재는 UX 재정비를 위해 비활성화
+2. 사용자 커스텀 테마 확장
+   - 프리셋 기반 이후 사용자 정의 색상 범위 확장
+3. 캘린더 범위 커스터마이즈 재검토
+   - 핵심 가독성 개선 이후 재도입 여부 판단

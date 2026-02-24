@@ -1,38 +1,35 @@
 # CampusMate Website
 
-Static landing page for CampusMate.
+`services/website`는 CampusMate 랜딩 페이지(정적 사이트)입니다.
 
-## Run locally
+## 로컬 확인
 
-From repository root:
+간단히 파일 열기:
+
+- `index.html` 더블클릭
+
+또는 정적 서버:
 
 ```powershell
 cd services/website
 python -m http.server 5173
 ```
 
-Open:
+접속:
 
 - `http://localhost:5173`
 
-## Files
+## GitHub Pages 배포
 
-- `index.html`
-- `styles.css`
-- `main.js`
-- `assets/images/*`
+- 워크플로우: `.github/workflows/deploy-website.yml`
+- 트리거:
+  - `main` 브랜치에 `services/website/**` 변경 푸시
+  - 수동 실행(`workflow_dispatch`)
 
-## Deploy (GitHub Pages)
+저장소 설정:
 
-Workflow:
+- `Settings > Pages > Source = GitHub Actions`
 
-- `.github/workflows/deploy-website.yml`
+기본 주소:
 
-Trigger:
-
-- Push to `main` with changes under `services/website/**`
-- Manual run via `workflow_dispatch`
-
-Repository setting:
-
-- `Settings > Pages > Build and deployment > Source` must be `GitHub Actions`
+- `https://minwoo-khu.github.io/Campusmate/`

@@ -1,37 +1,37 @@
-# CampusMate Desktop App
+# CampusMate Desktop
 
-Desktop launcher app for CampusMate.
-Shared app code is in `../../packages/campusmate_core`.
+`apps/desktop_app`은 CampusMate의 데스크톱 런처입니다.  
+공통 기능 코드는 `../../packages/campusmate_core`를 사용합니다.
 
-## Run
+## 로컬 실행 (Windows)
 
 ```powershell
 flutter run -d windows
 ```
 
-## Release Build (Windows)
+## 릴리즈 빌드 (Windows)
 
 ```powershell
 flutter build windows --release
 ```
 
-Output:
+출력 파일:
 
 - `build/windows/x64/runner/Release/desktop_app.exe`
 
-## Install Like a Normal App (No Folder Copy)
+## 설치형 배포 (폴더 통복사 없이 실행)
 
-Run installer script:
+아래 스크립트가 `%LOCALAPPDATA%\Programs\CampusMate`에 설치하고  
+시작 메뉴/바탕화면 바로가기를 생성합니다.
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\install_desktop_app.ps1
 ```
 
-Installed path:
+설치 후 실행:
 
 - `%LOCALAPPDATA%\Programs\CampusMate\CampusMate.exe`
 
-Shortcuts:
+제거:
 
-- Start menu: `CampusMate`
-- Desktop: `CampusMate` (created by default)
+- `%LOCALAPPDATA%\Programs\CampusMate\uninstall.ps1`

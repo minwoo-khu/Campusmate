@@ -1,38 +1,46 @@
 # CampusMate Mobile
 
-Flutter launcher app for CampusMate.
-Shared app logic/UI is provided by `../../packages/campusmate_core`.
+`apps/mobile`은 CampusMate의 모바일 런처(Android/iOS)입니다.  
+공통 기능 코드는 `../../packages/campusmate_core`를 사용합니다.
 
-## Release Build
+## 로컬 실행
 
-1. Copy `android/key.properties.example` to `android/key.properties`
-2. Fill keystore values (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`)
-3. Build release bundle:
+```powershell
+flutter run
+```
+
+## 릴리즈 빌드 (AAB)
+
+1. `android/key.properties.example`를 복사해 `android/key.properties` 생성
+2. keystore 정보 입력
+3. 빌드 실행
 
 ```powershell
 flutter build appbundle --release
 ```
 
-## Ads (AdMob)
+출력 파일:
 
-Ads are enabled on Android builds by default.
+- `build/app/outputs/bundle/release/app-release.aab`
 
-- Debug builds use Google's test banner unit automatically.
-- Release builds also fall back to Google's test banner unit when `ADMOB_BANNER_UNIT_ID_ANDROID` is not set.
+## 광고(AdMob)
 
-Set AdMob app id in `android/local.properties`:
+- Android에서만 동작
+- 단위 ID를 지정하지 않으면 테스트 배너 ID를 사용
+
+`android/local.properties` 예시:
 
 ```properties
 ADMOB_APP_ID=ca-app-pub-xxxxxxxxxxxxxxxx~yyyyyyyyyy
 ```
 
-Run with a real banner unit id:
+실제 배너 ID로 실행 예시:
 
 ```powershell
 flutter run --dart-define=ADMOB_BANNER_UNIT_ID_ANDROID=ca-app-pub-xxxxxxxxxxxxxxxx/zzzzzzzzzz
 ```
 
-## Pre-release Verification
+## 사전 검증 명령
 
 ```powershell
 flutter analyze
@@ -40,7 +48,8 @@ flutter test
 flutter build appbundle --release
 ```
 
-Related docs:
+## 관련 문서
+
 - `../../docs/play_store_release_checklist.md`
 - `../../docs/android_release_signing_ko.md`
 - `../../docs/data_safety_draft_ko.md`

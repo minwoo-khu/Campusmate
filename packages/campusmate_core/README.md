@@ -1,39 +1,27 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# campusmate_core
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+CampusMate의 공통 코어 패키지입니다.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
+모바일/데스크톱/웹 런처(`apps/*`)가 이 패키지를 사용해 같은 기능과 UI를 공유합니다.
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+## 포함 범위
 
-## Features
+- 앱 루트/테마/언어 전환
+- 홈/할 일/캘린더/시간표/강의 탭 UI
+- Todo/Course/PDF 메모 데이터 모델 및 저장 로직(Hive)
+- ICS 연동, 알림, 백업/복원, PIN 암호화
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+## 설계 원칙
 
-## Getting started
+- 로컬 중심 저장(Local-first)
+- 계정/서버 의존 최소화
+- 플랫폼별 선택 기능은 가드 처리(지원 플랫폼에서만 실행)
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+## 개발 참고
 
-## Usage
+분석/테스트:
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
-
-```dart
-const like = 'sample';
+```powershell
+flutter analyze
+flutter test
 ```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
