@@ -33,9 +33,22 @@ class NotificationService {
   static const String _channelDesc = 'Todo reminder notifications';
 
   bool _inited = false;
+  bool get isSupportedPlatform {
+    if (kIsWeb) return false;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return true;
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return false;
+    }
+  }
 
   Future<void> init() async {
-    if (_inited) return;
+    if (_inited || !isSupportedPlatform) return;
 
     tzdata.initializeTimeZones();
     try {
@@ -86,6 +99,7 @@ class NotificationService {
   }
 
   Future<bool> requestPermissions() async {
+    if (!isSupportedPlatform) return false;
     var granted = true;
 
     final androidImpl = _plugin
@@ -124,6 +138,7 @@ class NotificationService {
   }
 
   Future<bool?> requestExactAlarmPermission() async {
+    if (!isSupportedPlatform) return null;
     final androidImpl = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -134,6 +149,13 @@ class NotificationService {
   }
 
   Future<NotificationDiagnostics> diagnostics() async {
+    if (!isSupportedPlatform) {
+      return const NotificationDiagnostics(
+        notificationsEnabled: null,
+        canScheduleExactNotifications: null,
+        pendingCount: 0,
+      );
+    }
     bool? notificationsEnabled;
     bool? canExact;
 
@@ -155,10 +177,12 @@ class NotificationService {
   }
 
   Future<void> cancel(int notificationId) async {
+    if (!isSupportedPlatform) return;
     await _plugin.cancel(id: notificationId);
   }
 
   Future<void> cancelAll() async {
+    if (!isSupportedPlatform) return;
     await _plugin.cancelAll();
   }
 
@@ -168,6 +192,7 @@ class NotificationService {
     required String title,
     required DateTime remindAt,
   }) async {
+    if (!isSupportedPlatform) return;
     await requestPermissions();
 
     final now = DateTime.now();
@@ -250,6 +275,7 @@ class NotificationService {
   Future<void> scheduleDebugNotification({
     Duration after = const Duration(seconds: 15),
   }) async {
+    if (!isSupportedPlatform) return;
     final now = DateTime.now();
     final remindAt = now.add(after);
     final scheduled = tz.TZDateTime.from(remindAt, tz.local);

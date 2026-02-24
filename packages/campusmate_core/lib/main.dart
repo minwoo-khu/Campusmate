@@ -39,13 +39,25 @@ Future<void> main() async {
   await Hive.openBox<String>(ChangeHistoryService.boxName);
 
   await Hive.openBox<int>('notif');
-  await NotificationService.I.init();
-  await HomeWidgetService.syncLocaleCode('ko');
-  await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
-  await HomeWidgetService.syncTimetableSummary(
-    Hive.box<Course>('courses').values,
-  );
-  await AdService.I.init();
+  try {
+    await NotificationService.I.init().timeout(const Duration(seconds: 4));
+  } catch (_) {
+    // Never block app launch on optional platform service init.
+  }
+  try {
+    await HomeWidgetService.syncLocaleCode('ko');
+    await HomeWidgetService.syncTodoSummary(Hive.box<TodoItem>('todos').values);
+    await HomeWidgetService.syncTimetableSummary(
+      Hive.box<Course>('courses').values,
+    );
+  } catch (_) {
+    // Ignore optional widget sync failures.
+  }
+  try {
+    await AdService.I.init().timeout(const Duration(seconds: 4));
+  } catch (_) {
+    // Never block app launch on optional ad init.
+  }
 
   await CrashReportingService.I.runAppWithReporting(const CampusMateApp());
 }
