@@ -11,6 +11,7 @@ import '../features/todo/todo_screen.dart';
 import 'ad_service.dart';
 import 'app_link.dart';
 import 'home_screen.dart';
+import 'layout.dart';
 import 'l10n.dart';
 import 'notification_service.dart';
 import 'settings_screen.dart';
@@ -160,7 +161,6 @@ class _RootShellState extends State<RootShell> {
       await prefs.setBool(_prefKeyStartTabMigratedV2, true);
     }
 
-    // If user has not explicitly chosen a start tab yet, default to Home.
     if (!explicit) {
       saved = _homeTab;
       await prefs.setInt(_prefKeyStartTab, _homeTab);
@@ -237,6 +237,161 @@ class _RootShellState extends State<RootShell> {
     }
   }
 
+  Widget _buildBannerStrip({double bottomMargin = 8}) {
+    if (!_bannerReady || _bannerAd == null) return const SizedBox.shrink();
+    return SafeArea(
+      top: false,
+      bottom: false,
+      child: Container(
+        margin: EdgeInsets.only(bottom: bottomMargin),
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: _bannerAd!.size.width.toDouble(),
+          height: _bannerAd!.size.height.toDouble(),
+          child: AdWidget(ad: _bannerAd!),
+        ),
+      ),
+    );
+  }
+
+  List<_ShellNavEntry> _navItems(BuildContext context) {
+    return [
+      _ShellNavEntry(
+        index: _homeTab,
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home,
+        label: context.tr('홈', 'Home'),
+      ),
+      _ShellNavEntry(
+        index: _todoTab,
+        icon: Icons.check_circle_outline,
+        activeIcon: Icons.check_circle,
+        label: context.tr('할 일', 'Todo'),
+      ),
+      _ShellNavEntry(
+        index: _calendarTab,
+        icon: Icons.calendar_month_outlined,
+        activeIcon: Icons.calendar_month,
+        label: context.tr('캘린더', 'Calendar'),
+      ),
+      _ShellNavEntry(
+        index: _timetableTab,
+        icon: Icons.image_outlined,
+        activeIcon: Icons.image,
+        label: context.tr('시간표', 'Timetable'),
+      ),
+      _ShellNavEntry(
+        index: _coursesTab,
+        icon: Icons.menu_book_outlined,
+        activeIcon: Icons.menu_book,
+        label: context.tr('강의', 'Courses'),
+      ),
+    ];
+  }
+
+  Widget _buildMobileBottomNav(
+    CampusMateColors cm,
+    List<_ShellNavEntry> navItems,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildBannerStrip(),
+        SafeArea(
+          top: false,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: cm.navBarBg,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: cm.navBarShadow,
+                  blurRadius: 20,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              children: navItems
+                  .map(
+                    (item) => Expanded(
+                      child: _NavItem(
+                        icon: item.icon,
+                        activeIcon: item.activeIcon,
+                        label: item.label,
+                        selected: _currentIndex == item.index,
+                        onTap: () => _setCurrentTab(item.index),
+                        onLongPress: _openSettings,
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopSidebar(
+    CampusMateColors cm,
+    List<_ShellNavEntry> navItems,
+  ) {
+    return SafeArea(
+      right: false,
+      child: Container(
+        width: 220,
+        margin: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+        padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+        decoration: BoxDecoration(
+          color: cm.navBarBg,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: cm.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: cm.navBarShadow,
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 8, 10, 14),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'CampusMate',
+                  style: TextStyle(
+                    color: cm.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ),
+            for (final item in navItems)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: _SidebarNavItem(
+                  icon: item.icon,
+                  activeIcon: item.activeIcon,
+                  label: item.label,
+                  selected: _currentIndex == item.index,
+                  onTap: () => _setCurrentTab(item.index),
+                  onLongPress: _openSettings,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_loaded) {
@@ -244,6 +399,8 @@ class _RootShellState extends State<RootShell> {
     }
 
     final cm = context.cmColors;
+    final desktopSidebarLayout = isDesktopLayout(context, minWidth: 1080);
+    final navItems = _navItems(context);
 
     final tabs = [
       HomeScreen(onOpenSettings: _openSettings),
@@ -256,106 +413,44 @@ class _RootShellState extends State<RootShell> {
       const CourseScreen(),
     ];
 
+    final tabStack = GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: _dismissKeyboard,
+      onHorizontalDragEnd: desktopSidebarLayout
+          ? null
+          : _onBodyHorizontalDragEnd,
+      child: IndexedStack(index: _currentIndex, children: tabs),
+    );
+
     return Scaffold(
-      body: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: _dismissKeyboard,
-        onHorizontalDragEnd: _onBodyHorizontalDragEnd,
-        child: IndexedStack(index: _currentIndex, children: tabs),
-      ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_bannerReady && _bannerAd != null)
-            SafeArea(
-              top: false,
-              bottom: false,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: _bannerAd!.size.width.toDouble(),
-                  height: _bannerAd!.size.height.toDouble(),
-                  child: AdWidget(ad: _bannerAd!),
-                ),
-              ),
-            ),
-          SafeArea(
-            top: false,
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: cm.navBarBg,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: cm.navBarShadow,
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.home_outlined,
-                      activeIcon: Icons.home,
-                      label: context.tr('홈', 'Home'),
-                      selected: _currentIndex == _homeTab,
-                      onTap: () => _setCurrentTab(_homeTab),
-                      onLongPress: _openSettings,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.check_circle_outline,
-                      activeIcon: Icons.check_circle,
-                      label: context.tr('할 일', 'Todo'),
-                      selected: _currentIndex == _todoTab,
-                      onTap: () => _setCurrentTab(_todoTab),
-                      onLongPress: _openSettings,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.calendar_month_outlined,
-                      activeIcon: Icons.calendar_month,
-                      label: context.tr('캘린더', 'Calendar'),
-                      selected: _currentIndex == _calendarTab,
-                      onTap: () => _setCurrentTab(_calendarTab),
-                      onLongPress: _openSettings,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.image_outlined,
-                      activeIcon: Icons.image,
-                      label: context.tr('시간표', 'Timetable'),
-                      selected: _currentIndex == _timetableTab,
-                      onTap: () => _setCurrentTab(_timetableTab),
-                      onLongPress: _openSettings,
-                    ),
-                  ),
-                  Expanded(
-                    child: _NavItem(
-                      icon: Icons.menu_book_outlined,
-                      activeIcon: Icons.menu_book,
-                      label: context.tr('강의', 'Courses'),
-                      selected: _currentIndex == _coursesTab,
-                      onTap: () => _setCurrentTab(_coursesTab),
-                      onLongPress: _openSettings,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: cm.scaffoldBg,
+      body: desktopSidebarLayout
+          ? Row(
+              children: [
+                _buildDesktopSidebar(cm, navItems),
+                Expanded(child: tabStack),
+              ],
+            )
+          : tabStack,
+      bottomNavigationBar: desktopSidebarLayout
+          ? (_bannerReady && _bannerAd != null ? _buildBannerStrip() : null)
+          : _buildMobileBottomNav(cm, navItems),
     );
   }
+}
+
+class _ShellNavEntry {
+  final int index;
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+
+  const _ShellNavEntry({
+    required this.index,
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+  });
 }
 
 class _NavItem extends StatelessWidget {
@@ -400,6 +495,61 @@ class _NavItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarNavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _SidebarNavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cm = context.cmColors;
+    final color = selected ? cm.navActive : cm.navInactive;
+
+    return Material(
+      color: selected ? cm.inputBg : Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        onLongPress: onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Row(
+            children: [
+              Icon(selected ? activeIcon : icon, color: color, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

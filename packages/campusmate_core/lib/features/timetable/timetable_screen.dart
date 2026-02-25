@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/center_notice.dart';
+import '../../app/layout.dart';
 import '../../app/l10n.dart';
 import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
@@ -262,72 +263,84 @@ class _TimetableScreenState extends State<TimetableScreen> {
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
+    final desktopWide = isDesktopLayout(context, minWidth: 1100);
+    final horizontalPadding = desktopWide ? 24.0 : 16.0;
+    final topPadding = desktopWide ? 12.0 : 8.0;
     final hasImage =
         _imagePath != null && !kIsWeb && File(_imagePath!).existsSync();
 
     return Scaffold(
       backgroundColor: cm.scaffoldBg,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Text(
-                    _t('시간표', 'Timetable'),
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: cm.textPrimary,
+        child: responsiveContent(
+          context,
+          maxWidth: 1320,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              topPadding,
+              horizontalPadding,
+              10,
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      _t('시간표', 'Timetable'),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                        color: cm.textPrimary,
+                      ),
                     ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: _pickAndSaveImage,
+                      icon: const Icon(Icons.image_outlined),
+                      style: IconButton.styleFrom(
+                        backgroundColor: cm.iconButtonBg,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: cm.cardBg,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: cm.cardBorder),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: hasImage
+                        ? InteractiveViewer(
+                            minScale: 0.5,
+                            maxScale: 4,
+                            child: Image.file(
+                              File(_imagePath!),
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  _buildPlaceholder(),
+                            ),
+                          )
+                        : _buildPlaceholder(),
                   ),
-                  const Spacer(),
-                  IconButton(
-                    onPressed: _pickAndSaveImage,
-                    icon: const Icon(Icons.image_outlined),
-                    style: IconButton.styleFrom(
-                      backgroundColor: cm.iconButtonBg,
+                ),
+                if (hasImage) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _clearImage,
+                      icon: const Icon(Icons.delete_outline),
+                      label: Text(_t('이미지 지우기', 'Clear image')),
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: cm.cardBg,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: cm.cardBorder),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: hasImage
-                      ? InteractiveViewer(
-                          minScale: 0.5,
-                          maxScale: 4,
-                          child: Image.file(
-                            File(_imagePath!),
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildPlaceholder(),
-                          ),
-                        )
-                      : _buildPlaceholder(),
-                ),
-              ),
-              if (hasImage) ...[
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: _clearImage,
-                    icon: const Icon(Icons.delete_outline),
-                    label: Text(_t('이미지 지우기', 'Clear image')),
-                  ),
-                ),
               ],
-            ],
+            ),
           ),
         ),
       ),

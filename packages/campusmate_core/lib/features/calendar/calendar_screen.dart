@@ -13,6 +13,7 @@ import '../../app/center_notice.dart';
 import '../../app/home_widget_service.dart';
 import '../../app/ics_settings_screen.dart';
 import '../../app/l10n.dart';
+import '../../app/layout.dart';
 import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
 import '../todo/todo_edit_screen.dart';
@@ -745,304 +746,337 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
+    final desktopWide = isDesktopLayout(context, minWidth: 1200);
+    final horizontalPadding = desktopWide ? 24.0 : 16.0;
     final todoBox = Hive.box<TodoItem>('todos');
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: cm.scaffoldBg,
       body: SafeArea(
-        child: ValueListenableBuilder(
-          valueListenable: todoBox.listenable(),
-          builder: (context, Box<TodoItem> box, _) {
-            final dayItems = _buildDayItems(box);
-            final selectedItems = _itemsForDay(dayItems, _selectedDay);
-            final hiddenItemCount = _hiddenItemCountForDay(
-              dayItems,
-              _selectedDay,
-            );
-            final rangeFirstDay = _rangeFirstDay;
-            final rangeLastDay = _rangeLastDay;
+        child: responsiveContent(
+          context,
+          maxWidth: 1320,
+          child: ValueListenableBuilder(
+            valueListenable: todoBox.listenable(),
+            builder: (context, Box<TodoItem> box, _) {
+              final dayItems = _buildDayItems(box);
+              final selectedItems = _itemsForDay(dayItems, _selectedDay);
+              final hiddenItemCount = _hiddenItemCountForDay(
+                dayItems,
+                _selectedDay,
+              );
+              final rangeFirstDay = _rangeFirstDay;
+              final rangeLastDay = _rangeLastDay;
 
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            _monthLabel(_focusedDay),
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: -0.3,
-                              color: cm.textPrimary,
-                            ),
-                          ),
-                          const Spacer(),
-                          IconButton(
-                            onPressed: () => _moveMonth(-1),
-                            icon: const Icon(Icons.chevron_left),
-                            style: IconButton.styleFrom(
-                              backgroundColor: cm.iconButtonBg,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: () => _moveMonth(1),
-                            icon: const Icon(Icons.chevron_right),
-                            style: IconButton.styleFrom(
-                              backgroundColor: cm.iconButtonBg,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: _openIcsSettings,
-                            icon: const Icon(Icons.link),
-                            style: IconButton.styleFrom(
-                              backgroundColor: cm.iconButtonBg,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onHorizontalDragEnd: (details) {
-                          final velocity = details.primaryVelocity;
-                          if (velocity == null || velocity.abs() < 240) return;
-                          _moveMonth(velocity < 0 ? 1 : -1);
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
-                          decoration: BoxDecoration(
-                            color: cm.cardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: cm.cardBorder),
-                          ),
-                          child: TableCalendar<_CalItem>(
-                            firstDay: rangeFirstDay,
-                            lastDay: rangeLastDay,
-                            focusedDay: _focusedDay,
-                            headerVisible: false,
-                            sixWeekMonthsEnforced: true,
-                            availableGestures: AvailableGestures.none,
-                            selectedDayPredicate: (day) =>
-                                isSameDay(day, _selectedDay),
-                            onDaySelected: (selectedDay, focusedDay) {
-                              setState(() {
-                                _selectedDay = _clampToRange(
-                                  selectedDay,
-                                  rangeFirstDay,
-                                  rangeLastDay,
-                                );
-                                _focusedDay = _clampToRange(
-                                  focusedDay,
-                                  rangeFirstDay,
-                                  rangeLastDay,
-                                );
-                              });
-                            },
-                            onPageChanged: (focusedDay) {
-                              final moved = DateTime(
-                                focusedDay.year,
-                                focusedDay.month,
-                                1,
-                              );
-                              setState(() {
-                                _focusedDay = _clampToRange(
-                                  moved,
-                                  rangeFirstDay,
-                                  rangeLastDay,
-                                );
-                                _selectedDay = _clampToRange(
-                                  moved,
-                                  rangeFirstDay,
-                                  rangeLastDay,
-                                );
-                              });
-                            },
-                            eventLoader: (day) =>
-                                _markerItemsForDay(dayItems, day),
-                            calendarBuilders: CalendarBuilders<_CalItem>(
-                              dowBuilder: (context, day) {
-                                final isSunday = day.weekday == DateTime.sunday;
-                                final isSaturday =
-                                    day.weekday == DateTime.saturday;
-                                return Center(
-                                  child: Text(
-                                    _weekdayShortLabel(day.weekday),
-                                    style: TextStyle(
-                                      color: isSunday
-                                          ? const Color(0xFFDC2626)
-                                          : isSaturday
-                                          ? const Color(0xFF2563EB)
-                                          : cm.textSecondary,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            calendarStyle: CalendarStyle(
-                              defaultTextStyle: TextStyle(
-                                color: cm.textPrimary,
-                              ),
-                              weekendTextStyle: TextStyle(
-                                color: cm.textPrimary,
-                              ),
-                              outsideTextStyle: TextStyle(color: cm.textHint),
-                              markerDecoration: const BoxDecoration(
-                                color: Color(0xFF8B5CF6),
-                                shape: BoxShape.circle,
-                              ),
-                              todayDecoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF1E3A5F)
-                                    : const Color(0xFFE0E7FF),
-                                shape: BoxShape.circle,
-                              ),
-                              selectedDecoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF1E40AF)
-                                    : const Color(0xFFDBEAFE),
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark
-                                      ? const Color(0xFF3B82F6)
-                                      : const Color(0xFF93C5FD),
-                                ),
-                              ),
-                              selectedTextStyle: TextStyle(
-                                color: isDark
-                                    ? const Color(0xFF93C5FD)
-                                    : const Color(0xFF1D4ED8),
-                                fontWeight: FontWeight.w700,
-                              ),
-                              todayTextStyle: TextStyle(
-                                color: isDark
-                                    ? const Color(0xFF93C5FD)
-                                    : const Color(0xFF1E3A8A),
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, thickness: 1),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
-                  child: Row(
-                    children: [
-                      Text(
-                        context.tr(
-                          '${_selectedDay.month}/${_selectedDay.day} 일정',
-                          '${_selectedDay.month}/${_selectedDay.day} Schedule',
-                        ),
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: cm.textPrimary,
-                        ),
-                      ),
-                      const Spacer(),
-                      if (_loading)
-                        const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                    ],
-                  ),
-                ),
-                if (_message != null)
+              return Column(
+                children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _message!,
-                            style: TextStyle(
-                              color: _lastIcsFailureAt != null
-                                  ? cm.deleteBg
-                                  : cm.textTertiary,
-                              fontSize: 12,
-                            ),
-                          ),
-                          if (_lastIcsFailureReason != null &&
-                              _lastIcsFailureAt != null &&
-                              kDebugMode)
-                            Text(
-                              context.tr(
-                                '원인: ${_lastIcsFailureReason!}',
-                                'Reason: ${_lastIcsFailureReason!}',
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: cm.textHint,
-                                fontSize: 11,
-                              ),
-                            ),
-                        ],
-                      ),
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      12,
+                      horizontalPadding,
+                      8,
                     ),
-                  ),
-                if (hiddenItemCount > 0)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        context.tr(
-                          '표시 제한으로 $hiddenItemCount개 항목이 숨겨졌습니다.',
-                          '$hiddenItemCount items are hidden by safety limit.',
-                        ),
-                        style: TextStyle(fontSize: 12, color: cm.textHint),
-                      ),
-                    ),
-                  ),
-                Expanded(
-                  child: selectedItems.isEmpty
-                      ? ListView(
+                    child: Column(
+                      children: [
+                        Row(
                           children: [
-                            const SizedBox(height: 120),
-                            Center(
-                              child: Text(
-                                context.tr(
-                                  '선택한 날짜의 일정이 없습니다.',
-                                  'No events for selected date.',
-                                ),
-                                style: TextStyle(color: cm.textTertiary),
+                            Text(
+                              _monthLabel(_focusedDay),
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -0.3,
+                                color: cm.textPrimary,
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              onPressed: () => _moveMonth(-1),
+                              icon: const Icon(Icons.chevron_left),
+                              style: IconButton.styleFrom(
+                                backgroundColor: cm.iconButtonBg,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: () => _moveMonth(1),
+                              icon: const Icon(Icons.chevron_right),
+                              style: IconButton.styleFrom(
+                                backgroundColor: cm.iconButtonBg,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              onPressed: _openIcsSettings,
+                              icon: const Icon(Icons.link),
+                              style: IconButton.styleFrom(
+                                backgroundColor: cm.iconButtonBg,
                               ),
                             ),
                           ],
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                          itemBuilder: (_, i) {
-                            final item = selectedItems[i];
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: () => _showEventBottomSheet(item),
-                              child: _buildEventCard(item),
-                            );
-                          },
-                          separatorBuilder: (_, separatorIndex) =>
-                              const SizedBox(height: 10),
-                          itemCount: selectedItems.length,
                         ),
-                ),
-              ],
-            );
-          },
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onHorizontalDragEnd: (details) {
+                            final velocity = details.primaryVelocity;
+                            if (velocity == null || velocity.abs() < 240)
+                              return;
+                            _moveMonth(velocity < 0 ? 1 : -1);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
+                            decoration: BoxDecoration(
+                              color: cm.cardBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: cm.cardBorder),
+                            ),
+                            child: TableCalendar<_CalItem>(
+                              firstDay: rangeFirstDay,
+                              lastDay: rangeLastDay,
+                              focusedDay: _focusedDay,
+                              headerVisible: false,
+                              sixWeekMonthsEnforced: true,
+                              availableGestures: AvailableGestures.none,
+                              selectedDayPredicate: (day) =>
+                                  isSameDay(day, _selectedDay),
+                              onDaySelected: (selectedDay, focusedDay) {
+                                setState(() {
+                                  _selectedDay = _clampToRange(
+                                    selectedDay,
+                                    rangeFirstDay,
+                                    rangeLastDay,
+                                  );
+                                  _focusedDay = _clampToRange(
+                                    focusedDay,
+                                    rangeFirstDay,
+                                    rangeLastDay,
+                                  );
+                                });
+                              },
+                              onPageChanged: (focusedDay) {
+                                final moved = DateTime(
+                                  focusedDay.year,
+                                  focusedDay.month,
+                                  1,
+                                );
+                                setState(() {
+                                  _focusedDay = _clampToRange(
+                                    moved,
+                                    rangeFirstDay,
+                                    rangeLastDay,
+                                  );
+                                  _selectedDay = _clampToRange(
+                                    moved,
+                                    rangeFirstDay,
+                                    rangeLastDay,
+                                  );
+                                });
+                              },
+                              eventLoader: (day) =>
+                                  _markerItemsForDay(dayItems, day),
+                              calendarBuilders: CalendarBuilders<_CalItem>(
+                                dowBuilder: (context, day) {
+                                  final isSunday =
+                                      day.weekday == DateTime.sunday;
+                                  final isSaturday =
+                                      day.weekday == DateTime.saturday;
+                                  return Center(
+                                    child: Text(
+                                      _weekdayShortLabel(day.weekday),
+                                      style: TextStyle(
+                                        color: isSunday
+                                            ? const Color(0xFFDC2626)
+                                            : isSaturday
+                                            ? const Color(0xFF2563EB)
+                                            : cm.textSecondary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              calendarStyle: CalendarStyle(
+                                defaultTextStyle: TextStyle(
+                                  color: cm.textPrimary,
+                                ),
+                                weekendTextStyle: TextStyle(
+                                  color: cm.textPrimary,
+                                ),
+                                outsideTextStyle: TextStyle(color: cm.textHint),
+                                markerDecoration: const BoxDecoration(
+                                  color: Color(0xFF8B5CF6),
+                                  shape: BoxShape.circle,
+                                ),
+                                todayDecoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF1E3A5F)
+                                      : const Color(0xFFE0E7FF),
+                                  shape: BoxShape.circle,
+                                ),
+                                selectedDecoration: BoxDecoration(
+                                  color: isDark
+                                      ? const Color(0xFF1E40AF)
+                                      : const Color(0xFFDBEAFE),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF3B82F6)
+                                        : const Color(0xFF93C5FD),
+                                  ),
+                                ),
+                                selectedTextStyle: TextStyle(
+                                  color: isDark
+                                      ? const Color(0xFF93C5FD)
+                                      : const Color(0xFF1D4ED8),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                todayTextStyle: TextStyle(
+                                  color: isDark
+                                      ? const Color(0xFF93C5FD)
+                                      : const Color(0xFF1E3A8A),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, thickness: 1),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      22,
+                      horizontalPadding,
+                      10,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          context.tr(
+                            '${_selectedDay.month}/${_selectedDay.day} 일정',
+                            '${_selectedDay.month}/${_selectedDay.day} Schedule',
+                          ),
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: cm.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (_loading)
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (_message != null)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        0,
+                        horizontalPadding,
+                        8,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _message!,
+                              style: TextStyle(
+                                color: _lastIcsFailureAt != null
+                                    ? cm.deleteBg
+                                    : cm.textTertiary,
+                                fontSize: 12,
+                              ),
+                            ),
+                            if (_lastIcsFailureReason != null &&
+                                _lastIcsFailureAt != null &&
+                                kDebugMode)
+                              Text(
+                                context.tr(
+                                  '원인: ${_lastIcsFailureReason!}',
+                                  'Reason: ${_lastIcsFailureReason!}',
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: cm.textHint,
+                                  fontSize: 11,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (hiddenItemCount > 0)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        horizontalPadding,
+                        0,
+                        horizontalPadding,
+                        8,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          context.tr(
+                            '표시 제한으로 $hiddenItemCount개 항목이 숨겨졌습니다.',
+                            '$hiddenItemCount items are hidden by safety limit.',
+                          ),
+                          style: TextStyle(fontSize: 12, color: cm.textHint),
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: selectedItems.isEmpty
+                        ? ListView(
+                            children: [
+                              const SizedBox(height: 120),
+                              Center(
+                                child: Text(
+                                  context.tr(
+                                    '선택한 날짜의 일정이 없습니다.',
+                                    'No events for selected date.',
+                                  ),
+                                  style: TextStyle(color: cm.textTertiary),
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.separated(
+                            padding: EdgeInsets.fromLTRB(
+                              horizontalPadding,
+                              0,
+                              horizontalPadding,
+                              20,
+                            ),
+                            itemBuilder: (_, i) {
+                              final item = selectedItems[i];
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () => _showEventBottomSheet(item),
+                                child: _buildEventCard(item),
+                              );
+                            },
+                            separatorBuilder: (_, separatorIndex) =>
+                                const SizedBox(height: 10),
+                            itemCount: selectedItems.length,
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

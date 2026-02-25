@@ -6,6 +6,7 @@ import '../../app/app_link.dart';
 import '../../app/center_notice.dart';
 import '../../app/change_history_service.dart';
 import '../../app/l10n.dart';
+import '../../app/layout.dart';
 import '../../app/safety_limits.dart';
 import '../../app/theme.dart';
 import 'todo_edit_screen.dart';
@@ -957,103 +958,130 @@ class _TodoScreenState extends State<TodoScreen> {
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
+    final desktopWide = isDesktopLayout(context, minWidth: 1100);
+    final horizontalPadding = desktopWide ? 24.0 : 16.0;
+    final titleTopPadding = desktopWide ? 12.0 : 8.0;
     final box = Hive.box<TodoItem>('todos');
 
     return Scaffold(
       backgroundColor: cm.scaffoldBg,
       body: SafeArea(
-        child: ValueListenableBuilder(
-          valueListenable: box.listenable(),
-          builder: (context, Box<TodoItem> b, _) {
-            final allItems = todoRepo.list();
-            final filteredItems = _applyFilter(allItems);
-            final sections = _buildSections(filteredItems);
-            final rows = _rowsFromSections(sections);
+        child: responsiveContent(
+          context,
+          maxWidth: 1240,
+          child: ValueListenableBuilder(
+            valueListenable: box.listenable(),
+            builder: (context, Box<TodoItem> b, _) {
+              final allItems = todoRepo.list();
+              final filteredItems = _applyFilter(allItems);
+              final sections = _buildSections(filteredItems);
+              final rows = _rowsFromSections(sections);
 
-            final id = _highlightId;
-            if (id != null) {
-              final idx = rows.indexWhere((row) => row.todo?.id == id);
-              if (idx >= 0) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scroll.hasClients) {
-                    const estimatedRowHeight = 86.0;
-                    final target = (idx * estimatedRowHeight).clamp(
-                      0.0,
-                      _scroll.position.maxScrollExtent,
-                    );
-                    _scroll.animateTo(
-                      target,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  }
-                });
+              final id = _highlightId;
+              if (id != null) {
+                final idx = rows.indexWhere((row) => row.todo?.id == id);
+                if (idx >= 0) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_scroll.hasClients) {
+                      const estimatedRowHeight = 86.0;
+                      final target = (idx * estimatedRowHeight).clamp(
+                        0.0,
+                        _scroll.position.maxScrollExtent,
+                      );
+                      _scroll.animateTo(
+                        target,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    }
+                  });
+                }
+                AppLink.clearTodo();
               }
-              AppLink.clearTodo();
-            }
 
-            final totalCount = allItems.length;
-            final activeCount = allItems.where((t) => !t.completed).length;
-            final completedCount = allItems.where((t) => t.completed).length;
+              final totalCount = allItems.length;
+              final activeCount = allItems.where((t) => !t.completed).length;
+              final completedCount = allItems.where((t) => t.completed).length;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                  child: Row(
-                    children: [
-                      Text(
-                        _t('할 일', 'Todo'),
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: cm.textPrimary,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  child: _buildQuickCapture(),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-                  child: _buildFilterRow(
-                    totalCount,
-                    activeCount,
-                    completedCount,
-                  ),
-                ),
-                Expanded(
-                  child: rows.isEmpty
-                      ? Center(
-                          child: Text(
-                            _t(
-                              '필터 조건에 맞는 할 일이 없습니다.',
-                              'No todos for this filter.',
-                            ),
-                            style: TextStyle(color: cm.textTertiary),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      titleTopPadding,
+                      horizontalPadding,
+                      10,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          _t('할 일', 'Todo'),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: cm.textPrimary,
+                            letterSpacing: -0.3,
                           ),
-                        )
-                      : ListView.builder(
-                          controller: _scroll,
-                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
-                          itemCount: rows.length,
-                          itemBuilder: (_, i) {
-                            final row = rows[i];
-                            if (row.isHeader) {
-                              return _buildSectionHeader(row);
-                            }
-                            return _buildTodoTile(row.todo!);
-                          },
                         ),
-                ),
-              ],
-            );
-          },
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      8,
+                    ),
+                    child: _buildQuickCapture(),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      horizontalPadding,
+                      0,
+                      horizontalPadding,
+                      4,
+                    ),
+                    child: _buildFilterRow(
+                      totalCount,
+                      activeCount,
+                      completedCount,
+                    ),
+                  ),
+                  Expanded(
+                    child: rows.isEmpty
+                        ? Center(
+                            child: Text(
+                              _t(
+                                '필터 조건에 맞는 할 일이 없습니다.',
+                                'No todos for this filter.',
+                              ),
+                              style: TextStyle(color: cm.textTertiary),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scroll,
+                            padding: EdgeInsets.fromLTRB(
+                              horizontalPadding,
+                              6,
+                              horizontalPadding,
+                              24,
+                            ),
+                            itemCount: rows.length,
+                            itemBuilder: (_, i) {
+                              final row = rows[i];
+                              if (row.isHeader) {
+                                return _buildSectionHeader(row);
+                              }
+                              return _buildTodoTile(row.todo!);
+                            },
+                          ),
+                  ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

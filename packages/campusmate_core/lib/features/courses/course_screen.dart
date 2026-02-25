@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../app/change_history_service.dart';
+import '../../app/layout.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../todo/todo_model.dart';
@@ -332,6 +333,10 @@ class _CourseScreenState extends State<CourseScreen> {
   @override
   Widget build(BuildContext context) {
     final cm = context.cmColors;
+    final desktopWide = isDesktopLayout(context, minWidth: 1100);
+    final horizontalPadding = desktopWide ? 24.0 : 16.0;
+    final topPadding = desktopWide ? 12.0 : 8.0;
+    final dashboardCardWidth = desktopWide ? 300.0 : 260.0;
     final courseBox = Hive.box<Course>('courses');
     final materialBox = Hive.box<CourseMaterial>('course_materials');
     final noteBox = Hive.box<String>('material_notes');
@@ -341,553 +346,568 @@ class _CourseScreenState extends State<CourseScreen> {
     return Scaffold(
       backgroundColor: cm.scaffoldBg,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: AnimatedBuilder(
-            animation: Listenable.merge([
-              courseBox.listenable(),
-              materialBox.listenable(),
-              noteBox.listenable(),
-              pageMemoBox.listenable(),
-              todoBox.listenable(),
-              _searchController,
-            ]),
-            builder: (context, _) {
-              final query = _searchController.text.trim().toLowerCase();
+        child: responsiveContent(
+          context,
+          maxWidth: 1240,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              topPadding,
+              horizontalPadding,
+              0,
+            ),
+            child: AnimatedBuilder(
+              animation: Listenable.merge([
+                courseBox.listenable(),
+                materialBox.listenable(),
+                noteBox.listenable(),
+                pageMemoBox.listenable(),
+                todoBox.listenable(),
+                _searchController,
+              ]),
+              builder: (context, _) {
+                final query = _searchController.text.trim().toLowerCase();
 
-              final courses = courseBox.values.toList()
-                ..sort((a, b) => a.name.compareTo(b.name));
-              final materials = materialBox.values.toList();
-              final todos = todoBox.values.toList();
+                final courses = courseBox.values.toList()
+                  ..sort((a, b) => a.name.compareTo(b.name));
+                final materials = materialBox.values.toList();
+                final todos = todoBox.values.toList();
 
-              final filtered = query.isEmpty
-                  ? courses
-                  : courses
-                        .where(
-                          (c) => _courseSearchBlob(
-                            course: c,
-                            materials: materials,
-                            noteBox: noteBox,
-                            pageMemoBox: pageMemoBox,
-                          ).contains(query),
-                        )
-                        .toList();
+                final filtered = query.isEmpty
+                    ? courses
+                    : courses
+                          .where(
+                            (c) => _courseSearchBlob(
+                              course: c,
+                              materials: materials,
+                              noteBox: noteBox,
+                              pageMemoBox: pageMemoBox,
+                            ).contains(query),
+                          )
+                          .toList();
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        _t('내 강의', 'Courses'),
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: cm.textPrimary,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          _t('내 강의', 'Courses'),
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w600,
+                            color: cm.textPrimary,
+                          ),
                         ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: _t('최근 변경', 'Recent changes'),
-                        onPressed: null,
-                        icon: const SizedBox.shrink(),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 0),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        const Spacer(),
+                        IconButton(
+                          tooltip: _t('최근 변경', 'Recent changes'),
+                          onPressed: null,
+                          icon: const SizedBox.shrink(),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 0),
-                      IconButton(
-                        onPressed: () => _openAdd(context),
-                        icon: const Icon(Icons.add),
-                        style: IconButton.styleFrom(
-                          backgroundColor: cm.iconButtonBg,
+                        const SizedBox(width: 0),
+                        IconButton(
+                          onPressed: () => _openAdd(context),
+                          icon: const Icon(Icons.add),
+                          style: IconButton.styleFrom(
+                            backgroundColor: cm.iconButtonBg,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: _t(
-                        '강의명, PDF 이름, 메모, 태그 검색...',
-                        'Search course, PDF name, note text, tag...',
-                      ),
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: cm.inputBg,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (query.isEmpty && courses.isNotEmpty) ...[
-                    Text(
-                      _t('강의 대시보드', 'Course dashboard'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: cm.textPrimary,
-                      ),
+                      ],
                     ),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      height: 138,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: courses.length,
-                        separatorBuilder: (_, separatorIndex) =>
-                            const SizedBox(width: 10),
-                        itemBuilder: (_, i) {
-                          final course = courses[i];
-                          final linkedTodos = _countLinkedTodosForNext7Days(
-                            course,
-                            todos,
-                          );
-                          final latestMaterial = _latestMaterialTitleForCourse(
-                            course,
-                            materials,
-                          );
-                          final latestMemo = _latestMemoPreviewForCourse(
-                            course,
-                            materials,
-                            noteBox,
-                            pageMemoBox,
-                          );
-
-                          return InkWell(
-                            borderRadius: BorderRadius.circular(16),
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => CourseDetailScreen(
-                                    courseId: course.id,
-                                    courseName: course.name,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Container(
-                              width: 260,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: cm.cardBg,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: cm.cardBorder),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    course.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      color: cm.textPrimary,
-                                    ),
-                                  ),
-                                  if (course.tags.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: course.tags.take(4).map((tag) {
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: cm.inputBg,
-                                            borderRadius: BorderRadius.circular(
-                                              999,
-                                            ),
-                                            border: Border.all(
-                                              color: cm.cardBorder,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            '#$tag',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: cm.textSecondary,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _t(
-                                      '연결된 할 일(7일): $linkedTodos',
-                                      'Linked todos (7d): $linkedTodos',
-                                    ),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: cm.navActive,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    _t(
-                                      '최근 PDF: ${latestMaterial ?? '없음'}',
-                                      'Latest PDF: ${latestMaterial ?? 'No PDF yet'}',
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: cm.textSecondary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    _t(
-                                      '최근 메모: ${latestMemo == null ? '없음' : _trimPreview(latestMemo)}',
-                                      'Recent memo: ${latestMemo == null ? 'No memo yet' : _trimPreview(latestMemo)}',
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: cm.textTertiary,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: _t(
+                          '강의명, PDF 이름, 메모, 태그 검색...',
+                          'Search course, PDF name, note text, tag...',
+                        ),
+                        prefixIcon: const Icon(Icons.search),
+                        filled: true,
+                        fillColor: cm.inputBg,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
-                  ],
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? (query.isEmpty && courses.isEmpty
-                              ? _buildFirstCourseEmptyState(context)
-                              : ListView(
+                    if (query.isEmpty && courses.isNotEmpty) ...[
+                      Text(
+                        _t('강의 대시보드', 'Course dashboard'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cm.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 138,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: courses.length,
+                          separatorBuilder: (_, separatorIndex) =>
+                              const SizedBox(width: 10),
+                          itemBuilder: (_, i) {
+                            final course = courses[i];
+                            final linkedTodos = _countLinkedTodosForNext7Days(
+                              course,
+                              todos,
+                            );
+                            final latestMaterial =
+                                _latestMaterialTitleForCourse(
+                                  course,
+                                  materials,
+                                );
+                            final latestMemo = _latestMemoPreviewForCourse(
+                              course,
+                              materials,
+                              noteBox,
+                              pageMemoBox,
+                            );
+
+                            return InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => CourseDetailScreen(
+                                      courseId: course.id,
+                                      courseName: course.name,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: dashboardCardWidth,
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: cm.cardBg,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: cm.cardBorder),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const SizedBox(height: 120),
-                                    Center(
-                                      child: Text(
-                                        _t(
-                                          '검색 조건에 맞는 강의가 없어요.',
-                                          'No matching course found.',
-                                        ),
-                                        style: TextStyle(
-                                          color: cm.textTertiary,
-                                        ),
+                                    Text(
+                                      course.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: cm.textPrimary,
+                                      ),
+                                    ),
+                                    if (course.tags.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 6,
+                                        children: course.tags.take(4).map((
+                                          tag,
+                                        ) {
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: cm.inputBg,
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                              border: Border.all(
+                                                color: cm.cardBorder,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              '#$tag',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                                color: cm.textSecondary,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      _t(
+                                        '연결된 할 일(7일): $linkedTodos',
+                                        'Linked todos (7d): $linkedTodos',
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: cm.navActive,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _t(
+                                        '최근 PDF: ${latestMaterial ?? '없음'}',
+                                        'Latest PDF: ${latestMaterial ?? 'No PDF yet'}',
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: cm.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      _t(
+                                        '최근 메모: ${latestMemo == null ? '없음' : _trimPreview(latestMemo)}',
+                                        'Recent memo: ${latestMemo == null ? 'No memo yet' : _trimPreview(latestMemo)}',
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: cm.textTertiary,
+                                        height: 1.2,
                                       ),
                                     ),
                                   ],
-                                ))
-                        : ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 18),
-                            itemCount: filtered.length + 1,
-                            itemBuilder: (_, i) {
-                              if (i == filtered.length) {
-                                return Container(
-                                  margin: const EdgeInsets.only(top: 8),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: cm.tipBannerBg,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: cm.tipBannerBorder,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? (query.isEmpty && courses.isEmpty
+                                ? _buildFirstCourseEmptyState(context)
+                                : ListView(
                                     children: [
-                                      Text(
-                                        _t('PDF 학습 모드', 'PDF learning mode'),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: cm.tipBannerTitle,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        _t(
-                                          '자료를 열어 페이지 단위 메모/태그를 남겨 보세요. 검색에서 메모까지 찾을 수 있습니다.',
-                                          'Open materials and attach page-level notes/tags. Search now supports these notes.',
-                                        ),
-                                        style: TextStyle(
-                                          color: cm.tipBannerBody,
-                                          height: 1.35,
+                                      const SizedBox(height: 120),
+                                      Center(
+                                        child: Text(
+                                          _t(
+                                            '검색 조건에 맞는 강의가 없어요.',
+                                            'No matching course found.',
+                                          ),
+                                          style: TextStyle(
+                                            color: cm.textTertiary,
+                                          ),
                                         ),
                                       ),
                                     ],
-                                  ),
-                                );
-                              }
-
-                              final course = filtered[i];
-                              final pdfCount = materials
-                                  .where((m) => m.courseId == course.id)
-                                  .length;
-                              final memoCount = _countPageMemosForCourse(
-                                course,
-                                materials,
-                                pageMemoBox,
-                              );
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(18),
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => CourseDetailScreen(
-                                          courseId: course.id,
-                                          courseName: course.name,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(14),
+                                  ))
+                          : ListView.builder(
+                              padding: const EdgeInsets.only(bottom: 18),
+                              itemCount: filtered.length + 1,
+                              itemBuilder: (_, i) {
+                                if (i == filtered.length) {
+                                  return Container(
+                                    margin: const EdgeInsets.only(top: 8),
+                                    padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
-                                      color: cm.cardBg,
-                                      borderRadius: BorderRadius.circular(18),
-                                      border: Border.all(color: cm.cardBorder),
+                                      color: cm.tipBannerBg,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: cm.tipBannerBorder,
+                                      ),
                                     ),
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    course.name,
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      color: cm.textPrimary,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    _t(
-                                                      '강의 자료',
-                                                      'Course materials',
-                                                    ),
-                                                    style: TextStyle(
-                                                      color: cm.textTertiary,
-                                                    ),
-                                                  ),
-                                                  if (course
-                                                      .tags
-                                                      .isNotEmpty) ...[
-                                                    const SizedBox(height: 8),
-                                                    Wrap(
-                                                      spacing: 6,
-                                                      runSpacing: 6,
-                                                      children: course.tags.take(6).map((
-                                                        tag,
-                                                      ) {
-                                                        return Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 8,
-                                                                vertical: 3,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color: cm.inputBg,
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  999,
-                                                                ),
-                                                            border: Border.all(
-                                                              color:
-                                                                  cm.cardBorder,
-                                                            ),
-                                                          ),
-                                                          child: Text(
-                                                            '#$tag',
-                                                            style: TextStyle(
-                                                              fontSize: 11,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              color: cm
-                                                                  .textSecondary,
-                                                            ),
-                                                          ),
-                                                        );
-                                                      }).toList(),
-                                                    ),
-                                                  ],
-                                                  if (course.memo
-                                                      .trim()
-                                                      .isNotEmpty) ...[
-                                                    const SizedBox(height: 8),
-                                                    Text(
-                                                      _trimPreview(
-                                                        course.memo.trim(),
-                                                        max: 100,
-                                                      ),
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: cm.textTertiary,
-                                                        height: 1.3,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ],
-                                              ),
-                                            ),
-                                            PopupMenuButton<_CourseMenu>(
-                                              color: cm.cardBg,
-                                              surfaceTintColor:
-                                                  Colors.transparent,
-                                              shadowColor: cm.navBarShadow,
-                                              elevation: 8,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(14),
-                                                side: BorderSide(
-                                                  color: cm.cardBorder,
-                                                ),
-                                              ),
-                                              menuPadding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 6,
-                                                  ),
-                                              icon: Icon(
-                                                Icons.more_horiz,
-                                                color: cm.textHint,
-                                              ),
-                                              onSelected: (value) async {
-                                                if (value == _CourseMenu.edit) {
-                                                  await _openEdit(
-                                                    context,
-                                                    course,
-                                                  );
-                                                } else if (value ==
-                                                    _CourseMenu.delete) {
-                                                  await _deleteCourse(
-                                                    context,
-                                                    course,
-                                                  );
-                                                }
-                                              },
-                                              itemBuilder: (_) => [
-                                                PopupMenuItem(
-                                                  value: _CourseMenu.edit,
-                                                  child: Text(
-                                                    _t('수정', 'Edit'),
-                                                    style: TextStyle(
-                                                      color: cm.textPrimary,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
-                                                PopupMenuItem(
-                                                  value: _CourseMenu.delete,
-                                                  child: Text(
-                                                    _t('삭제', 'Delete'),
-                                                    style: TextStyle(
-                                                      color: cm.deleteBg,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                                        Text(
+                                          _t('PDF 학습 모드', 'PDF learning mode'),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: cm.tipBannerTitle,
+                                          ),
                                         ),
-                                        const SizedBox(height: 12),
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 8,
-                                          children: [
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 6,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: cm.pdfBadgeBg,
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                _t(
-                                                  'PDF $pdfCount',
-                                                  'PDF $pdfCount',
-                                                ),
-                                                style: TextStyle(
-                                                  color: cm.pdfBadgeText,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 6,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: cm.memoBadgeBg,
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                _t(
-                                                  '페이지 메모 $memoCount',
-                                                  'Page notes $memoCount',
-                                                ),
-                                                style: TextStyle(
-                                                  color: cm.memoBadgeText,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          _t(
+                                            '자료를 열어 페이지 단위 메모/태그를 남겨 보세요. 검색에서 메모까지 찾을 수 있습니다.',
+                                            'Open materials and attach page-level notes/tags. Search now supports these notes.',
+                                          ),
+                                          style: TextStyle(
+                                            color: cm.tipBannerBody,
+                                            height: 1.35,
+                                          ),
                                         ),
                                       ],
                                     ),
+                                  );
+                                }
+
+                                final course = filtered[i];
+                                final pdfCount = materials
+                                    .where((m) => m.courseId == course.id)
+                                    .length;
+                                final memoCount = _countPageMemosForCourse(
+                                  course,
+                                  materials,
+                                  pageMemoBox,
+                                );
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(18),
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => CourseDetailScreen(
+                                            courseId: course.id,
+                                            courseName: course.name,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: cm.cardBg,
+                                        borderRadius: BorderRadius.circular(18),
+                                        border: Border.all(
+                                          color: cm.cardBorder,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      course.name,
+                                                      style: TextStyle(
+                                                        fontSize: 18,
+                                                        fontWeight:
+                                                            FontWeight.w800,
+                                                        color: cm.textPrimary,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      _t(
+                                                        '강의 자료',
+                                                        'Course materials',
+                                                      ),
+                                                      style: TextStyle(
+                                                        color: cm.textTertiary,
+                                                      ),
+                                                    ),
+                                                    if (course
+                                                        .tags
+                                                        .isNotEmpty) ...[
+                                                      const SizedBox(height: 8),
+                                                      Wrap(
+                                                        spacing: 6,
+                                                        runSpacing: 6,
+                                                        children: course.tags.take(6).map((
+                                                          tag,
+                                                        ) {
+                                                          return Container(
+                                                            padding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 8,
+                                                                  vertical: 3,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color: cm.inputBg,
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    999,
+                                                                  ),
+                                                              border: Border.all(
+                                                                color: cm
+                                                                    .cardBorder,
+                                                              ),
+                                                            ),
+                                                            child: Text(
+                                                              '#$tag',
+                                                              style: TextStyle(
+                                                                fontSize: 11,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                color: cm
+                                                                    .textSecondary,
+                                                              ),
+                                                            ),
+                                                          );
+                                                        }).toList(),
+                                                      ),
+                                                    ],
+                                                    if (course.memo
+                                                        .trim()
+                                                        .isNotEmpty) ...[
+                                                      const SizedBox(height: 8),
+                                                      Text(
+                                                        _trimPreview(
+                                                          course.memo.trim(),
+                                                          max: 100,
+                                                        ),
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color:
+                                                              cm.textTertiary,
+                                                          height: 1.3,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                              PopupMenuButton<_CourseMenu>(
+                                                color: cm.cardBg,
+                                                surfaceTintColor:
+                                                    Colors.transparent,
+                                                shadowColor: cm.navBarShadow,
+                                                elevation: 8,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  side: BorderSide(
+                                                    color: cm.cardBorder,
+                                                  ),
+                                                ),
+                                                menuPadding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 6,
+                                                    ),
+                                                icon: Icon(
+                                                  Icons.more_horiz,
+                                                  color: cm.textHint,
+                                                ),
+                                                onSelected: (value) async {
+                                                  if (value ==
+                                                      _CourseMenu.edit) {
+                                                    await _openEdit(
+                                                      context,
+                                                      course,
+                                                    );
+                                                  } else if (value ==
+                                                      _CourseMenu.delete) {
+                                                    await _deleteCourse(
+                                                      context,
+                                                      course,
+                                                    );
+                                                  }
+                                                },
+                                                itemBuilder: (_) => [
+                                                  PopupMenuItem(
+                                                    value: _CourseMenu.edit,
+                                                    child: Text(
+                                                      _t('수정', 'Edit'),
+                                                      style: TextStyle(
+                                                        color: cm.textPrimary,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    value: _CourseMenu.delete,
+                                                    child: Text(
+                                                      _t('삭제', 'Delete'),
+                                                      style: TextStyle(
+                                                        color: cm.deleteBg,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: [
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: cm.pdfBadgeBg,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Text(
+                                                  _t(
+                                                    'PDF $pdfCount',
+                                                    'PDF $pdfCount',
+                                                  ),
+                                                  style: TextStyle(
+                                                    color: cm.pdfBadgeText,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 6,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: cm.memoBadgeBg,
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Text(
+                                                  _t(
+                                                    '페이지 메모 $memoCount',
+                                                    'Page notes $memoCount',
+                                                  ),
+                                                  style: TextStyle(
+                                                    color: cm.memoBadgeText,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              );
-            },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
