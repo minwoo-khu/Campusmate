@@ -838,6 +838,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               lastDay: rangeLastDay,
                               focusedDay: _focusedDay,
                               headerVisible: false,
+                              daysOfWeekHeight: 26,
                               sixWeekMonthsEnforced: true,
                               availableGestures: AvailableGestures.none,
                               selectedDayPredicate: (day) =>
@@ -884,15 +885,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   final isSaturday =
                                       day.weekday == DateTime.saturday;
                                   return Center(
-                                    child: Text(
-                                      _weekdayShortLabel(day.weekday),
-                                      style: TextStyle(
-                                        color: isSunday
-                                            ? const Color(0xFFDC2626)
-                                            : isSaturday
-                                            ? const Color(0xFF2563EB)
-                                            : cm.textSecondary,
-                                        fontWeight: FontWeight.w600,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 1),
+                                      child: Text(
+                                        _weekdayShortLabel(day.weekday),
+                                        style: TextStyle(
+                                          color: isSunday
+                                              ? const Color(0xFFDC2626)
+                                              : isSaturday
+                                              ? const Color(0xFF2563EB)
+                                              : cm.textSecondary,
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.2,
+                                        ),
                                       ),
                                     ),
                                   );
