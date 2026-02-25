@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Resolve-Path (Join-Path $scriptRoot '..')
 $releaseDir = Join-Path $projectRoot 'build\windows\x64\runner\Release'
-$exeName = 'desktop_app.exe'
+$exeName = 'CampusMate.exe'
 $sourceExe = Join-Path $releaseDir $exeName
 
 if (-not (Test-Path $sourceExe)) {
@@ -66,8 +66,6 @@ $robocopyArgs = @(
 if (-not (Test-Path (Join-Path $installDir $exeName))) {
   throw "Install copy failed: missing $exeName in $installDir"
 }
-
-Rename-Item -Path (Join-Path $installDir $exeName) -NewName 'CampusMate.exe' -Force
 
 if (-not (Test-Path $startMenuDir)) {
   New-Item -ItemType Directory -Path $startMenuDir -Force | Out-Null

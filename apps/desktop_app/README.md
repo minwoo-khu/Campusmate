@@ -17,7 +17,13 @@ flutter build windows --release
 
 출력 파일:
 
-- `build/windows/x64/runner/Release/desktop_app.exe`
+- `build/windows/x64/runner/Release/CampusMate.exe`
+
+웹 다운로드용 zip 생성:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\package_website_windows_zip.ps1
+```
 
 ## 설치형 배포 (폴더 통복사 없이 실행)
 
